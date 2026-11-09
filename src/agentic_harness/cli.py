@@ -1,4 +1,4 @@
-"""Command-line entry point: the ``harness`` command.
+"""Command-line entry point: the ``agentic-harness`` command.
 
 Harness part: packaging. It makes the harness a runtime you point at a
 workspace, the way you run Claude Code, rather than a one-off script.
