@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read # least privilege: CI can read the code, nothing else
 
+# Actions are pinned to exact commits (a tag can be moved; a commit cannot).
+# Dependabot proposes updates as reviewed PRs.
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -19,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --locked
       - run: make check
 
@@ -28,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # scan the whole history, not just the last commit
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --locked
       - run: uv run pre-commit run gitleaks --all-files

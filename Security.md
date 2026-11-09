@@ -35,7 +35,7 @@ All companies, people, contracts and numbers are **made up**. No real customer d
 
 - Exact versions locked in `uv.lock`; CI installs with `--locked`.
 - Dependabot opens weekly update PRs for Python packages and Actions.
-- CI token is read-only. Actions are pinned to major tags now, to commit SHAs before the repo goes public.
+- CI token is read-only. Actions are pinned to exact commit SHAs (a tag can be moved; a commit can't).
 
 ## Reporting
 

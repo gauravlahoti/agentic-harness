@@ -68,7 +68,7 @@ Folders are created when their first real file arrives: no empty placeholders.
 | Task runner | **Makefile** | justfile, scripts folder | Already on every Mac and CI runner; one command per task | Make syntax is quirky |
 | Commit hooks | **pre-commit**: file hygiene, **gitleaks**, ruff, mypy | No hooks | Problems stop at the commit, not in review. Local hooks use `uv run`, so versions match `uv.lock`. | ~2 s per commit |
 | CI | **GitHub Actions**: `make check` + secret scan of full history | Separate CI scripts | CI runs the exact local command; never "works on my machine" | Needs a GitHub repo to run |
-| CI security | **Read-only token, timeouts, cancel superseded runs** | Defaults | Least privilege; no hung or duplicate runs | — |
+| CI security | **Read-only token, actions pinned to exact commit SHAs, timeouts, cancel superseded runs** | Defaults · version tags (`@v10`) | Least privilege; a tag can be moved or not exist, a commit can't; no hung or duplicate runs | SHAs are unreadable, so each has a version comment; Dependabot updates them |
 | Updates | **Dependabot** weekly, grouped (Python + Actions) | Manual updates | Security fixes arrive as reviewed PRs | Weekly PRs to merge |
 | Editors | **.editorconfig + .gitattributes** (UTF-8, LF) | Editor defaults | Same whitespace and line endings on every machine | — |
 | Secrets | **`.env` git-ignored, `.env.example` committed, gitleaks in hooks + CI** | Trusting care | Three layers between a key and a commit | — |
@@ -89,7 +89,6 @@ Folders are created when their first real file arrives: no empty placeholders.
 |---|---|
 | Dockerfile / container image | Only if we deploy; the plan has no cloud deploy |
 | License file | When you decide public vs private repo |
-| SHA-pinned GitHub Actions | Before the repo goes public (now pinned to major tags `@v7`, `@v10`) |
 | `CODEOWNERS` | When there's a team (it would also need an upper-case exception) |
 | Structured app logging | S00 config + S01 events (events are our logging) |
 
