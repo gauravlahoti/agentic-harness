@@ -209,3 +209,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S01-AC1 recording script written; first live call returned 402 (prepaid credits depleted). S01-AC1, AC14 → ⛔ until credits are added. |
 | 2026-11-10 | New free-tier key. Old key still exported in the shell overrode `.env`. 3.8/3.7/3.6 Flash returned 503 "high demand"; recorded with 3.5 Flash-Lite. S01-AC1 → 🟨, AC14 → 🟦. D-29 added. |
 | 2026-11-10 | S01 built: model, loop, limits, pricing, events, trace, tools, workspace, api, `run` command, `/api/run`, Agent view. S01-AC2–AC14 → 🟨 (96 offline tests + 1 live). Walkthrough in `docs/stage-1.md`. |
+| 2026-11-10 | Agent view restyled to the calm-chat layout (task bubble, Activity lines that open to an X-ray, prose answer, run footer); sidebar pinned so the theme toggle stays visible. Approved by you. |

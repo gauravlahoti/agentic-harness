@@ -14,7 +14,7 @@
 </head>
 <body>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span> agentic-harness</div>
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 12a7.4 7.4 0 1 1-2.17-5.23" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M19.6 4.2v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> agentic-harness</div>
     <p class="workspace" id="workspace-name">No workspace loaded</p>
     <nav aria-label="Sections">
       <a class="nav-item" href="#agent" data-view="agent">Agent</a>
@@ -41,25 +41,20 @@
   <main>
     <!-- ── Agent view (S01) ─────────────────────────────────────────────── -->
     <section class="view view-agent" id="view-agent" aria-labelledby="agent-title">
-      <header class="page-header">
-        <h1 id="agent-title">Agent</h1>
-        <p class="status-line" id="run-status" role="status">Ready</p>
-      </header>
+      <h1 id="agent-title" class="visually-hidden">Agent</h1>
+      <p id="run-status" class="visually-hidden" role="status"></p>
 
-      <div class="conversation" id="conversation">
+      <div class="thread" id="thread">
         <div class="empty" id="empty-state">
-          <p class="empty-title">Give the agent a task</p>
+          <p class="empty-title" id="empty-title">What should the agent do?</p>
           <p class="hint" id="empty-hint">Load a workspace to start: <code>agentic-harness serve --workspace workspaces/hello</code></p>
           <div class="examples" id="examples"></div>
         </div>
-        <p class="task-echo" id="task-echo"></p>
-        <ol class="timeline" id="timeline" aria-label="What the harness did"></ol>
-        <div id="answer-slot"></div>
       </div>
 
       <form class="composer" id="composer">
         <label class="visually-hidden" for="task">Task</label>
-        <textarea id="task" name="task" rows="2" maxlength="4000" placeholder="Ask the agent to do something…" required></textarea>
+        <textarea id="task" name="task" rows="1" maxlength="4000" placeholder="Ask the agent to do something…" required></textarea>
         <div class="composer-bar">
           <fieldset class="mode" id="mode">
             <legend class="visually-hidden">Model</legend>
@@ -67,9 +62,20 @@
             <label><input type="radio" name="mode" value="live"> Live</label>
           </fieldset>
           <p class="hint mode-hint" id="mode-hint"></p>
-          <button type="submit" class="primary" id="send">Send</button>
+          <button type="submit" class="send" id="send" aria-label="Send">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </form>
+      <p class="composer-note">Each task is a fresh run: the harness has no memory yet (that's Stage 7).</p>
+
+      <!-- Icons the script copies in. Templates keep the strict security policy: no HTML strings. -->
+      <template id="tpl-mark">
+        <svg class="agent-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 12a7.4 7.4 0 1 1-2.17-5.23" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M19.6 4.2v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </template>
+      <template id="tpl-chevron">
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </template>
     </section>
 
     <!-- ── Checks view (S00) ────────────────────────────────────────────── -->

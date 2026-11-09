@@ -6,7 +6,7 @@
 ## What you have now
 
 - `agentic-harness run --workspace workspaces/hello "What time is it in Tokyo?"` runs a real agent in the terminal.
-- The page's **Agent** view: type a task, watch each step appear, read the answer. **Fake** replays a recorded Gemini run (free); **Live** calls Gemini.
+- The page's **Agent** view: a calm chat. Your task in a bubble, then the agent's **Activity**: one line per harness step (model steps grey, tool steps green, tagged LOOP or TOOL), live counters (calls · tokens · $ · s), the answer as prose, and "✓ Run complete". Click any line to see its facts and the raw event. **Fake** replays a recorded Gemini run (free); **Live** calls Gemini.
 - Every run is saved to `.agentic-harness/traces/<run>.jsonl`, one event per line, key scrubbed.
 - 96 offline tests (6 s) built on **real** Gemini replies, plus one live test (`make live`).
 
@@ -47,7 +47,7 @@ Gemini has no "tool_use" stop reason. A reply asks for tools by **containing** `
 | `trace.py` | The record | One listener: appends each event as a JSON line, after replacing any secret with `***`. |
 | `tools/`, `workspace.py` | What the agent can do | A `Tool` is name + description + schema + function. The model sees only the first three. A workspace's `tools.py` defines `TOOLS`. |
 | `api.py` | One call to wire it all | `create_harness(model, limits, workspace)`, used by both the CLI and the page. |
-| `server/runs.py`, `web/app.js` | The page | The server forwards events as NDJSON; the page turns each into a row. All text goes in with `textContent`. |
+| `server/runs.py`, `web/app.js` | The page | The server forwards events as NDJSON; the page turns each into an activity line. Every element is built in code and all text goes in as text, so model output can't inject HTML. |
 | `scripts/record_gemini_shapes.py` | Ground truth | Ten small live calls saved as fixtures. Refuses to write any file that contains the key. |
 
 ## What real Gemini taught us (not in the docs)
@@ -60,9 +60,9 @@ Gemini has no "tool_use" stop reason. A reply asks for tools by **containing** `
 
 1. `make check` → all green, 96 passed.
 2. `uv run agentic-harness run --workspace workspaces/hello --fake "What time is it?"` → 2 calls, a `get_time` row, `completed`.
-3. `uv run agentic-harness serve --workspace workspaces/hello` → http://127.0.0.1:8000 → click an example → **Send** (Fake) → watch 4 rows and the answer.
+3. `uv run agentic-harness serve --workspace workspaces/hello` → http://127.0.0.1:8000 → click an example → send (Fake) → watch the activity lines fill in, then the answer and "✓ Run complete".
 4. Switch to **Live** and send a task. You need a key in `.env`. If `gemini-3.8-flash` is busy, add `HARNESS_MODEL=gemini-3.5-flash-lite` to `.env` and restart.
-5. Open any row's **details**: you'll see the exact event, including the thought `signature` (shortened).
+5. Click an activity line: a model step shows tokens in / out / thinking and cost; a tool step shows arguments, output and call ID. **Raw event** shows the exact event, including the thought `signature` (shortened).
 6. Open the newest file in `.agentic-harness/traces/` and search it for your key. It isn't there.
 7. Try a limit: `uv run agentic-harness run --workspace workspaces/hello --fake --max-steps 1 "Time?"` → `stopped … step_limit`.
 

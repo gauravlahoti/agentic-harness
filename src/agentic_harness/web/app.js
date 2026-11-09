@@ -153,8 +153,16 @@ async function runChecks() {
   }
 }
 
-// ── Agent view (S01): send a task, show each step as it happens ─────────────
+// ── Agent view (S01): calm chat on top, every harness step one line you can open ──
 const EXAMPLES = ["What time is it in Tokyo?", "What time is it in UTC and in New York?"];
+const REASONS = {
+  answered: "answered",
+  step_limit: "hit the step limit",
+  cost_limit: "hit the cost limit",
+  time_limit: "hit the time limit",
+  output_limit: "the answer was cut off at the output limit",
+};
+let agentName = "agent";
 
 function setUpAgent() {
   const ws = health?.workspace;
@@ -164,17 +172,16 @@ function setUpAgent() {
     $("send").disabled = true;
     return;
   }
-  const toolCount = `${ws.tools.length} tool${ws.tools.length === 1 ? "" : "s"}`;
-  $("workspace-name").textContent = `${ws.name} workspace · ${toolCount}`;
+  agentName = ws.name;
+  $("workspace-name").textContent = `${ws.name} workspace · ${plural(ws.tools.length, "tool")}`;
+  $("empty-title").textContent = `What should the ${ws.name} agent do?`;
   $("empty-hint").textContent = ws.tools.length
-    ? `Tools: ${ws.tools.join(", ")}. Every step the harness takes appears below.`
+    ? `Tools: ${ws.tools.join(", ")}. Every step the harness takes shows up as a line you can open.`
     : "This workspace has no tools yet.";
   $("examples").replaceChildren(
     ...EXAMPLES.map((text) => {
-      const chip = document.createElement("button");
+      const chip = el("button", "example", text);
       chip.type = "button";
-      chip.className = "example";
-      chip.textContent = text;
       chip.addEventListener("click", () => {
         $("task").value = text;
         $("task").focus();
@@ -199,178 +206,224 @@ function updateModeHint() {
       : `Live: calls ${health?.model ?? "Gemini"} with your key.`;
 }
 
-// One timeline row per step. Rows are updated in place as later events arrive.
-function addStep({ icon = "○", what, sub = "", tag = "loop", state = "working", raw }) {
-  const row = document.createElement("li");
-  row.className = `step new ${state}`;
-
-  const iconEl = document.createElement("span");
-  iconEl.className = "icon";
-  iconEl.setAttribute("aria-hidden", "true");
-  iconEl.textContent = icon;
-
-  const text = document.createElement("span");
-  text.className = "what";
-  const title = document.createElement("span");
-  title.textContent = what;
-  const subEl = document.createElement("span");
-  subEl.className = "sub";
-  subEl.textContent = sub;
-  text.append(title, subEl);
-
-  const meta = document.createElement("span");
-  meta.className = "meta";
-  const cost = document.createElement("span");
-  const tagEl = document.createElement("span");
-  tagEl.className = `tag ${tag}`;
-  tagEl.textContent = tag.toUpperCase();
-  meta.append(cost, tagEl);
-
-  const details = document.createElement("details");
-  const summary = document.createElement("summary");
-  summary.textContent = "details";
-  const pre = document.createElement("pre");
-  details.append(summary, pre);
-
-  row.append(iconEl, text, meta, details);
-  $("timeline").append(row);
-  const step = { row, iconEl, title, subEl, cost, pre };
-  setRaw(step, raw);
-  row.scrollIntoView({ block: "nearest" });
-  return step;
+// Small helpers: every element is built here, and all text goes in as text.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
-
-function updateStep(step, { icon, what, sub, state, cost, raw }) {
-  if (icon !== undefined) step.iconEl.textContent = icon;
-  if (what !== undefined) step.title.textContent = what;
-  if (sub !== undefined) step.subEl.textContent = sub;
-  if (state) step.row.className = `step ${state}`;
-  if (cost !== undefined) step.cost.textContent = cost;
-  if (raw !== undefined) setRaw(step, raw);
-}
-
-// Raw event data for the curious; long values (thought signatures) are shortened.
-function setRaw(step, raw) {
-  const shorten = (key, value) =>
-    typeof value === "string" && value.length > 160
-      ? `${value.slice(0, 160)}… (${value.length} chars)`
-      : value;
-  step.pre.textContent = JSON.stringify(raw, shorten, 2);
-}
-
-const money = (usd) => `$${usd.toFixed(5)}`;
-const tokenCount = (u) =>
-  (u?.total_input_tokens ?? 0) + (u?.total_output_tokens ?? 0) + (u?.total_thought_tokens ?? 0);
-const callText = (name, args) =>
-  `${name}(${Object.entries(args ?? {})
-    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-    .join(", ")})`;
+const fromTemplate = (id) => $(id).content.firstElementChild.cloneNode(true);
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const money = (usd) => `$${usd.toFixed(5)}`;
+const argText = (args) =>
+  Object.entries(args ?? {})
+    .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+    .join(", ");
+const shorten = (key, value) =>
+  typeof value === "string" && value.length > 160 ? `${value.slice(0, 160)}… (${value.length} chars)` : value;
 
-function setStatus(text, state = "") {
-  const status = $("run-status");
-  status.textContent = text;
-  status.className = `status-line ${state}`;
+// One task and the agent's work on it, appended to the thread.
+function newTurn(task) {
+  const turn = el("article", "turn new");
+  const you = el("div", "you");
+  you.append(el("p", "bubble", task));
+
+  const agent = el("div", "agent");
+  const head = el("header", "agent-head");
+  const stats = el("span", "agent-stats working", "Working…");
+  head.append(fromTemplate("tpl-mark"), el("span", "agent-name", agentName), el("span", "agent-label", "Activity"), stats);
+  const activity = el("ol", "activity");
+  activity.setAttribute("aria-label", "What the harness did");
+  const reply = el("div", "reply");
+  const foot = el("p", "run-foot");
+  agent.append(head, activity, reply, foot);
+
+  turn.append(you, agent);
+  $("thread").append(turn);
+  turn.scrollIntoView({ block: "end" });
+  return { activity, reply, foot, stats, model: null, tools: new Map(), tokens: 0 };
 }
 
-// Models often write **bold**. Show it as bold by building elements, never by parsing HTML,
-// so text from the model can't inject anything into the page.
-function appendWithBold(parent, text) {
-  text.split(/\*\*(.+?)\*\*/g).forEach((part, i) => {
-    if (i % 2 === 1) {
-      const strong = document.createElement("strong");
-      strong.textContent = part;
-      parent.append(strong);
-    } else {
-      parent.append(part);
+// One activity line. It opens to plain facts, then the raw event (the X-ray).
+function addActivity(turn, { text, part = "loop", state = "working", facts, raw }) {
+  const li = el("li", `act part-${part} new`);
+  const details = el("details");
+  const summary = el("summary");
+  const dot = el("span", "dot");
+  dot.setAttribute("aria-hidden", "true");
+  const label = el("span", "act-text", text);
+  summary.append(dot, label, el("span", "act-tag", part.toUpperCase()), fromTemplate("tpl-chevron"));
+  const factList = el("dl", "facts");
+  const rawBox = el("details", "raw");
+  const pre = el("pre");
+  rawBox.append(el("summary", null, "Raw event"), pre);
+  const body = el("div", "act-body");
+  body.append(factList, rawBox);
+  details.append(summary, body);
+  li.append(details);
+  turn.activity.append(li);
+  const row = { li, dot, label, factList, pre };
+  setActivity(row, { state, facts, raw });
+  li.scrollIntoView({ block: "nearest" });
+  return row;
+}
+
+function setActivity(row, { text, state, facts, raw }) {
+  if (text !== undefined) row.label.textContent = text;
+  if (state) {
+    row.li.classList.remove("working", "done", "error");
+    row.li.classList.add(state);
+    row.dot.textContent = state === "done" ? "✓" : state === "error" ? "✗" : "";
+  }
+  if (facts) row.factList.replaceChildren(...facts.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+  if (raw !== undefined) row.pre.textContent = JSON.stringify(raw, shorten, 2);
+}
+
+// Models write a little markdown. Show paragraphs, lists, **bold** and `code`
+// by building elements, never by parsing HTML, so model text can't inject anything.
+function renderProse(container, text) {
+  let list = null;
+  let para = [];
+  const flush = () => {
+    if (para.length) {
+      const p = el("p");
+      appendInline(p, para.join("\n"));
+      container.append(p);
     }
-  });
+    para = [];
+  };
+  for (const line of text.split("\n")) {
+    const item = line.match(/^\s*(?:[-*•]|(\d+)\.)\s+(.*)$/);
+    if (item) {
+      flush();
+      const kind = item[1] ? "ol" : "ul";
+      if (!list || list.tagName.toLowerCase() !== kind) {
+        list = el(kind);
+        container.append(list);
+      }
+      const li = el("li");
+      appendInline(li, item[2]);
+      list.append(li);
+    } else if (!line.trim()) {
+      flush();
+      list = null;
+    } else {
+      list = null;
+      para.push(line);
+    }
+  }
+  flush();
 }
 
-function showAnswer(d) {
-  const card = document.createElement("div");
-  card.className = `answer ${d.outcome}`;
-  const label = document.createElement("span");
-  label.className = "answer-label";
-  label.textContent =
-    d.outcome === "completed" ? "Answer" : `${d.outcome === "stopped" ? "Stopped" : "Failed"}: ${d.reason}`;
-  const body = document.createElement("span");
-  appendWithBold(body, d.answer || (d.outcome === "completed" ? "(no text)" : "No answer."));
-  card.append(label, body);
-  $("answer-slot").replaceChildren(card);
-  card.scrollIntoView({ block: "nearest" });
+function appendInline(parent, text) {
+  for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)) {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) parent.append(el("strong", null, part.slice(2, -2)));
+    else if (part.startsWith("`") && part.endsWith("`") && part.length > 2) parent.append(el("code", null, part.slice(1, -1)));
+    else if (part) parent.append(part);
+  }
 }
+
+// Screen readers hear the start and the end of a run, not every step.
+const announce = (text) => {
+  $("run-status").textContent = text;
+};
 
 // Turn one event from the harness into a change on the page.
-function onEvent(ev, live) {
+function onEvent(ev, turn) {
   const d = ev.data;
   if (ev.type === "run_started") {
-    const limits = `${d.limits.max_steps} calls, $${d.limits.max_usd}, ${d.limits.max_seconds} s`;
-    addStep({
-      icon: "▸",
-      what: "Task received",
-      sub: `${d.model} · tools: ${d.tools.join(", ") || "none"} · limits: ${limits}`,
+    addActivity(turn, {
+      text: `Started a run · ${d.model}`,
       state: "done",
+      facts: [
+        ["Model", d.model],
+        ["Tools", d.tools.join(", ") || "none"],
+        ["Limits", `${d.limits.max_steps} calls · $${d.limits.max_usd} · ${d.limits.max_seconds} s`],
+        ["Run", ev.run_id],
+      ],
       raw: d,
     });
   } else if (ev.type === "model_called") {
-    live.model = addStep({
-      what: `Asking the model · call ${d.step}`,
-      sub: `sending ${plural(d.history, "step")} of history`,
+    turn.model = addActivity(turn, {
+      text: `Thinking · call ${d.step}`,
+      facts: [["Sends", `the whole history: ${plural(d.history, "step")} (store=false)`]],
       raw: d,
     });
-    setStatus(`Working on it… call ${d.step}`, "working");
-  } else if (ev.type === "model_replied" && live.model) {
-    let what = `Model replied: ${d.status}`;
-    if (d.tool_calls.length) what = `Model wants ${d.tool_calls.join(", ")}`;
-    else if (d.status === "completed") what = "Model answered";
-    updateStep(live.model, {
-      icon: "✓",
-      what,
-      sub: `${d.status} · ${tokenCount(d.usage)} tokens`,
+  } else if (ev.type === "model_replied" && turn.model) {
+    const u = d.usage ?? {};
+    const used = (u.total_input_tokens ?? 0) + (u.total_output_tokens ?? 0) + (u.total_thought_tokens ?? 0);
+    turn.tokens += used;
+    let text = `Model replied: ${d.status}`;
+    if (d.tool_calls.length) {
+      // ["get_time", "get_time"] → "get_time ×2"
+      const counts = new Map();
+      for (const name of d.tool_calls) counts.set(name, (counts.get(name) ?? 0) + 1);
+      const names = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
+      text = `Decided to use ${names.join(", ")}`;
+    } else if (d.status === "completed") {
+      text = "Wrote the answer";
+    }
+    setActivity(turn.model, {
+      text,
       state: "done",
-      cost: money(d.usd),
+      facts: [
+        ["Status", d.status],
+        ["Tokens", `in ${u.total_input_tokens ?? 0} · out ${u.total_output_tokens ?? 0} · thinking ${u.total_thought_tokens ?? 0}`],
+        ["Cost", `${money(d.usd)} (paid-tier price)`],
+        ["Steps", `${plural(d.steps.length, "step")} kept exactly as received`],
+      ],
       raw: d,
     });
   } else if (ev.type === "tool_started") {
-    const call = callText(d.name, d.arguments);
-    const step = addStep({ what: `Running ${call}`, tag: "tool", raw: d });
-    live.tools.set(d.call_id, { step, call });
+    const args = argText(d.arguments);
+    const row = addActivity(turn, { text: `Running ${d.name}${args ? ` · ${args}` : ""}`, part: "tool", raw: d });
+    turn.tools.set(d.call_id, { row, args });
   } else if (ev.type === "tool_finished") {
-    const started = live.tools.get(d.call_id);
+    const started = turn.tools.get(d.call_id);
     if (started) {
-      updateStep(started.step, {
-        icon: d.is_error ? "✗" : "✓",
-        what: `Ran ${started.call}`,
-        sub: d.output,
+      setActivity(started.row, {
+        text: `${d.name}${started.args ? ` · ${started.args}` : ""}`,
         state: d.is_error ? "error" : "done",
+        facts: [
+          ["Arguments", started.args || "none"],
+          ["Output", d.output],
+          ["Call ID", d.call_id ?? "–"],
+          ["Sent back as", d.is_error ? "an error the model can read" : "a result"],
+        ],
         raw: d,
       });
     }
   } else if (ev.type === "run_finished") {
-    const summary = `${plural(d.model_calls, "call")} · ${money(d.usd)} · ${d.seconds.toFixed(1)} s`;
-    if (d.outcome === "completed") setStatus(`✓ Completed in ${summary}`, "completed");
-    else if (d.outcome === "stopped") setStatus(`Stopped (${d.reason}) · ${summary}`, "stopped");
-    else setStatus(`✗ Failed · ${summary}`, "failed");
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
-    if (live.model?.row.classList.contains("working")) updateStep(live.model, { icon: "✗", state: "error" });
-    showAnswer(d);
+    if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
+    turn.stats.classList.remove("working");
+    turn.stats.textContent = `${plural(d.model_calls, "call")} · ${turn.tokens} tokens · ${money(d.usd)} · ${d.seconds.toFixed(1)} s`;
+    if (d.answer) renderProse(turn.reply, d.answer);
+    const reason = REASONS[d.reason] ?? d.reason;
+    const foot = {
+      completed: "✓ Run complete",
+      stopped: `■ Stopped: ${reason}`,
+      failed: `✗ Failed: ${reason}`,
+    }[d.outcome];
+    turn.foot.textContent = foot ?? d.outcome;
+    turn.foot.className = `run-foot ${d.outcome}`;
+    announce(`${foot}. ${turn.stats.textContent}`);
+    turn.foot.scrollIntoView({ block: "nearest" });
   }
 }
 
 async function runTask(event) {
   event.preventDefault();
-  const task = $("task").value.trim();
+  const input = $("task");
+  const task = input.value.trim();
   const send = $("send");
   if (!task || send.disabled) return;
   send.disabled = true;
   $("empty-state").hidden = true;
-  $("timeline").replaceChildren();
-  $("answer-slot").replaceChildren();
-  $("task-echo").textContent = task;
-  setStatus("Working on it…", "working");
-
-  const live = { model: null, tools: new Map() }; // rows still waiting for their result
+  input.value = "";
+  const turn = newTurn(task);
+  announce("Working on it");
   try {
     const response = await fetch("/api/run", {
       method: "POST",
@@ -378,11 +431,16 @@ async function runTask(event) {
       body: JSON.stringify({ task, mode: currentMode() }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
-    for await (const ev of readLines(response)) onEvent(ev, live);
+    for await (const ev of readLines(response)) onEvent(ev, turn);
   } catch (error) {
-    setStatus(`✗ ${error.message}`, "failed");
+    turn.stats.classList.remove("working");
+    turn.stats.textContent = "";
+    turn.foot.textContent = `✗ ${error.message}`;
+    turn.foot.className = "run-foot failed";
+    announce(`Failed: ${error.message}`);
   } finally {
     send.disabled = false;
+    input.focus();
   }
 }
 
