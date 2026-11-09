@@ -1,0 +1,51 @@
+# Agent harness: rules for the AI
+
+A learning project: a **general agent harness** built from scratch in plain Python on Gemini. The first agent on it is CloudCo's **Contract Assistant** (`workspaces/cloudco/`). **The user must understand every line.** Teaching matters as much as working code.
+
+## Source of truth
+`Scaffold.md` (baseline) → `spec/00-product.md` → `spec/01-company.md` → `spec/02-ui.md` → `spec/stages/SNN-*.md` → `Tracker.md` → `Decisions.md`.
+
+## The one architecture rule
+`src/agentic_harness/` knows **no domain**. Nothing about CloudCo, contracts, discounts or profiles by name goes in `src/agentic_harness/`; it all lives in the workspace (`workspace.toml`, `tools.py`, `AGENTS.md`, skills). A test enforces this. If you're tempted to special-case a workspace inside `src/agentic_harness/`, stop and add a config option instead.
+
+## Workflow (details in `spec/how-we-build.md`)
+- Work only on the current stage. Next stage only after the user verifies, or explicitly waives, the current one.
+- **Stage brief first (the user's primary condition):** before any code, present the goal, what we'll have at the end, and every design choice as options → chosen → why → cost. Wait for approval → 🟦.
+- Tests come first, written from the checks. Put the check ID (`S05-AC4`) in each test's name or docstring.
+- Tests pass → mark 🟨 with the test name as evidence. Always show the real output, failures included.
+- **Never mark ✅ yourself.** Only after the user says it's verified.
+- Never change an approved plan silently: add a dated line under **Changes**, a decision record if a choice changed, and reset affected checks to 📝.
+- Add a dated line to the tracker log on every status change.
+
+## Explain as you go (the user asked for this)
+- **Before a file:** what it's for, which checks it serves, its main choice.
+- **After a file:** walk through the key lines in simple words.
+- **Every real choice:** options → choice → why → cost. Then add it to `Decisions.md`.
+- **In code:** a module docstring (purpose · which harness part · what it does *not* do). Comments say *why*, not *what*.
+- **End of stage:** walkthrough in `docs/stage-N.md`.
+- Simple, short words. If code is hard to explain, simplify the code.
+
+## Gemini rules
+- `google-genai` only. Never `google-generativeai`.
+- Interactions API with `store=False`. Never `previous_interaction_id`.
+- We run the tools ourselves: no automatic function calling, no server-side tools, no managed agents.
+- Keep model steps exactly as received (thought signatures).
+- Check current docs (`gcp-developer-knowledge` MCP, or the `gemini-api-dev` skill) before writing Gemini code, not memory. Record verified shapes in `docs/gemini-api-notes.md`.
+- Model names live in config only.
+
+## Secrets and safety
+- Never read or print `.env`. The user fills it in. Only `src/agentic_harness/config.py` loads it.
+- The key never reaches logs, traces, exports, the page or tool results.
+- The server binds to `127.0.0.1` only. Actions write to a local outbox, never real email.
+- All CloudCo data is made up; label it so.
+
+## Commands
+`make setup` · `make check` (everything CI runs) · `make live` (🔑, costs cents) · `make help` · `uv run agentic-harness serve --workspace workspaces/cloudco` → http://127.0.0.1:8000 · `uv run agentic-harness run --workspace … --profile … "task"`
+
+## Naming and quality
+- No ALL-CAPS file names. Root docs in Title case (`Decisions.md`); everything else lowercase. Exceptions only: `CLAUDE.md`, `AGENTS.md`, `SKILL.md`. A test enforces it.
+- Package `agentic_harness` (`src/` layout); command `agentic-harness`.
+- `make check` must pass before anything is marked 🟨: ruff, mypy strict, pytest + coverage ≥ 85%.
+
+## Git
+Commit at meaningful points. Tag `stage-N` after the user verifies. Push only when asked.
