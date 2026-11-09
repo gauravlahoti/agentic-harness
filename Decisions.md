@@ -229,3 +229,11 @@
 - **Because:** one switch flips all colors at once, so nothing flickers; the page still follows the system if JS fails; no flash on reload; strict security headers stay intact (no inline script)
 - **Cost:** `light-dark()` and View Transitions need a 2024+ browser; older ones switch without the animation
 - **Revisit if:** we add a settings panel (then offer all three states there)
+
+### D-29 · No hidden SDK calls: continuation off, retries bounded
+✅ Accepted · S01 · found while recording real replies
+- **Chose:** `automatic_continuation=False` on every call; SDK retries limited, and each call bounded by the run's time left; a cut-off reply ends the run with a named reason
+- **Instead of:** the SDK defaults (extra billed calls on its own; silent retries for minutes on a 503)
+- **Because:** rule 1 (the harness decides) and honest cost and time limits; we saw a 503 "high demand" retried silently for about 5 minutes
+- **Cost:** a busy model fails faster; the run reports `model_error` instead of waiting
+- **Revisit if:** we add our own visible retry step to the loop

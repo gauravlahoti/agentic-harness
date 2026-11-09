@@ -15,9 +15,10 @@
 <body>
   <aside class="sidebar">
     <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span> agentic-harness</div>
-    <p class="workspace">No workspace loaded</p>
+    <p class="workspace" id="workspace-name">No workspace loaded</p>
     <nav aria-label="Sections">
-      <a class="nav-item" href="/" aria-current="page">Checks</a>
+      <a class="nav-item" href="#agent" data-view="agent">Agent</a>
+      <a class="nav-item" href="#checks" data-view="checks">Checks</a>
     </nav>
     <div class="sidebar-foot">
       <p class="version" id="version"></p>
@@ -38,27 +39,63 @@
   </aside>
 
   <main>
-    <header class="page-header">
-      <h1>Checks</h1>
-      <p class="smoke" id="smoke">
-        <span class="pill" id="smoke-server">Server …</span>
-        <span class="pill" id="smoke-key">Key …</span>
-      </p>
-    </header>
+    <!-- ── Agent view (S01) ─────────────────────────────────────────────── -->
+    <section class="view view-agent" id="view-agent" aria-labelledby="agent-title">
+      <header class="page-header">
+        <h1 id="agent-title">Agent</h1>
+        <p class="status-line" id="run-status" role="status">Ready</p>
+      </header>
 
-    <section class="panel" aria-labelledby="checks-title">
-      <div class="panel-bar">
-        <div>
-          <h2 id="checks-title">Offline test suite</h2>
-          <p class="hint">Runs one fixed command: every offline test, no key, no cost.</p>
+      <div class="conversation" id="conversation">
+        <div class="empty" id="empty-state">
+          <p class="empty-title">Give the agent a task</p>
+          <p class="hint" id="empty-hint">Load a workspace to start: <code>agentic-harness serve --workspace workspaces/hello</code></p>
+          <div class="examples" id="examples"></div>
         </div>
-        <button type="button" id="run-checks" class="primary">Run checks</button>
+        <p class="task-echo" id="task-echo"></p>
+        <ol class="timeline" id="timeline" aria-label="What the harness did"></ol>
+        <div id="answer-slot"></div>
       </div>
 
-      <p class="summary" id="summary" role="status">Not run yet.</p>
-      <progress id="progress" max="1" value="0" aria-hidden="true"></progress>
+      <form class="composer" id="composer">
+        <label class="visually-hidden" for="task">Task</label>
+        <textarea id="task" name="task" rows="2" maxlength="4000" placeholder="Ask the agent to do something…" required></textarea>
+        <div class="composer-bar">
+          <fieldset class="mode" id="mode">
+            <legend class="visually-hidden">Model</legend>
+            <label><input type="radio" name="mode" value="fake" checked> Fake</label>
+            <label><input type="radio" name="mode" value="live"> Live</label>
+          </fieldset>
+          <p class="hint mode-hint" id="mode-hint"></p>
+          <button type="submit" class="primary" id="send">Send</button>
+        </div>
+      </form>
+    </section>
 
-      <ol class="rows" id="rows" aria-label="Test results"></ol>
+    <!-- ── Checks view (S00) ────────────────────────────────────────────── -->
+    <section class="view view-checks" id="view-checks" aria-labelledby="checks-heading" hidden>
+      <header class="page-header">
+        <h1 id="checks-heading">Checks</h1>
+        <p class="smoke" id="smoke">
+          <span class="pill" id="smoke-server">Server …</span>
+          <span class="pill" id="smoke-key">Key …</span>
+        </p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-bar">
+          <div>
+            <h2 id="checks-title">Offline test suite</h2>
+            <p class="hint">Runs one fixed command: every offline test, no key, no cost.</p>
+          </div>
+          <button type="button" id="run-checks" class="primary">Run checks</button>
+        </div>
+
+        <p class="summary" id="summary" role="status">Not run yet.</p>
+        <progress id="progress" max="1" value="0" aria-hidden="true"></progress>
+
+        <ol class="rows" id="rows" aria-label="Test results"></ol>
+      </div>
     </section>
   </main>
 </body>

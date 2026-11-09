@@ -1,0 +1,98 @@
+{
+  "request": {
+    "input": [
+      {
+        "type": "user_input",
+        "content": [
+          {
+            "type": "text",
+            "text": "What time is it in Mars/Olympus?"
+          }
+        ]
+      },
+      {
+        "signature": "EmAKXgFpFH0Ta/K+8XzvnQ36PW56dOIK8AdbVqbQtnpRuOrHnZU9voxIWGG6SKzs2X8kJg/ls0uMaj8gICXmpWVX/S6RFzH1ahL4AZ5nrRrfln8rHafwhjZhMGr6k9GTupg=",
+        "type": "thought"
+      },
+      {
+        "arguments": {
+          "timezone": "Mars/Olympus"
+        },
+        "id": "call_4647193297467880157",
+        "name": "get_time",
+        "type": "function_call"
+      },
+      {
+        "type": "function_result",
+        "name": "get_time",
+        "call_id": "call_4647193297467880157",
+        "result": [
+          {
+            "type": "text",
+            "text": "{\"error\": \"Unknown time zone: Mars/Olympus\"}"
+          }
+        ],
+        "is_error": true
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "name": "get_time",
+        "description": "Returns the current time in a time zone, as ISO 8601.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "IANA name, e.g. 'UTC' or 'Asia/Tokyo'"
+            }
+          },
+          "required": [
+            "timezone"
+          ]
+        }
+      }
+    ]
+  },
+  "reply": {
+    "status": "completed",
+    "created": "2026-11-09T20:49:40Z",
+    "id": "",
+    "model": "gemini-3.5-flash-lite",
+    "output_text": "I am sorry, but \"Mars/Olympus\" is not a recognized time zone.",
+    "service_tier": "standard",
+    "steps": [
+      {
+        "signature": "EmAKXgFpFH0Tc8arYl4PmbUnG3m85EEzHXALW7EONPj8vk+uPqMxUcjXCmdx64dBgcRba29I5CJ2r1TSOajha0UJpas3e/KuGDXBnqtuqJwyHg4/1cZZtUZZoF41W6x232E=",
+        "type": "thought"
+      },
+      {
+        "content": [
+          {
+            "text": "I am sorry, but \"Mars/Olympus\" is not a recognized time zone.",
+            "type": "text"
+          }
+        ],
+        "type": "model_output"
+      }
+    ],
+    "updated": "2026-11-09T20:49:40Z",
+    "usage": {
+      "initial_input_tokens": 144,
+      "input_tokens_by_modality": [
+        {
+          "modality": "text",
+          "tokens": 144
+        }
+      ],
+      "total_cached_tokens": 0,
+      "total_input_tokens": 144,
+      "total_output_tokens": 18,
+      "total_thought_tokens": 0,
+      "total_tokens": 162,
+      "total_tool_use_tokens": 0
+    },
+    "object": "interaction"
+  }
+}

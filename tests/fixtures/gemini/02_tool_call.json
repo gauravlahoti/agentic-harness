@@ -1,0 +1,73 @@
+{
+  "request": {
+    "input": [
+      {
+        "type": "user_input",
+        "content": [
+          {
+            "type": "text",
+            "text": "What time is it in UTC right now?"
+          }
+        ]
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "name": "get_time",
+        "description": "Returns the current time in a time zone, as ISO 8601.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "IANA name, e.g. 'UTC' or 'Asia/Tokyo'"
+            }
+          },
+          "required": [
+            "timezone"
+          ]
+        }
+      }
+    ]
+  },
+  "reply": {
+    "status": "requires_action",
+    "created": "2026-11-09T20:49:35Z",
+    "id": "",
+    "model": "gemini-3.5-flash-lite",
+    "output_text": "",
+    "service_tier": "standard",
+    "steps": [
+      {
+        "signature": "EmAKXgFpFH0T1mq3vLEMr5cfN0Lk7ZnpTpiqGFzv/os1Pq1IYoIgaPQqKWDBwxGrfYbDvTYAcbpc4qc39HmHLRhA3gl7zS8Ww9KbMxEaO1paC9fzp/Wroc2As/3O5OsukIc=",
+        "type": "thought"
+      },
+      {
+        "arguments": {
+          "timezone": "UTC"
+        },
+        "id": "call_10097370199035438739",
+        "name": "get_time",
+        "type": "function_call"
+      }
+    ],
+    "updated": "2026-11-09T20:49:35Z",
+    "usage": {
+      "initial_input_tokens": 103,
+      "input_tokens_by_modality": [
+        {
+          "modality": "text",
+          "tokens": 103
+        }
+      ],
+      "total_cached_tokens": 0,
+      "total_input_tokens": 103,
+      "total_output_tokens": 16,
+      "total_thought_tokens": 0,
+      "total_tokens": 119,
+      "total_tool_use_tokens": 0
+    },
+    "object": "interaction"
+  }
+}

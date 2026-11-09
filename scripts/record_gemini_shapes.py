@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from google import genai
+from google.genai import types
 
 from agentic_harness.config import load_settings
 
@@ -61,7 +62,12 @@ class Recorder:
 
     def call(self, steps: list[dict[str, Any]], **extra: Any) -> dict[str, Any]:
         reply = self.client.interactions.create(
-            model=self.model, store=False, system_instruction=SYSTEM, input=steps, **extra
+            model=self.model,
+            store=False,
+            automatic_continuation=False,  # no hidden extra calls (D-29)
+            system_instruction=SYSTEM,
+            input=steps,
+            **extra,
         )
         # mode="json" gives exactly what we would store in a trace file (D-22).
         return reply.model_dump(mode="json", exclude_none=True)
@@ -92,7 +98,13 @@ def calls_in(reply: dict[str, Any]) -> list[dict[str, Any]]:
 def main() -> int:
     settings = load_settings(ROOT / ".env")
     secret = settings.require_key()
-    client = genai.Client(api_key=secret)
+    # Fail fast: no silent SDK retries (a 503 "high demand" once looped for minutes).
+    client = genai.Client(
+        api_key=secret,
+        http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(attempts=1), timeout=90_000
+        ),
+    )
     OUT.mkdir(parents=True, exist_ok=True)
     rec = Recorder(client, settings.model, secret)
     tools = {"tools": [GET_TIME]}
@@ -133,7 +145,7 @@ def main() -> int:
 
     # 9. Strict safety setting on a harmless prompt: shows the shape if anything is blocked.
     strict = [
-        {"category": c, "threshold": "block_low_and_above"}
+        {"type": c, "threshold": "block_low_and_above"}
         for c in ("harassment", "hate_speech", "dangerous_content", "sexually_explicit")
     ]
     try:
@@ -147,7 +159,9 @@ def main() -> int:
 
     # 10. A bad model name: what does an API error look like?
     try:
-        client.interactions.create(model="no-such-model", store=False, input=[user("hi")])
+        client.interactions.create(
+            model="no-such-model", store=False, automatic_continuation=False, input=[user("hi")]
+        )
     except Exception as error:
         text = f"{type(error).__module__}.{type(error).__name__}: {error}"
         rec.summary.append(f"10_bad_model           raised {text.replace(secret, '***')[:300]}")

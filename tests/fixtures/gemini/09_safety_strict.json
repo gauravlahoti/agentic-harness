@@ -1,0 +1,91 @@
+{
+  "request": {
+    "input": [
+      {
+        "type": "user_input",
+        "content": [
+          {
+            "type": "text",
+            "text": "Write a one-line playful roast of a fictional pirate named Bob."
+          }
+        ]
+      }
+    ],
+    "safety_settings": [
+      {
+        "type": "harassment",
+        "threshold": "block_low_and_above"
+      },
+      {
+        "type": "hate_speech",
+        "threshold": "block_low_and_above"
+      },
+      {
+        "type": "dangerous_content",
+        "threshold": "block_low_and_above"
+      },
+      {
+        "type": "sexually_explicit",
+        "threshold": "block_low_and_above"
+      }
+    ]
+  },
+  "reply": {
+    "status": "completed",
+    "created": "2026-11-09T20:50:16Z",
+    "id": "",
+    "model": "gemini-3.5-flash-lite",
+    "output_text": "Captain Bob is the only pirate whose greatest treasure is a coupon for half-priced saline eye drops.",
+    "safety_settings": [
+      {
+        "threshold": "block_low_and_above",
+        "type": "harassment"
+      },
+      {
+        "threshold": "block_low_and_above",
+        "type": "hate_speech"
+      },
+      {
+        "threshold": "block_low_and_above",
+        "type": "dangerous_content"
+      },
+      {
+        "threshold": "block_low_and_above",
+        "type": "sexually_explicit"
+      }
+    ],
+    "service_tier": "standard",
+    "steps": [
+      {
+        "signature": "EmAKXgFpFH0TNd4ZEq8hrEtBZeVVL0HMZPIqv2fysflDleyfphRgjYXAqNjjXrg/shRi5Ow+BHqtdFA74HJwXjA7t0PjBjd8yhHRsJhFIpJU57W3A6R1s9I6yPE/hH7+Cic=",
+        "type": "thought"
+      },
+      {
+        "content": [
+          {
+            "text": "Captain Bob is the only pirate whose greatest treasure is a coupon for half-priced saline eye drops.",
+            "type": "text"
+          }
+        ],
+        "type": "model_output"
+      }
+    ],
+    "updated": "2026-11-09T20:50:16Z",
+    "usage": {
+      "initial_input_tokens": 33,
+      "input_tokens_by_modality": [
+        {
+          "modality": "text",
+          "tokens": 33
+        }
+      ],
+      "total_cached_tokens": 0,
+      "total_input_tokens": 33,
+      "total_output_tokens": 20,
+      "total_thought_tokens": 0,
+      "total_tokens": 53,
+      "total_tool_use_tokens": 0
+    },
+    "object": "interaction"
+  }
+}

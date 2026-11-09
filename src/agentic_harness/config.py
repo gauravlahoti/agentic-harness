@@ -21,6 +21,8 @@ Backend = Literal["gemini_api", "agent_platform"]
 # child process) instead of spelling the names themselves.
 SECRET_ENV_NAMES = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
 
+MISSING_KEY_MESSAGE = "No Gemini key. Copy .env.example to .env and set GEMINI_API_KEY."
+
 DEFAULT_MODEL = "gemini-3.8-flash"  # D-07; model names live in config only
 DEFAULT_ENV_FILE = Path(".env")
 
@@ -64,9 +66,7 @@ class Settings:
     def require_key(self) -> str:
         """Return the key for a live call, or explain how to add one."""
         if self.api_key is None:
-            raise MissingKeyError(
-                "No Gemini key. Copy .env.example to .env and set GEMINI_API_KEY."
-            )
+            raise MissingKeyError(MISSING_KEY_MESSAGE)
         return self.api_key.reveal()
 
 

@@ -22,12 +22,45 @@
 | `generation_config`: `max_output_tokens`, `thinking_level` (`minimal`…`high`), `thinking_summaries`, `tool_choice` (`auto`, `any`, `none`, `validated`) | 📄 API reference | config |
 | Models listed include `gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-4-argon` | 📄 API reference | D-07 |
 
-## Still to confirm live 🔴
+## Seen in live calls 🔴 · 2026-11-10
 
-- Does a reply that asks for tools end `requires_action` or `completed`? (The loop must not treat it as "unexpected".)
-- Does a saved-and-reloaded step (`model_dump(mode="json")`) keep working when sent back? (D-22)
-- What does a safety block look like with the Interactions API?
-- What exception and code does an API error raise? Seen so far: `google.genai._gaos.lib.compat_errors.APIStatusError`, **402** `RESOURCE_EXHAUSTED` "prepayment credits are depleted" (2026-11-10).
+Recorded by `scripts/record_gemini_shapes.py` into `tests/fixtures/gemini/` (model `gemini-3.5-flash-lite`: 3.8 and 3.6 Flash were overloaded on the free tier that day; the API shape is the same for all models).
+
+| Case | Status | Steps in the reply | What it tells us |
+|---|---|---|---|
+| 01 plain answer | `completed` | `thought`, `model_output` | Even a plain answer carries a `thought` step with a `signature` (0 thought tokens) |
+| 02 tool call | **`requires_action`** | `thought`, `function_call` | A tool request is **not** `completed`; the loop must accept `requires_action` |
+| 03 round trip | `completed` | `thought`, `model_output` | Steps stored as `model_dump(mode="json", exclude_none=True)` and sent back work: **D-22 confirmed** |
+| 04 two calls | `requires_action` | `thought`, `function_call` ×2 | Parallel calls; IDs are unique (`call_1905…6024`, `call_1905…4249`) |
+| 05 two results | `requires_action` | `thought`, `function_call` ×2 | Unhelpful results → the model calls again. The step limit matters |
+| 06–07 tool error | `requires_action` → `completed` | | A result with `"is_error": true` → the model explains the problem instead of crashing |
+| 08 output limit | **`incomplete`** | `thought`, `model_output` | Answer cut off mid-sentence at `max_output_tokens=16` |
+| 09 strict safety | `completed` | | A harmless prompt was not blocked even at `block_low_and_above`. A real block was **not** captured (we don't provoke harmful output); the loop treats any unknown status as a named error |
+
+**Reply fields:** `id`, `model`, `status`, `steps`, `usage`, `output_text`, `created`, `updated`, `object`, `service_tier`, `continuation_ids`.
+**Usage:** `total_input_tokens`, `total_output_tokens`, `total_thought_tokens`, `total_cached_tokens`, `total_tool_use_tokens`, `total_tokens`, `initial_input_tokens`. Output excludes thoughts: 26 in + 5 out + 158 thought = 189 total (3.8 Flash).
+**Safety settings shape:** `{"type": "harassment", "threshold": "block_low_and_above"}` (not `category`).
+
+### Errors (all subclasses in `google.genai._gaos.lib.compat_errors`)
+
+| Seen | Class | Code | Meaning for the loop |
+|---|---|---|---|
+| Billing | `APIStatusError` | 402 `RESOURCE_EXHAUSTED` | Stop: "prepayment credits are depleted" |
+| Overload | `InternalServerError` | 503 `service_unavailable` | "high demand … try again later". The SDK retried this **silently for ~5 min** |
+| Slow | `APITimeoutError` | – | Client-side timeout |
+| Bad model | `NotFoundError` | 404 `not_found` | Configuration error |
+
+### SDK behaviour to switch off (D-29)
+
+- `automatic_continuation` defaults to `True`: the SDK makes extra billed calls on its own when a reply is cut by the server's per-request limit. We pass `False`.
+- Retries: by default the SDK retries 503s with backoff and no visible sign. We limit attempts and bound each call by the run's time left.
+
+### Prices (paid tier, per 1M tokens, checked 2026-11-10)
+
+| Model | Input | Output (incl. thinking) | Cached input |
+|---|---|---|---|
+| `gemini-3.8-flash` | $0.75 | $3.75 | $0.075 (all double from 2027-01-01) |
+| `gemini-3.5-flash-lite` | $0.30 | $2.50 | $0.03 |
 
 ## Sources
 
@@ -36,4 +69,5 @@
 - `documents/aistudio.google.com/docs/thinking`
 - `documents/ai.google.dev/api/interactions-api-v1`
 - `documents/docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/interactions-api`
-- SDK: `google/genai/_gaos/types/interactions/{functioncallstep,functionresultstep,thoughtstep}.py`
+- `documents/aistudio.google.com/docs/pricing`, `documents/aistudio.google.com/docs/billing`
+- SDK: `google/genai/_gaos/types/interactions/{functioncallstep,functionresultstep,thoughtstep,safetysetting}.py`, `google/genai/_gaos/google_genai.py` (continuation, retries)

@@ -63,3 +63,4 @@ async def run(self, task):
 ## Changes
 
 - 2026-11-10 · Created (v3). Stop rules moved here from a later stage; `create_harness` and the CLI start here.
+- 2026-11-10 · Built. Live facts changed the loop's details, not its shape: a tool request ends `requires_action` (not `completed`); the SDK's automatic continuation and silent retries are switched off (D-29). Recordings use `gemini-3.5-flash-lite` (3.8/3.6 Flash overloaded on the free tier). Fake mode replays `workspaces/hello/fake_replies.json`.

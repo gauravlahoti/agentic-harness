@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** building S01 (the loop) · S00 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 15 built · 0 verified · 107 total
+> **Now:** S01 built → waiting for your verification · S00 built (verification waived for now)
+> **Updated:** 2026-11-10 · **Checks:** 29 built · 0 verified · 107 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -9,8 +9,9 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 1 | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
-| 2 | Top up AI Studio prepaid credits (ai.studio/projects → Billing); the key works but has no credit | S01-AC1, S01-AC14, every 🔑 check |
+| 1 | Verify S01: "Verify it yourself" in `docs/stage-1.md` | S01 → ✅, then S02 |
+| 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
+| 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
 | 3 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
 | 4 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
 
@@ -19,7 +20,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | Stage | Name | Plan | Built | Verified | 🔑 checks |
 |---|---|---|---|---|---|
 | [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
-| [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 0/14 | 0/14 | 2 |
+| [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 14/14 | 0/14 | 2 |
 | [S02](spec/stages/S02-context.md) | Context | 📝 | 0/12 | 0/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 📝 | 0/11 | 0/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
@@ -55,20 +56,20 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | ⛔ | Blocked: Gemini returned 402 "prepayment credits are depleted" (2026-11-10). Script ready: `scripts/record_gemini_shapes.py` |
-| AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 | 🟦 |  |
-| AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 | 🟦 |  |
-| AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 | 🟦 |  |
-| AC5 | Plain answer → 1 call, ends `completed` | 🧪 | 🟦 |  |
-| AC6 | Tool round trip → 2 calls; the result carries the matching `call_id` | 🧪 | 🟦 |  |
-| AC7 | Two calls in one reply → both run in order, results sent together | 🧪 | 🟦 |  |
-| AC8 | Model steps are kept exactly as received | 🧪 | 🟦 |  |
-| AC9 | Stop rules (steps, cost, time) end the run with a named reason; cost counts thought tokens | 🧪 | 🟦 |  |
-| AC10 | An unexpected status ends the run with a named error, never a silent loop | 🧪 | 🟦 |  |
-| AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 | 🟦 |  |
-| AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 | 🟦 |  |
-| AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 | 🟦 |  |
-| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | ⛔ | Blocked: Gemini returned 402 "prepayment credits are depleted" (2026-11-10). Script ready: `scripts/record_gemini_shapes.py` |
+| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | 🟨 | `scripts/record_gemini_shapes.py` → 9 fixtures in `tests/fixtures/gemini/` · findings in `docs/gemini-api-notes.md` (tool calls end `requires_action`; D-22 round trip confirmed; safety block not captured) |
+| AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 | 🟨 | `test_model.py::test_s01_ac2_*` (2): one method `create(system, steps, tools)`; Gemini + Fake both fit |
+| AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 | 🟨 | `test_model.py::test_s01_ac3_*` (4): `store=False`, full history, no `previous_interaction_id`, `automatic_continuation=False`; SDK errors → `ModelError`, key removed |
+| AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 | 🟨 | `test_model.py::test_s01_ac4_*` (4): replays the 9 recorded replies in `tests/fixtures/gemini/` |
+| AC5 | Plain answer → 1 call, ends `completed` | 🧪 | 🟨 | `test_loop.py::test_s01_ac5_plain_answer_is_one_call` |
+| AC6 | Tool round trip → 2 calls; the result carries the matching `call_id` | 🧪 | 🟨 | `test_loop.py::test_s01_ac6_tool_round_trip_is_two_calls`: result carries the call's `call_id` |
+| AC7 | Two calls in one reply → both run in order, results sent together | 🧪 | 🟨 | `test_loop.py::test_s01_ac7_*`: UTC then Tokyo, both results sent together · live: 2 calls in one reply |
+| AC8 | Model steps are kept exactly as received | 🧪 | 🟨 | `test_loop.py::test_s01_ac8_*`: second request holds the recorded steps byte-for-byte, signature included |
+| AC9 | Stop rules (steps, cost, time) end the run with a named reason; cost counts thought tokens | 🧪 | 🟨 | `test_loop.py` + `test_limits_pricing.py` (`test_s01_ac9_*`, 14): steps, cost, time, output limit; thought tokens priced · live: 3.8 Flash overload → `time_limit` after 60 s |
+| AC10 | An unexpected status ends the run with a named error, never a silent loop | 🧪 | 🟨 | `test_loop.py::test_s01_ac10_*` (9): unknown status, `requires_action` without calls, model error, tool error, unknown tool |
+| AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 | 🟨 | `test_loop.py::test_s01_ac11_*` + `test_trace.py` (4): 8 events for a round trip; JSONL trace; key scrubbed · live trace: key found 0 times |
+| AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 | 🟨 | `test_api.py` (9): `create_harness`, `agentic-harness run --fake`, workspace loading, clear errors |
+| AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 | 🟨 | `test_server_run.py` (7) · Chrome: live run "✓ Completed in 2 calls · $0.00034 · 2.3 s", Fake run in dark theme, console clean |
+| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | 🟨 | `tests/live/test_live_loop.py` passed (`make live`, gemini-3.5-flash-lite) · CLI live: 2 parallel calls, signatures kept in both replies |
 
 ### S02 · Context
 
@@ -189,7 +190,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | P-SC1 | Each harness part is its own module | ⬜ |
 | P-SC2 | `src/agentic_harness/` contains zero domain words | 🟨 guarded by a test from day one |
 | P-SC3 | A second workspace runs with zero harness changes | ⬜ |
-| P-SC4 | All offline tests < 10 s | 🟨 5.3 s today (38 tests) |
+| P-SC4 | All offline tests < 10 s | 🟨 6.3 s today (96 tests) |
 | P-SC5 | ≥ 5 of 6 eval tasks pass | ⬜ |
 | P-SC6 | Every episode has a real without/with clip pair | ⬜ |
 | P-SC7 | 75 s demo from replay, zero API calls | ⬜ |
@@ -206,3 +207,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S00 Part B built: `config.py`, server (`app.py`, `checks.py`, `pytest_stream.py`), page shell + Checks panel. S00-AC10–15 → 🟨 (38 tests, coverage 99%). Walkthrough in `docs/stage-0.md`. |
 | 2026-11-10 | Theme toggle added to the page (D-28). You waived S00 verification ("for stage 1, go ahead"); S00 stays 🟨 until you verify. S01 build started. |
 | 2026-11-10 | S01-AC1 recording script written; first live call returned 402 (prepaid credits depleted). S01-AC1, AC14 → ⛔ until credits are added. |
+| 2026-11-10 | New free-tier key. Old key still exported in the shell overrode `.env`. 3.8/3.7/3.6 Flash returned 503 "high demand"; recorded with 3.5 Flash-Lite. S01-AC1 → 🟨, AC14 → 🟦. D-29 added. |
+| 2026-11-10 | S01 built: model, loop, limits, pricing, events, trace, tools, workspace, api, `run` command, `/api/run`, Agent view. S01-AC2–AC14 → 🟨 (96 offline tests + 1 live). Walkthrough in `docs/stage-1.md`. |

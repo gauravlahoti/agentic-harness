@@ -1,0 +1,16 @@
+# Paid-tier prices in USD per 1 million tokens (standard, not batch).
+# Source: aistudio.google.com/docs/pricing, checked 2026-11-10. Update by hand (D-25).
+# On the free tier calls cost nothing; the harness still counts what they would cost,
+# so the cost limit behaves the same on both tiers.
+#
+# "output" includes thinking tokens (Google bills them as output).
+
+[models."gemini-3.8-flash"]
+input = 0.75           # doubles to 1.50 on 2027-01-01
+output = 3.75          # doubles to 7.50 on 2027-01-01
+cached_input = 0.075   # doubles to 0.15 on 2027-01-01
+
+[models."gemini-3.5-flash-lite"]
+input = 0.30
+output = 2.50
+cached_input = 0.03
