@@ -192,7 +192,24 @@ function setUpAgent() {
   fake.disabled = !ws.fake;
   live.disabled = health.key !== "present";
   if (fake.disabled && !live.disabled) live.checked = true;
+  setUpModelPicker();
   updateModeHint();
+}
+
+// The model menu offers only models with a price (the server checks again, D-31).
+// Your last pick is remembered in this browser; if it's gone, the configured default wins.
+const MODEL_KEY = "live-model";
+
+function setUpModelPicker() {
+  const pick = $("model");
+  pick.replaceChildren(...(health.models ?? []).map((name) => el("option", null, name)));
+  let saved = null;
+  try {
+    saved = localStorage.getItem(MODEL_KEY);
+  } catch {
+    // Storage blocked: fall back to the default model.
+  }
+  pick.value = health.models?.includes(saved) ? saved : health.model;
 }
 
 function currentMode() {
@@ -200,10 +217,11 @@ function currentMode() {
 }
 
 function updateModeHint() {
-  $("mode-hint").textContent =
-    currentMode() === "fake"
-      ? "Fake: replays a recorded Gemini run. Free; tools still run for real."
-      : `Live: calls ${health?.model ?? "Gemini"} with your key.`;
+  const fake = currentMode() === "fake";
+  $("model").disabled = fake; // Fake replays a recording: its model is fixed
+  $("mode-hint").textContent = fake
+    ? "Fake: replays a recorded Gemini run. Free; tools still run for real."
+    : "Live: calls the chosen model with your key.";
 }
 
 // Small helpers: every element is built here, and all text goes in as text.
@@ -428,7 +446,11 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, mode: currentMode() }),
+      body: JSON.stringify({
+        task,
+        mode: currentMode(),
+        ...(currentMode() === "live" ? { model: $("model").value } : {}),
+      }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -457,6 +479,13 @@ $("task").addEventListener("keydown", (event) => {
 for (const input of document.querySelectorAll('input[name="mode"]')) {
   input.addEventListener("change", updateModeHint);
 }
+$("model").addEventListener("change", () => {
+  try {
+    localStorage.setItem(MODEL_KEY, $("model").value);
+  } catch {
+    // Storage blocked: the pick still applies to this page, it just isn't remembered.
+  }
+});
 addEventListener("hashchange", showView);
 showView();
 loadHealth();

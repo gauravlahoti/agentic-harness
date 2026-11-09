@@ -88,3 +88,9 @@ def test_s01_ac9_time_limit() -> None:
 def test_s01_ac9_limits_must_be_positive() -> None:
     with pytest.raises(ValueError, match="max_steps"):
         Limits(max_steps=0)
+
+
+def test_s01_ac13_priced_models_are_the_ones_you_can_pick() -> None:
+    models = load_prices().models()
+    assert models == sorted(models)
+    assert {"gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"} <= set(models)

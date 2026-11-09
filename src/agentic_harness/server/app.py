@@ -12,6 +12,7 @@ Does not: bind the network address (the CLI does, always 127.0.0.1), or read sec
 
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
@@ -27,6 +28,7 @@ from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
 from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
 from agentic_harness.limits import Limits
 from agentic_harness.model import FakeModel, GeminiModel, ModelClient
+from agentic_harness.pricing import load_prices
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
 from agentic_harness.workspace import Workspace
@@ -53,6 +55,7 @@ class RunRequest(BaseModel):
 
     task: str = Field(min_length=1, max_length=4000)
     mode: Literal["fake", "live"] = "fake"
+    model: str | None = Field(default=None, max_length=100)  # live only; must have a price
 
 
 def create_app(
@@ -66,6 +69,7 @@ def create_app(
     app = FastAPI(title="agentic-harness", version=__version__, docs_url=None, redoc_url=None)
     app.state.checks_running = False
     app.state.run_active = False
+    priced_models = load_prices().models()
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 
     @app.middleware("http")
@@ -95,6 +99,7 @@ def create_app(
             "key": "present" if settings.has_key else "missing",
             "version": __version__,
             "model": settings.model,
+            "models": priced_models,
             "workspace": None
             if workspace is None
             else {
@@ -138,7 +143,10 @@ def create_app(
         else:
             if not settings.has_key and settings.backend == "gemini_api":
                 raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
-            model = GeminiModel(settings)
+            name = body.model or settings.model
+            if name not in priced_models:
+                raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
+            model = GeminiModel(replace(settings, model=name))
         secrets = [settings.api_key.reveal()] if settings.api_key else []
         harness = create_harness(model, Limits(), workspace, trace_dir=trace_dir, secrets=secrets)
         app.state.run_active = True

@@ -237,3 +237,19 @@
 - **Because:** rule 1 (the harness decides) and honest cost and time limits; we saw a 503 "high demand" retried silently for about 5 minutes
 - **Cost:** a busy model fails faster; the run reports `model_error` instead of waiting
 - **Revisit if:** we add our own visible retry step to the loop
+
+### D-30 · The base prompt tells the model to answer directly
+✅ Accepted · S01 · after your report ("who is the prime minister" called `get_time`)
+- **Chose:** "Answer directly when you already know the answer. Call a tool only when the task needs something that tool provides…"
+- **Instead of:** "Use the tools you are given when they help"
+- **Because:** measured live on 3.5 Flash-Lite, 5 runs each: needless tool calls 5/5 → 1/5; the time question still used the tool 5/5
+- **Cost:** a model may skip a tool it should have used; the time question shows it doesn't
+- **Revisit if:** S02's workspace instructions change the balance (they sit on top of this prompt)
+
+### D-31 · Pick the model in the input box (Live only)
+✅ Accepted · S01 · at your request
+- **Chose:** a menu next to Fake/Live listing only models with a price in `pricing.toml`; the server refuses any other name; the last pick is remembered in this browser; the default stays `HARNESS_MODEL`
+- **Instead of:** a model setting at the top of the page · free-text model names
+- **Because:** on the free tier a busy model (503) can be swapped in one click; a priced list keeps the cost limit honest (D-25)
+- **Cost:** a new model needs a price line in `pricing.toml` before it can be picked
+- **Revisit if:** we add another provider

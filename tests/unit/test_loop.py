@@ -227,3 +227,12 @@ async def test_s01_ac11_every_step_emits_an_event(recorded: Recorded) -> None:
     assert {e.run_id for e in events} == {result.run_id}
     assert events[-1].data["outcome"] == "completed"
     assert events[2].data["steps"] == recorded("02_tool_call")["steps"]  # full steps, for replay
+
+
+def test_s01_ac5_base_prompt_says_answer_directly() -> None:
+    """Measured live 2026-11-10 on 3.5 Flash-Lite: the old wording made the model call
+    get_time for "who is the prime minister of India" 5/5 times; this wording 1/5 (D-30)."""
+    from agentic_harness.loop import SYSTEM_PROMPT
+
+    assert "Answer directly" in SYSTEM_PROMPT
+    assert "only when the task needs" in SYSTEM_PROMPT

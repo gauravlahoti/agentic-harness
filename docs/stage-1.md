@@ -61,7 +61,7 @@ Gemini has no "tool_use" stop reason. A reply asks for tools by **containing** `
 1. `make check` → all green, 96 passed.
 2. `uv run agentic-harness run --workspace workspaces/hello --fake "What time is it?"` → 2 calls, a `get_time` row, `completed`.
 3. `uv run agentic-harness serve --workspace workspaces/hello` → http://127.0.0.1:8000 → click an example → send (Fake) → watch the activity lines fill in, then the answer and "✓ Run complete".
-4. Switch to **Live** and send a task. You need a key in `.env`. If `gemini-3.8-flash` is busy, add `HARNESS_MODEL=gemini-3.5-flash-lite` to `.env` and restart.
+4. Switch to **Live**, pick a model in the menu next to it, and send a task. You need a key in `.env`. If a model is busy (503 "high demand"), pick another one. Try "who is the prime minister of India": the model should answer without calling `get_time` (D-30).
 5. Click an activity line: a model step shows tokens in / out / thinking and cost; a tool step shows arguments, output and call ID. **Raw event** shows the exact event, including the thought `signature` (shortened).
 6. Open the newest file in `.agentic-harness/traces/` and search it for your key. It isn't there.
 7. Try a limit: `uv run agentic-harness run --workspace workspaces/hello --fake --max-steps 1 "Time?"` → `stopped … step_limit`.

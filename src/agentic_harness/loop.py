@@ -33,9 +33,13 @@ from agentic_harness.pricing import Prices
 from agentic_harness.tools import Tool
 
 # Domain-free on purpose: the workspace adds who the agent is (S02).
+# Measured live (D-30): "use the tools when they help" made a small model call tools it
+# didn't need; asking it to answer directly cut needless calls from 5/5 to 1/5.
 SYSTEM_PROMPT = (
-    "You are an agent running on a harness. Use the tools you are given when they help. "
-    "When you have the answer, reply in plain text."
+    "You are an agent running on a harness. Answer directly when you already know the answer. "
+    "Call a tool only when the task needs something that tool provides, such as live data or "
+    "an action; never call a tool just to be thorough. When you have the answer, reply in "
+    "plain text."
 )
 
 Outcome = Literal["completed", "stopped", "failed"]

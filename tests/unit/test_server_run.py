@@ -3,9 +3,10 @@
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
-from agentic_harness.config import Settings
+from agentic_harness.config import Secret, Settings
 from agentic_harness.server.app import PAGE_HEADER, create_app
 from agentic_harness.workspace import Workspace
 
@@ -77,3 +78,53 @@ def test_s01_ac13_one_run_at_a_time(tmp_path: Path) -> None:
     web.app.state.run_active = True  # type: ignore[attr-defined]
     response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi", "mode": "fake"})
     assert response.status_code == 409
+
+
+def test_s01_ac13_health_lists_the_models_you_can_pick(tmp_path: Path) -> None:
+    body = client(tmp_path).get("/api/health").json()
+    assert "gemini-3.5-flash-lite" in body["models"]
+    assert body["model"] in body["models"]
+
+
+def live_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, used: list[str]) -> TestClient:
+    """A live-mode app whose Gemini client is swapped for a recording that notes the model."""
+    from agentic_harness.model import FakeModel
+
+    replies = Workspace.load(HELLO).fake_replies
+
+    def fake_gemini(settings: Settings) -> FakeModel:
+        used.append(settings.model)
+        return FakeModel(replies, name=settings.model)
+
+    monkeypatch.setattr("agentic_harness.server.app.GeminiModel", fake_gemini)
+    app = create_app(
+        Settings(api_key=Secret("test-only-not-a-key")),
+        project_root=tmp_path,
+        workspace=Workspace.load(HELLO),
+        trace_dir=tmp_path / "traces",
+    )
+    return TestClient(app, base_url="http://127.0.0.1")
+
+
+def test_s01_ac13_live_run_uses_the_picked_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    used: list[str] = []
+    web = live_client(tmp_path, monkeypatch, used)
+    body = {"task": "Time?", "mode": "live", "model": "gemini-3.6-flash"}
+    response = web.post("/api/run", headers=PAGE_HEADER, json=body)
+    assert response.status_code == 200
+    assert used == ["gemini-3.6-flash"]
+    assert events(response.text)[0]["data"]["model"] == "gemini-3.6-flash"  # type: ignore[index]
+
+
+def test_s01_ac13_unpriced_model_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    used: list[str] = []
+    web = live_client(tmp_path, monkeypatch, used)
+    body = {"task": "Time?", "mode": "live", "model": "gemini-made-up"}
+    response = web.post("/api/run", headers=PAGE_HEADER, json=body)
+    assert response.status_code == 400
+    assert "pricing.toml" in response.json()["detail"]
+    assert used == []

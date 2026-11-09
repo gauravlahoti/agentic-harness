@@ -32,6 +32,10 @@ class Prices:
     def __init__(self, table: Mapping[str, Mapping[str, float]]) -> None:
         self._table = {name: ModelPrice(**row) for name, row in table.items()}
 
+    def models(self) -> list[str]:
+        """Every model with a price: the only ones a run may use (D-25, D-31)."""
+        return sorted(self._table)
+
     def for_model(self, model: str) -> ModelPrice:
         try:
             return self._table[model]

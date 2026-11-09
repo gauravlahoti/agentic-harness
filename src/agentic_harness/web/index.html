@@ -61,6 +61,8 @@
             <label><input type="radio" name="mode" value="fake" checked> Fake</label>
             <label><input type="radio" name="mode" value="live"> Live</label>
           </fieldset>
+          <label class="visually-hidden" for="model">Model</label>
+          <select class="model-pick" id="model" title="Model for Live runs"></select>
           <p class="hint mode-hint" id="mode-hint"></p>
           <button type="submit" class="send" id="send" aria-label="Send">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
