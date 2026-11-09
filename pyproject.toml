@@ -1,0 +1,85 @@
+[project]
+name = "agentic-harness"
+version = "0.1.0"
+description = "A general agent harness built from scratch on Gemini. Agents run on it as workspaces."
+readme = "Readme.md"
+authors = [
+    { name = "Gaurav Lahoti", email = "56424876+gauravlahoti@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.2",
+    "google-genai>=3.0.0,<4",   # capped: a young API; a new major version must be adopted on purpose
+    "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
+]
+
+[project.urls]
+Repository = "https://github.com/gauravlahoti/agentic-harness"
+
+[project.scripts]
+agentic-harness = "agentic_harness.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.21,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.4",
+]
+
+# ── Lint + format ────────────────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["*.md"]  # code blocks in docs are illustrations, aligned for reading
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",   # pycodestyle + pyflakes: real errors
+    "I",             # sorted imports
+    "B",             # likely bugs
+    "UP",            # modern Python syntax
+    "SIM", "C4", "RET", "PTH",  # simpler, clearer code
+    "S",             # security (bandit rules)
+    "N",             # naming conventions
+    "ASYNC",         # async mistakes
+    "PT",            # pytest style
+    "RUF",           # ruff's own checks
+    "D100", "D104",  # every module and package explains itself (CLAUDE.md rule)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607", "D100", "D104"]  # asserts and git calls are fine in tests
+
+# ── Types ────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+strict = true
+warn_unreachable = true
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not live'"
+markers = ["live: calls the real Gemini API (needs a key, costs cents); run with `make live`"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+source = ["agentic_harness"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
