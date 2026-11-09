@@ -13,3 +13,4 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 ### Changed
 - Project named `agentic-harness` (package `agentic_harness`).
 - Root documents renamed to Title case (`Decisions.md`, `Tracker.md`); `spec/README.md` → `spec/how-we-build.md`.
+- `Readme.md` rewritten as a project-level overview: how it works, quick start, usage, building an agent, configuration, development, security.
