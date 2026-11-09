@@ -34,6 +34,18 @@ def test_s00_ac13_serves_page_assets(tmp_path: Path) -> None:
     assert web.get("/static/app.js").status_code == 200
     assert web.get("/static/app.css").status_code == 200
     assert web.get("/favicon.ico").status_code == 200
+    assert web.get("/static/theme.js").status_code == 200
+
+
+def test_s00_ac13_saved_theme_applies_before_first_paint(tmp_path: Path) -> None:
+    # The theme script must be a plain (not deferred) script right after the color-scheme
+    # meta, and before the stylesheet; otherwise the page flashes the wrong theme first.
+    page = client(tmp_path).get("/").text
+    meta = page.index('<meta name="color-scheme"')
+    init = page.index('<script src="/static/theme-init.js"></script>')
+    styles = page.index('<link rel="stylesheet"')
+    assert meta < init < styles
+    assert client(tmp_path).get("/static/theme-init.js").status_code == 200
 
 
 def test_s00_ac13_rejects_other_host_names(tmp_path: Path) -> None:

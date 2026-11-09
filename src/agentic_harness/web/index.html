@@ -4,10 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <!-- Before any paint: apply a saved theme so the page never flashes the wrong one. -->
+  <script src="/static/theme-init.js"></script>
   <title>agentic-harness</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/app.js" defer></script>
+  <script src="/static/theme.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -16,7 +19,22 @@
     <nav aria-label="Sections">
       <a class="nav-item" href="/" aria-current="page">Checks</a>
     </nav>
-    <p class="version" id="version"></p>
+    <div class="sidebar-foot">
+      <p class="version" id="version"></p>
+      <button type="button" class="theme-toggle" id="theme-toggle">
+        <span class="visually-hidden to-dark">Switch to dark theme</span>
+        <span class="visually-hidden to-light">Switch to light theme</span>
+        <span class="theme-knob" aria-hidden="true">
+          <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>
+          </svg>
+          <svg class="theme-icon moon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/>
+          </svg>
+        </span>
+      </button>
+    </div>
   </aside>
 
   <main>

@@ -221,3 +221,11 @@
 - **Because:** a loop without brakes is a bug
 - **Cost:** a long task may stop early, with a named reason
 - **Revisit if:** eval tasks hit the limits
+
+### D-28 · Theme: follow the system, with a two-state toggle
+✅ Accepted · S00 (page) · at your request
+- **Chose:** every color is a `light-dark()` pair driven by one `color-scheme` value; a sidebar toggle pins the opposite of the system theme (choosing the system's own theme un-pins it); the new theme spreads in a circle from the toggle (View Transitions), instant with reduced motion; a tiny blocking script applies a saved theme before first paint
+- **Instead of:** a three-state Light / Dark / System picker · a `.dark` class set by JavaScript · cross-fading every color
+- **Because:** one switch flips all colors at once, so nothing flickers; the page still follows the system if JS fails; no flash on reload; strict security headers stay intact (no inline script)
+- **Cost:** `light-dark()` and View Transitions need a 2024+ browser; older ones switch without the animation
+- **Revisit if:** we add a settings panel (then offer all three states there)

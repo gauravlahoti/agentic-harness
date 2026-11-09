@@ -1,40 +1,37 @@
 /* The page's look. Plain CSS, no build step (spec/02-ui.md).
-   One color per harness part; light first, dark follows the system. */
+   One color per harness part. The theme follows the system unless the toggle pins it:
+   every color is a light-dark() pair, so one `color-scheme` value flips them all at once. */
 
 :root {
+  /* Base stays "light dark" (follow the system). theme.js pins it via the <meta>. */
   color-scheme: light dark;
+  &:has(> head > meta[name="color-scheme"][content="dark"]) { color-scheme: dark; }
+  &:has(> head > meta[name="color-scheme"][content="light"]) { color-scheme: light; }
 
-  --bg: #f7f7f5;
-  --surface: #ffffff;
-  --text: #1d1d1b;
-  --muted: #6b6b66;
-  --line: #e4e4df;
-  --accent: #1f5fd6;
-  --accent-text: #ffffff;
-  --pass: #1f7a3d;
-  --fail: #b42318;
-  --skip: #8a6a00;
+  --bg: light-dark(#f7f7f5, #161615);
+  --surface: light-dark(#ffffff, #1f1f1d);
+  --text: light-dark(#1d1d1b, #ececea);
+  --muted: light-dark(#6b6b66, #a3a39d);
+  --line: light-dark(#e4e4df, #34342f);
+  --accent: light-dark(#1f5fd6, #7aa7ff);
+  --accent-text: light-dark(#ffffff, #0d1a33);
+  --pass: light-dark(#1f7a3d, #5cc983);
+  --fail: light-dark(#b42318, #ff8a80);
+  --skip: light-dark(#8a6a00, #e0b84a);
 
   /* One color per harness part (used from S01 on). */
-  --part-loop: #6b6b66;
-  --part-context: #1f5fd6;
-  --part-actions: #1f7a3d;
-  --part-guard: #b7791f;
-  --part-block: #b42318;
-  --part-memory: #6d3fc0;
+  --part-loop: light-dark(#6b6b66, #a3a39d);
+  --part-context: light-dark(#1f5fd6, #7aa7ff);
+  --part-actions: light-dark(#1f7a3d, #5cc983);
+  --part-guard: light-dark(#b7791f, #e0b84a);
+  --part-block: light-dark(#b42318, #ff8a80);
+  --part-memory: light-dark(#6d3fc0, #b69cff);
 
-  @media (prefers-color-scheme: dark) {
-    --bg: #161615;
-    --surface: #1f1f1d;
-    --text: #ececea;
-    --muted: #a3a39d;
-    --line: #34342f;
-    --accent: #7aa7ff;
-    --accent-text: #0d1a33;
-    --pass: #5cc983;
-    --fail: #ff8a80;
-    --skip: #e0b84a;
-  }
+  /* The theme toggle's own colors. */
+  --toggle-track: light-dark(#cfe3ff, #1b2440);
+  --toggle-knob: light-dark(#ffffff, #2b3557);
+  --toggle-sun: #f2a516;
+  --toggle-moon: #e8ecff;
 }
 
 * { box-sizing: border-box; }
@@ -68,7 +65,98 @@ body {
   text-decoration: none;
 }
 .nav-item[aria-current="page"] { background: var(--bg); font-weight: 600; }
-.version { margin-top: auto; color: var(--muted); font-size: 12px; }
+.sidebar-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.version { margin: 0; color: var(--muted); font-size: 12px; }
+
+/* ── Theme toggle ────────────────────────────────────────────────────────────
+   A track with a sliding knob; the knob holds a sun that turns into a moon.
+   --dark is 0 or 1 and comes only from CSS (the system or the pinned <meta>),
+   so the switch stays right even when the system theme changes. */
+.theme-toggle {
+  --dark: 0;
+  position: relative;
+  width: 52px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--toggle-track);
+  cursor: pointer;
+  transition: background-color 0.4s ease;
+}
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-toggle { --dark: 1; }
+}
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle { --dark: 1; }
+
+.theme-knob {
+  position: absolute;
+  inset: 2px auto auto 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--toggle-knob);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  translate: calc(var(--dark) * 24px) 0;
+  transition: translate 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.4s ease;
+}
+.theme-icon {
+  position: absolute;
+  inset: 3px;
+  width: 16px;
+  height: 16px;
+  transition: opacity 0.35s ease, rotate 0.45s ease, scale 0.45s ease;
+}
+.theme-icon.sun {
+  color: var(--toggle-sun);
+  opacity: calc(1 - var(--dark));
+  rotate: calc(var(--dark) * 90deg);
+  scale: calc(1 - var(--dark) * 0.5);
+}
+.theme-icon.moon {
+  color: var(--toggle-moon);
+  opacity: var(--dark);
+  rotate: calc((1 - var(--dark)) * -90deg);
+  scale: calc(0.5 + var(--dark) * 0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle, .theme-knob, .theme-icon { transition: none; }
+}
+
+/* The button names the action it will take; only the true one is shown (and read). */
+.theme-toggle .to-light { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-toggle {
+    .to-light { display: inline; }
+    .to-dark { display: none; }
+  }
+}
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-toggle {
+  .to-light { display: inline; }
+  .to-dark { display: none; }
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The page-wide switch: theme.js reveals the new theme in a circle from the toggle.
+   Turn off the default cross-fade so only that reveal plays. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
 
 /* ── Main ────────────────────────────────────────────────────────────────── */
 main { padding: 28px 32px; max-width: 980px; width: 100%; }
