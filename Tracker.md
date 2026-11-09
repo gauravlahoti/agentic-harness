@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S00 Part A (scaffold) built → waiting for your verification · then S00 Part B + S01
-> **Updated:** 2026-11-10 · **Checks:** 10 built · 0 verified · 107 total
+> **Now:** S00 built (Part A + B) → waiting for your verification · then S01 (the loop)
+> **Updated:** 2026-11-10 · **Checks:** 15 built · 0 verified · 107 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -9,19 +9,16 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 1 | Verify the scaffold: follow "Verify it yourself" in `Scaffold.md` | S00 Part A → ✅ |
-| 2 | Approve the S00 Part B + S01 brief (or change a choice) | Building the loop |
-| 3 | Create `.env` from `.env.example` and paste your key (the AI never reads it) | Every 🔑 check |
-| 4 | Confirm access type: AI Studio key (default) or Agent Platform (D-08) | Every 🔑 check |
-| 5 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
-| 6 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
+| 1 | Verify S00: follow "Verify it yourself" in `docs/stage-0.md` (or waive it) | S00 → ✅, then S01 |
+| 2 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
+| 3 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
 
 ## Stages
 
 | Stage | Name | Plan | Built | Verified | 🔑 checks |
 |---|---|---|---|---|---|
-| [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A | 10/16 | 0/16 | – |
-| [S01](spec/stages/S01-loop.md) | The loop | 📝 | 0/14 | 0/14 | 2 |
+| [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
+| [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 0/14 | 0/14 | 2 |
 | [S02](spec/stages/S02-context.md) | Context | 📝 | 0/12 | 0/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 📝 | 0/11 | 0/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
@@ -41,36 +38,36 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC3 | Quality gates: ruff lint + format, mypy strict, pytest with coverage ≥ 85% | 🧪 | 🟨 | `make check`: ruff ✓ · mypy strict ✓ · 7 tests ✓ · coverage 100% |
 | AC4 | Naming: no ALL-CAPS file names (except `CLAUDE.md`, `AGENTS.md`, `SKILL.md`); folders and Python files lowercase | 🧪 | 🟨 | `test_naming.py` · proven: a `NOTES.md` file made it fail |
 | AC5 | Domain-free harness: no workspace words in `src/agentic_harness/` | 🧪 | 🟨 | `test_generic_harness.py` · proven: the word 'contract' in cli.py made it fail |
-| AC6 | CI runs `make check` + a full-history secret scan, with a read-only token | 📄 | 🟨 | CI run 42684153010 green (check 11 s · secret scan 54 s) · actions pinned to commit SHAs |
+| AC6 | CI runs `make check` + a full-history secret scan, with a read-only token | 📄 | 🟨 | CI run 42684153010 green · actions pinned to commit SHAs · ⚠ the CI secret scan checks staged changes only, so nothing in CI (fix on hold; see `docs/stage-0.md` → Known gap) |
 | AC7 | Pre-commit runs file hygiene, gitleaks, ruff and mypy at the locked versions | 📄 | 🟨 | `.pre-commit-config.yaml` validated · run `make hooks` to install |
 | AC8 | Repo documents: Readme, Scaffold, Decisions, Tracker, Security, Contributing, Changelog | 📄 | 🟨 | All 7 documents present |
 | AC9 | Runtime packages are only `google-genai`, `fastapi`, `uvicorn`, `python-dotenv` | 📄 | 🟨 | `pyproject.toml` dependencies |
-| AC10 | `.env` is ignored by git; `.env.example` has the names, no values | 🧪 📄 | 🟨 | `git check-ignore .env` ✓ · automated test arrives with `config.py` |
-| AC11 | Only `config.py` loads the key; printing it shows `***` | 🧪 | 📝 |  |
-| AC12 | No key? Everything offline still works | 🧪 | 📝 |  |
-| AC13 | `agentic-harness serve` listens on `127.0.0.1:8000` only and serves the page shell | 🧪 👀 | 📝 |  |
-| AC14 | Checks panel runs one fixed test command, one row per test, live | 🧪 👀 | 📝 |  |
-| AC15 | Smoke row: server up ✓ · key present ✓ or skipped (never ✗) | 👀 | 📝 |  |
+| AC10 | `.env` is ignored by git; `.env.example` has the names, no values | 🧪 📄 | 🟨 | `git check-ignore .env` ✓ · `test_config.py::test_s00_ac10_*` (2 tests) |
+| AC11 | Only `config.py` loads the key; printing it shows `***` | 🧪 | 🟨 | `test_config.py::test_s00_ac11_*` (5 tests): prints `***`, never enters `os.environ`, only `config.py` reads it |
+| AC12 | No key? Everything offline still works | 🧪 | 🟨 | `test_config.py::test_s00_ac12_*` (4 tests) · Checks panel child run has no key (`test_checks.py`) |
+| AC13 | `agentic-harness serve` listens on `127.0.0.1:8000` only and serves the page shell | 🧪 👀 | 🟨 | `test_server.py` + `test_cli.py` (`test_s00_ac13_*`, 6 tests) · live: `lsof` shows `127.0.0.1:8000` only; foreign Host → 400 |
+| AC14 | Checks panel runs one fixed test command, one row per test, live | 🧪 👀 | 🟨 | `test_checks.py` + `test_server.py` (`test_s00_ac14_*`, 12 tests) · live in Chrome: 38 rows, "✓ 38 passed · 0 failed · 4.8 s" |
+| AC15 | Smoke row: server up ✓ · key present ✓ or skipped (never ✗) | 👀 | 🟨 | `test_server.py::test_s00_ac15_smoke_status` (key present / missing) · live: "Server up ✓ · Key present ✓" |
 | AC16 | First commit, tag `stage-0`, walkthrough in `docs/stage-0.md` | 📄 | 📝 | Commits `51e31c0` · `3fe0a62` · `d617ca8` pushed · tag + walkthrough after your verification |
 
 ### S01 · The loop
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | 📝 |  |
-| AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 | 📝 |  |
-| AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 | 📝 |  |
-| AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 | 📝 |  |
-| AC5 | Plain answer → 1 call, ends `completed` | 🧪 | 📝 |  |
-| AC6 | Tool round trip → 2 calls; the result carries the matching `call_id` | 🧪 | 📝 |  |
-| AC7 | Two calls in one reply → both run in order, results sent together | 🧪 | 📝 |  |
-| AC8 | Model steps are kept exactly as received | 🧪 | 📝 |  |
-| AC9 | Stop rules (steps, cost, time) end the run with a named reason; cost counts thought tokens | 🧪 | 📝 |  |
-| AC10 | An unexpected status ends the run with a named error, never a silent loop | 🧪 | 📝 |  |
-| AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 | 📝 |  |
-| AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 | 📝 |  |
-| AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 | 📝 |  |
-| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | 📝 |  |
+| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | 🟦 |  |
+| AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 | 🟦 |  |
+| AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 | 🟦 |  |
+| AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 | 🟦 |  |
+| AC5 | Plain answer → 1 call, ends `completed` | 🧪 | 🟦 |  |
+| AC6 | Tool round trip → 2 calls; the result carries the matching `call_id` | 🧪 | 🟦 |  |
+| AC7 | Two calls in one reply → both run in order, results sent together | 🧪 | 🟦 |  |
+| AC8 | Model steps are kept exactly as received | 🧪 | 🟦 |  |
+| AC9 | Stop rules (steps, cost, time) end the run with a named reason; cost counts thought tokens | 🧪 | 🟦 |  |
+| AC10 | An unexpected status ends the run with a named error, never a silent loop | 🧪 | 🟦 |  |
+| AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 | 🟦 |  |
+| AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 | 🟦 |  |
+| AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 | 🟦 |  |
+| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | 🟦 |  |
 
 ### S02 · Context
 
@@ -191,7 +188,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | P-SC1 | Each harness part is its own module | ⬜ |
 | P-SC2 | `src/agentic_harness/` contains zero domain words | 🟨 guarded by a test from day one |
 | P-SC3 | A second workspace runs with zero harness changes | ⬜ |
-| P-SC4 | All offline tests < 10 s | 🟨 0.16 s today |
+| P-SC4 | All offline tests < 10 s | 🟨 5.3 s today (38 tests) |
 | P-SC5 | ≥ 5 of 6 eval tasks pass | ⬜ |
 | P-SC6 | Every episode has a real without/with clip pair | ⬜ |
 | P-SC7 | 75 s demo from replay, zero API calls | ⬜ |
@@ -204,3 +201,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | Spec v3 written: general harness + CloudCo Contract Assistant workspace, 9 stages. Old spec deleted. |
 | 2026-11-10 | Production scaffold built (S00 Part A, 10 checks 🟨). Renamed `agentic-harness`; docs to Title case. |
 | 2026-11-10 | Repo created (private) and pushed. First CI run failed (`setup-uv@v10` tag doesn't exist); fixed by pinning actions to commit SHAs → CI green. |
+| 2026-11-10 | S00 Part B + S01 brief approved → 🟦 (S00-AC11–15, S01-AC1–14). D-03–D-08 accepted (D-08: AI Studio key). Choices recorded as D-19–D-27. |
+| 2026-11-10 | S00 Part B built: `config.py`, server (`app.py`, `checks.py`, `pytest_stream.py`), page shell + Checks panel. S00-AC10–15 → 🟨 (38 tests, coverage 99%). Walkthrough in `docs/stage-0.md`. |

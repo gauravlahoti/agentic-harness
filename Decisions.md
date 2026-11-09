@@ -23,7 +23,7 @@
 - **Revisit if:** the ADK bonus episode shows a part is better taken off the shelf
 
 ### D-03 · Gemini through `google-genai` and the Interactions API
-📝 Proposed · S01
+✅ Accepted · S01
 - **Chose:** `client.interactions.create` with the official SDK
 - **Instead of:** `generateContent` (now "legacy") · raw HTTP · LiteLLM
 - **Because:** Google recommends it (GA June 2026); its typed steps map 1:1 onto our events and cards
@@ -31,7 +31,7 @@
 - **Revisit if:** we need guaranteed cache discounts
 
 ### D-04 · We keep the history, not Google (`store=False`)
-📝 Proposed · S01, S07
+✅ Accepted · S01, S07
 - **Chose:** send the full step list on every call
 - **Instead of:** server-side history via `previous_interaction_id`
 - **Because:** memory and trimming are core lessons. If the server holds the history, we can't trim it. Also, nothing is stored at Google.
@@ -39,7 +39,7 @@
 - **Revisit if:** we want a "stateless vs stateful" cost post
 
 ### D-05 · Model steps are kept exactly as received
-📝 Proposed · S01, S07
+✅ Accepted · S01, S07
 - **Chose:** never edit, merge or split a model step; only our own tool results can be trimmed
 - **Instead of:** converting everything into our own format
 - **Because:** model steps carry thought signatures; changing them can break the next call
@@ -47,7 +47,7 @@
 - **Revisit if:** the S01 test script shows otherwise
 
 ### D-06 · Only our own tools; no Gemini server-side tools
-📝 Proposed · S03
+✅ Accepted · S03
 - **Chose:** tools that run in our process, through our gate
 - **Instead of:** Gemini's built-in search, code execution, managed agents
 - **Because:** rule 1: the model asks, the harness decides. Server-side tools would skip our gate and traces.
@@ -55,7 +55,7 @@
 - **Revisit if:** a workspace needs search; we'd add it as our own gated tool
 
 ### D-07 · Models: 3.8 Flash by default, Argon by config, Flash-Lite for sub-agents
-📝 Proposed · S01, S04
+✅ Accepted · S01, S04
 - **Chose:** `gemini-3.8-flash` · `gemini-4-argon` for demo takes · `gemini-3.5-flash-lite` for the Clause Reviewer
 - **Instead of:** one model for everything
 - **Because:** many small calls → cheap and fast; reading for a sub-agent is easy work
@@ -63,8 +63,8 @@
 - **Revisit if:** the eval pass rate is below target
 
 ### D-08 · AI Studio key by default; Agent Platform optional
-📝 Proposed · S00, S01 · **⚠ needs your answer**
-- **Chose:** support both through config; start with an AI Studio API key
+✅ Accepted · S00, S01
+- **Chose:** support both through config; start with an AI Studio API key (`GEMINI_API_KEY`). Confirmed 2026-11-10
 - **Instead of:** only one of them
 - **Because:** a key is the simplest local setup; Agent Platform suits billing and control in a GCP project
 - **Cost:** two login paths; the live check proves only the one you use
@@ -149,3 +149,75 @@
 - **Because:** Claude Code reads `CLAUDE.md`; Codex and Antigravity read `AGENTS.md`. One source of truth, every agent finds it
 - **Cost:** a second file to keep in step when the top rules change
 - **Revisit if:** the tools converge on one file name
+
+### D-19 · Settings: a frozen dataclass; the key wrapped in `Secret`
+✅ Accepted · S00
+- **Chose:** a frozen dataclass + `python-dotenv`; the key wrapped in a `Secret` class that prints `***`; `.env` read with `dotenv_values` (it never enters `os.environ`)
+- **Instead of:** pydantic-settings · `load_dotenv` into the environment
+- **Because:** no new package; and a key that never enters the environment can't leak into child processes such as the test run
+- **Cost:** a ~10-line wrapper class
+- **Revisit if:** we need validated nested settings
+
+### D-20 · The server address is fixed to `127.0.0.1`
+✅ Accepted · S00
+- **Chose:** host fixed in code; only the port can change; requests must name `127.0.0.1` or `localhost` as host, and page actions send a custom header
+- **Instead of:** host from config
+- **Because:** no setting can expose the harness to the network by mistake; the host check and header stop other websites and DNS tricks from driving it
+- **Cost:** can't open it from a phone
+- **Revisit if:** never (the public version is a static replay page, D-14)
+
+### D-21 · Checks panel: a small pytest plugin streams one JSON line per test
+✅ Accepted · S00
+- **Chose:** a ~30-line plugin module, loaded only by the panel's fixed command (`-p`); the server streams its lines to the page as NDJSON
+- **Instead of:** parsing pytest's text output · a reporting package
+- **Because:** a stable format, no new package, testable on its own
+- **Cost:** the module imports pytest, a dev-only tool; the panel needs the dev install
+- **Revisit if:** pytest gains a built-in JSON stream
+
+### D-22 · History is kept as plain dicts, exactly as received
+✅ Accepted · S01
+- **Chose:** store each step as the dict Gemini returned; send it back unchanged
+- **Instead of:** the SDK's Python objects
+- **Because:** one format for the API, the trace file and the page; no conversion code
+- **Cost:** depends on S01-AC1 proving a saved-and-reloaded step still works
+- **Revisit if:** S01-AC1 shows signatures break after a round trip
+
+### D-23 · FakeModel replays recorded Gemini replies
+✅ Accepted · S01
+- **Chose:** replies recorded from live calls (S01-AC1), saved as fixtures with the key removed
+- **Instead of:** hand-written replies
+- **Because:** free tests that match real behaviour
+- **Cost:** re-record when the API changes
+- **Revisit if:** fixtures drift from live behaviour
+
+### D-24 · Events: a subscriber list
+✅ Accepted · S01
+- **Chose:** the loop emits typed events; trace writer, page and tests subscribe
+- **Instead of:** prints · an async queue
+- **Because:** the simplest form of "the loop doesn't know who's watching"
+- **Cost:** a small events module
+- **Revisit if:** subscribers need back-pressure
+
+### D-25 · Prices live in `pricing.toml`
+✅ Accepted · S01
+- **Chose:** a data file; an unknown model stops the run at startup
+- **Instead of:** prices in Python
+- **Because:** model names stay out of code; the cost limit can't silently count $0
+- **Cost:** prices updated by hand
+- **Revisit if:** Google publishes prices in the API
+
+### D-26 · The toy workspace `hello` loads only `tools.py` in S01
+✅ Accepted · S01
+- **Chose:** `workspaces/hello/tools.py` with `get_time`; context files arrive in S02, the registry in S03
+- **Instead of:** a tool hard-coded in the harness
+- **Because:** the harness stays domain-free from the first tool
+- **Cost:** the loader grows in later stages
+- **Revisit if:** —
+
+### D-27 · Default limits: 25 steps · $1.00 · 120 s
+✅ Accepted · S01
+- **Chose:** defaults in config, overridable per run
+- **Instead of:** no limits until later
+- **Because:** a loop without brakes is a bug
+- **Cost:** a long task may stop early, with a named reason
+- **Revisit if:** eval tasks hit the limits

@@ -10,6 +10,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Architecture tests: naming convention, domain-free harness.
 - Root `AGENTS.md` pointing coding agents (Codex, Antigravity) to the rules in `CLAUDE.md` (D-18).
 - Spec v3: general harness + CloudCo Contract Assistant workspace, 9 stages.
+- `config.py`: settings and the API key in one place; the key prints as `***` and never enters the environment.
+- `agentic-harness serve`: a local page on `127.0.0.1` with a live Checks panel (one fixed test command, one row per test) and a smoke row (server up · key present or skipped).
+- Server hardening: host-name check, a page-only action header, strict browser security headers (D-20).
 
 ### Changed
 - Project named `agentic-harness` (package `agentic_harness`).

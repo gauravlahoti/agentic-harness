@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>agentic-harness</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span> agentic-harness</div>
+    <p class="workspace">No workspace loaded</p>
+    <nav aria-label="Sections">
+      <a class="nav-item" href="/" aria-current="page">Checks</a>
+    </nav>
+    <p class="version" id="version"></p>
+  </aside>
+
+  <main>
+    <header class="page-header">
+      <h1>Checks</h1>
+      <p class="smoke" id="smoke">
+        <span class="pill" id="smoke-server">Server …</span>
+        <span class="pill" id="smoke-key">Key …</span>
+      </p>
+    </header>
+
+    <section class="panel" aria-labelledby="checks-title">
+      <div class="panel-bar">
+        <div>
+          <h2 id="checks-title">Offline test suite</h2>
+          <p class="hint">Runs one fixed command: every offline test, no key, no cost.</p>
+        </div>
+        <button type="button" id="run-checks" class="primary">Run checks</button>
+      </div>
+
+      <p class="summary" id="summary" role="status">Not run yet.</p>
+      <progress id="progress" max="1" value="0" aria-hidden="true"></progress>
+
+      <ol class="rows" id="rows" aria-label="Test results"></ol>
+    </section>
+  </main>
+</body>
+</html>

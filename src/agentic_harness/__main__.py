@@ -1,4 +1,4 @@
-"""Allow ``python -m harness`` as well as the ``harness`` command."""
+"""Allow ``python -m agentic_harness`` as well as the ``agentic-harness`` command."""
 
 from agentic_harness.cli import main
 
