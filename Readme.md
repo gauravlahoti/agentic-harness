@@ -22,6 +22,8 @@ The first agent is the **CloudCo Contract Assistant**. It reviews a customer's c
 3. For live runs, copy `.env.example` to `.env` and add your [AI Studio](https://aistudio.google.com/apikey) key.
 4. Run `uv run agentic-harness serve --workspace workspaces/cloudco` and open http://127.0.0.1:8000 *(coming next)*.
 
+**Using a coding agent?** Open the repository in Claude Code, Codex or Antigravity and ask it to set up and check the project. It follows the steps above and the project rules in [CLAUDE.md](CLAUDE.md) (Codex and Antigravity reach them through [AGENTS.md](AGENTS.md)). Add the key to `.env` yourself; agents are told never to read it.
+
 ## What the harness does
 
 | Part | What it handles | CloudCo example | Status |

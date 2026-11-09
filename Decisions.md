@@ -141,3 +141,11 @@
 - **Because:** your convention; a distinctive project name; a test enforces it so it never drifts
 - **Cost:** three listed exceptions to remember
 - **Revisit if:** another tool needs an exact upper-case name (add it to the test's exception list with its reason)
+
+### D-18 · One rules file for every coding agent
+✅ Accepted · all stages
+- **Chose:** the rules stay in `CLAUDE.md`; a short root `AGENTS.md` points to it and repeats the top rules
+- **Instead of:** two full copies (they drift) · a symlink (breaks on Windows and some tools)
+- **Because:** Claude Code reads `CLAUDE.md`; Codex and Antigravity read `AGENTS.md`. One source of truth, every agent finds it
+- **Cost:** a second file to keep in step when the top rules change
+- **Revisit if:** the tools converge on one file name

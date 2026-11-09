@@ -8,6 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Production scaffold: `src/` layout, uv + lockfile, ruff, mypy strict, pytest + coverage, Makefile, pre-commit (gitleaks), GitHub Actions CI, Dependabot ([Scaffold.md](Scaffold.md)).
 - `agentic-harness` command with `--version`.
 - Architecture tests: naming convention, domain-free harness.
+- Root `AGENTS.md` pointing coding agents (Codex, Antigravity) to the rules in `CLAUDE.md` (D-18).
 - Spec v3: general harness + CloudCo Contract Assistant workspace, 9 stages.
 
 ### Changed
