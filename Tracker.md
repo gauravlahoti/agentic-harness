@@ -10,8 +10,9 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | | What | Unblocks |
 |---|---|---|
 | 1 | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
-| 2 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
-| 3 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
+| 2 | Top up AI Studio prepaid credits (ai.studio/projects → Billing); the key works but has no credit | S01-AC1, S01-AC14, every 🔑 check |
+| 3 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
+| 4 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
 
 ## Stages
 
@@ -54,7 +55,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | 🟦 |  |
+| AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 | ⛔ | Blocked: Gemini returned 402 "prepayment credits are depleted" (2026-11-10). Script ready: `scripts/record_gemini_shapes.py` |
 | AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 | 🟦 |  |
 | AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 | 🟦 |  |
 | AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 | 🟦 |  |
@@ -67,7 +68,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 | 🟦 |  |
 | AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 | 🟦 |  |
 | AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 | 🟦 |  |
-| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | 🟦 |  |
+| AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 | ⛔ | Blocked: Gemini returned 402 "prepayment credits are depleted" (2026-11-10). Script ready: `scripts/record_gemini_shapes.py` |
 
 ### S02 · Context
 
@@ -204,3 +205,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S00 Part B + S01 brief approved → 🟦 (S00-AC11–15, S01-AC1–14). D-03–D-08 accepted (D-08: AI Studio key). Choices recorded as D-19–D-27. |
 | 2026-11-10 | S00 Part B built: `config.py`, server (`app.py`, `checks.py`, `pytest_stream.py`), page shell + Checks panel. S00-AC10–15 → 🟨 (38 tests, coverage 99%). Walkthrough in `docs/stage-0.md`. |
 | 2026-11-10 | Theme toggle added to the page (D-28). You waived S00 verification ("for stage 1, go ahead"); S00 stays 🟨 until you verify. S01 build started. |
+| 2026-11-10 | S01-AC1 recording script written; first live call returned 402 (prepaid credits depleted). S01-AC1, AC14 → ⛔ until credits are added. |
