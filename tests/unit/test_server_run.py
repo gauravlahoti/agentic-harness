@@ -1,12 +1,12 @@
-"""Running a task from the page (S01-AC13 backend): POST /api/run streams the loop's events."""
+"""Running a task from the page (S01-AC13 backend): what /api/run accepts and refuses."""
 
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from agentic_harness.config import Secret, Settings
+from agentic_harness.model import ModelClient
 from agentic_harness.server.app import PAGE_HEADER, create_app
 from agentic_harness.workspace import Workspace
 
@@ -27,38 +27,26 @@ def events(response_text: str) -> list[dict[str, object]]:
     return [json.loads(line) for line in response_text.splitlines()]
 
 
-def test_s01_ac13_fake_run_streams_every_event(tmp_path: Path) -> None:
-    response = client(tmp_path).post(
-        "/api/run", headers=PAGE_HEADER, json={"task": "What time is it?", "mode": "fake"}
-    )
-    assert response.status_code == 200
-    stream = events(response.text)
-    assert stream[0]["type"] == "run_started"
-    assert stream[-1]["type"] == "run_finished"
-    assert stream[-1]["data"]["outcome"] == "completed"  # type: ignore[index]
-    assert any(e["type"] == "tool_finished" for e in stream)
-
-
 def test_s01_ac13_health_describes_the_workspace(tmp_path: Path) -> None:
     body = client(tmp_path).get("/api/health").json()
-    assert body["workspace"] == {"name": "hello", "tools": ["get_time"], "fake": True}
+    assert body["workspace"] == {"name": "hello", "tools": ["get_time"]}
     assert client(tmp_path, workspace=None).get("/api/health").json()["workspace"] is None
 
 
 def test_s01_ac13_run_needs_the_page_header(tmp_path: Path) -> None:
-    response = client(tmp_path).post("/api/run", json={"task": "hi", "mode": "fake"})
+    response = client(tmp_path).post("/api/run", json={"task": "hi"})
     assert response.status_code == 403
 
 
 def test_s01_ac13_run_needs_a_workspace(tmp_path: Path) -> None:
     web = client(tmp_path, workspace=None)
-    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi", "mode": "fake"})
+    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi"})
     assert response.status_code == 409
 
 
 def test_s01_ac13_live_without_key_is_refused(tmp_path: Path) -> None:
     web = client(tmp_path)
-    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi", "mode": "live"})
+    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi"})
     assert response.status_code == 400
     assert ".env" in response.json()["detail"]
 
@@ -66,9 +54,9 @@ def test_s01_ac13_live_without_key_is_refused(tmp_path: Path) -> None:
 def test_s01_ac13_task_must_be_sensible(tmp_path: Path) -> None:
     web = client(tmp_path)
     for body in (
-        {"task": "", "mode": "fake"},
-        {"task": "x" * 5000, "mode": "fake"},
-        {"task": "hi", "mode": "other"},
+        {"task": ""},
+        {"task": "x" * 5000},
+        {"task": "hi", "model": "m" * 200},
     ):
         assert web.post("/api/run", headers=PAGE_HEADER, json=body).status_code == 422
 
@@ -76,7 +64,7 @@ def test_s01_ac13_task_must_be_sensible(tmp_path: Path) -> None:
 def test_s01_ac13_one_run_at_a_time(tmp_path: Path) -> None:
     web = client(tmp_path)
     web.app.state.run_active = True  # type: ignore[attr-defined]
-    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi", "mode": "fake"})
+    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "hi"})
     assert response.status_code == 409
 
 
@@ -86,45 +74,22 @@ def test_s01_ac13_health_lists_the_models_you_can_pick(tmp_path: Path) -> None:
     assert body["model"] in body["models"]
 
 
-def live_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, used: list[str]) -> TestClient:
-    """A live-mode app whose Gemini client is swapped for a recording that notes the model."""
-    from agentic_harness.model import FakeModel
+def test_s01_ac13_unpriced_model_is_refused(tmp_path: Path) -> None:
+    built: list[str] = []
 
-    replies = Workspace.load(HELLO).fake_replies
+    def factory(settings: Settings) -> ModelClient:  # must never be reached
+        built.append(settings.model)
+        raise AssertionError("no model should be built for an unpriced name")
 
-    def fake_gemini(settings: Settings) -> FakeModel:
-        used.append(settings.model)
-        return FakeModel(replies, name=settings.model)
-
-    monkeypatch.setattr("agentic_harness.server.app.GeminiModel", fake_gemini)
     app = create_app(
-        Settings(api_key=Secret("test-only-not-a-key")),
+        Settings(api_key=Secret("test-value-not-a-real-key")),
         project_root=tmp_path,
         workspace=Workspace.load(HELLO),
-        trace_dir=tmp_path / "traces",
+        model_factory=factory,
     )
-    return TestClient(app, base_url="http://127.0.0.1")
-
-
-def test_s01_ac13_live_run_uses_the_picked_model(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    used: list[str] = []
-    web = live_client(tmp_path, monkeypatch, used)
-    body = {"task": "Time?", "mode": "live", "model": "gemini-3.6-flash"}
-    response = web.post("/api/run", headers=PAGE_HEADER, json=body)
-    assert response.status_code == 200
-    assert used == ["gemini-3.6-flash"]
-    assert events(response.text)[0]["data"]["model"] == "gemini-3.6-flash"  # type: ignore[index]
-
-
-def test_s01_ac13_unpriced_model_is_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    used: list[str] = []
-    web = live_client(tmp_path, monkeypatch, used)
-    body = {"task": "Time?", "mode": "live", "model": "gemini-made-up"}
+    web = TestClient(app, base_url="http://127.0.0.1")
+    body = {"task": "Time?", "model": "gemini-made-up"}
     response = web.post("/api/run", headers=PAGE_HEADER, json=body)
     assert response.status_code == 400
     assert "pricing.toml" in response.json()["detail"]
-    assert used == []
+    assert built == []

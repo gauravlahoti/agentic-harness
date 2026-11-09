@@ -14,7 +14,6 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
-from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -27,7 +26,7 @@ from agentic_harness import __version__
 from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
 from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
 from agentic_harness.limits import Limits
-from agentic_harness.model import FakeModel, GeminiModel, ModelClient
+from agentic_harness.model import GeminiModel, ModelClient
 from agentic_harness.pricing import load_prices
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
@@ -51,11 +50,10 @@ SECURITY_HEADERS = {
 
 
 class RunRequest(BaseModel):
-    """What the page may send: a task and a mode. Nothing else."""
+    """What the page may send: a task and, optionally, a model. Nothing else."""
 
     task: str = Field(min_length=1, max_length=4000)
-    mode: Literal["fake", "live"] = "fake"
-    model: str | None = Field(default=None, max_length=100)  # live only; must have a price
+    model: str | None = Field(default=None, max_length=100)  # must have a price (D-31)
 
 
 def create_app(
@@ -64,8 +62,13 @@ def create_app(
     project_root: Path = PROJECT_ROOT,
     workspace: Workspace | None = None,
     trace_dir: Path = DEFAULT_TRACE_DIR,
+    model_factory: Callable[[Settings], ModelClient] = GeminiModel,
 ) -> FastAPI:
-    """Build the app. ``project_root`` is where the Checks panel runs the tests."""
+    """Build the app. ``project_root`` is where the Checks panel runs the tests.
+
+    ``model_factory`` builds the model for each run (Gemini). It is a parameter so the
+    choice of client is visible in one place, not buried inside the route.
+    """
     app = FastAPI(title="agentic-harness", version=__version__, docs_url=None, redoc_url=None)
     app.state.checks_running = False
     app.state.run_active = False
@@ -105,7 +108,6 @@ def create_app(
             else {
                 "name": workspace.name,
                 "tools": [tool.name for tool in workspace.tools],
-                "fake": bool(workspace.fake_replies),
             },
         }
 
@@ -135,18 +137,12 @@ def create_app(
             raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
         if app.state.run_active:
             raise HTTPException(409, "A run is already going.")
-        model: ModelClient
-        if body.mode == "fake":
-            if not workspace.fake_replies:
-                raise HTTPException(400, f"{workspace.name} has no recorded run for Fake mode.")
-            model = FakeModel(workspace.fake_replies)
-        else:
-            if not settings.has_key and settings.backend == "gemini_api":
-                raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
-            name = body.model or settings.model
-            if name not in priced_models:
-                raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
-            model = GeminiModel(replace(settings, model=name))
+        if not settings.has_key and settings.backend == "gemini_api":
+            raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
+        name = body.model or settings.model
+        if name not in priced_models:
+            raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
+        model = model_factory(replace(settings, model=name))
         secrets = [settings.api_key.reveal()] if settings.api_key else []
         harness = create_harness(model, Limits(), workspace, trace_dir=trace_dir, secrets=secrets)
         app.state.run_active = True

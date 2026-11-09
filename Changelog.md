@@ -12,13 +12,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Spec v3: general harness + CloudCo Contract Assistant workspace, 9 stages.
 - `config.py`: settings and the API key in one place; the key prints as `***` and never enters the environment.
 - `agentic-harness serve`: a local page on `127.0.0.1` with a live Checks panel (one fixed test command, one row per test) and a smoke row (server up · key present or skipped).
-- The loop (S01): `ModelClient` with `GeminiModel` (stateless, no hidden SDK calls) and `FakeModel` (replays recorded replies); stop rules for steps, cost and time; cost counts thought tokens (`pricing.toml`); events and JSONL traces with the key scrubbed; `create_harness(...)`; `agentic-harness run`; the `hello` workspace with a `get_time` tool.
-- Agent view on the page: a calm chat (task bubble, Activity lines that open to the harness's facts and raw events, prose answer, "✓ Run complete"), live counters, Fake/Live switch, and a model menu for Live runs (priced models only, D-31).
+- The loop (S01): `ModelClient` with `GeminiModel` (stateless, no hidden SDK calls); stop rules for steps, cost and time; cost counts thought tokens (`pricing.toml`); events and JSONL traces with the key scrubbed; `create_harness(...)`; `agentic-harness run`; the `hello` workspace with a `get_time` tool.
+- Agent view on the page: a calm chat (task bubble, Activity lines that open to the harness's facts and raw events, prose answer, "✓ Run complete"), live counters, and an animated model menu in the input box (priced models only, D-31).
 - `scripts/record_gemini_shapes.py` and 9 recorded Gemini replies as test fixtures; `docs/gemini-api-notes.md`.
 - Theme toggle: follows the system by default; a sun/moon switch overrides it with a circular reveal; no flash on reload (D-28).
 - Server hardening: host-name check, a page-only action header, strict browser security headers (D-20).
 
 ### Changed
+- Only Gemini answers: Fake mode, `FakeModel` and replay-based loop tests removed (D-32). Coverage gate 75% until the evals (D-33).
 - Base system prompt: answer directly; call a tool only when the task needs it (D-30).
 - Project named `agentic-harness` (package `agentic_harness`).
 - Root documents renamed to Title case (`Decisions.md`, `Tracker.md`); `spec/README.md` → `spec/how-we-build.md`.

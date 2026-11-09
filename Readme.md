@@ -20,7 +20,7 @@ The first agent is the **CloudCo Contract Assistant**. It reviews a customer's c
 1. Install [uv](https://docs.astral.sh/uv/), then clone this repository.
 2. Run `make setup` to install the locked dependencies, then `make check` to run the offline tests. Both are free and need no key.
 3. For live runs, copy `.env.example` to `.env` and add your [AI Studio](https://aistudio.google.com/apikey) key.
-4. Run `uv run agentic-harness serve --workspace workspaces/hello`, open http://127.0.0.1:8000 and give the agent a task. Fake mode is free; Live calls Gemini.
+4. Run `uv run agentic-harness serve --workspace workspaces/hello`, open http://127.0.0.1:8000 and give the agent a task. Pick the Gemini model in the input box.
 
 **Using a coding agent?** Open the repository in Claude Code, Codex or Antigravity and ask it to set up and check the project. It follows the steps above and the project rules in [CLAUDE.md](CLAUDE.md) (Codex and Antigravity reach them through [AGENTS.md](AGENTS.md)). Add the key to `.env` yourself; agents are told never to read it.
 

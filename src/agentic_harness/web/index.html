@@ -52,28 +52,27 @@
         </div>
       </div>
 
-      <form class="composer" id="composer">
-        <label class="visually-hidden" for="task">Task</label>
-        <textarea id="task" name="task" rows="1" maxlength="4000" placeholder="Ask the agent to do something…" required></textarea>
-        <div class="composer-bar">
-          <fieldset class="mode" id="mode">
-            <legend class="visually-hidden">Model</legend>
-            <label><input type="radio" name="mode" value="fake" checked> Fake</label>
-            <label><input type="radio" name="mode" value="live"> Live</label>
-          </fieldset>
-          <label class="visually-hidden" for="model">Model</label>
-          <select class="model-pick" id="model" title="Model for Live runs"></select>
-          <p class="hint mode-hint" id="mode-hint"></p>
-          <button type="submit" class="send" id="send" aria-label="Send">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
-      </form>
-      <p class="composer-note">Each task is a fresh run: the harness has no memory yet (that's Stage 7).</p>
+      <div class="dock">
+        <form class="composer" id="composer">
+          <label class="visually-hidden" for="task">Task</label>
+          <textarea id="task" name="task" rows="1" maxlength="4000" placeholder="Ask the agent to do something…" required></textarea>
+          <div class="composer-bar">
+            <label class="visually-hidden" for="model">Model</label>
+            <select class="model-pick" id="model" name="model"><button type="button"><selectedcontent></selectedcontent></button></select>
+            <p class="composer-alert" id="composer-alert" role="status"></p>
+            <button type="submit" class="send" id="send" aria-label="Send">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
 
       <!-- Icons the script copies in. Templates keep the strict security policy: no HTML strings. -->
       <template id="tpl-mark">
         <svg class="agent-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 12a7.4 7.4 0 1 1-2.17-5.23" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M19.6 4.2v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </template>
+      <template id="tpl-spark">
+        <svg class="model-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.6 4.6 3.4 7.4 9 9-5.6 1.6-8.4 4.4-9 9-.6-4.6-3.4-7.4-9-9 5.6-1.6 8.4-4.4 9-9Z" fill="currentColor"/></svg>
       </template>
       <template id="tpl-chevron">
         <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>

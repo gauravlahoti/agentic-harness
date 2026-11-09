@@ -1,21 +1,17 @@
-"""The model boundary: one interface, a real Gemini client, and a fake (S01-AC2 to AC4).
+"""The model boundary: one interface and the Gemini client (S01-AC2, S01-AC3).
 
 Harness part: the model. The loop only ever calls ``create(system, steps, tools)``.
 Steps are plain dicts in Gemini's own format, kept exactly as received (D-05, D-22).
 
 GeminiModel: stateless (``store=False``, the whole history every call, never
 ``previous_interaction_id``; D-04), no hidden SDK calls (D-29).
-FakeModel: replays real recorded replies, so tests are free and match reality (D-23).
+Every answer comes from a real Gemini model; there is no fake model (D-32).
 
 Does not: run tools, count cost, or decide when to stop. The loop does.
 """
 
-import copy
-import json
-from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from agentic_harness.config import Settings
@@ -116,27 +112,3 @@ def _make_client(settings: Settings) -> Any:
             vertexai=True, project=settings.project, location=settings.location, http_options=http
         )
     return genai.Client(api_key=settings.require_key(), http_options=http)
-
-
-class FakeModel:
-    """Replays scripted replies in order and remembers every request it got."""
-
-    def __init__(self, replies: Sequence[Mapping[str, Any]], name: str | None = None) -> None:
-        self._replies = deque(copy.deepcopy(list(replies)))
-        recorded_name = str(replies[0].get("model", "")) if replies else ""
-        self.name = name or recorded_name or "fake"
-        self.requests: list[dict[str, Any]] = []
-
-    @classmethod
-    def from_files(cls, *paths: Path) -> "FakeModel":
-        """Load recordings (``{"request": …, "reply": …}`` files or bare replies)."""
-        loaded = [json.loads(path.read_text()) for path in paths]
-        return cls([item.get("reply", item) for item in loaded])
-
-    async def create(self, system: str, steps: Sequence[Step], tools: Sequence[Step]) -> ModelReply:
-        self.requests.append(
-            {"system": system, "steps": copy.deepcopy(list(steps)), "tools": list(tools)}
-        )
-        if not self._replies:
-            raise ModelError("FakeModel: no scripted reply left")
-        return ModelReply.from_dict(self._replies.popleft())

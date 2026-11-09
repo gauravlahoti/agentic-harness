@@ -38,7 +38,6 @@ def build_parser() -> argparse.ArgumentParser:
     run = commands.add_parser("run", help="run one task in the terminal")
     run.add_argument("task", help="what you want the agent to do")
     run.add_argument("--workspace", type=Path, required=True, help="the agent's folder")
-    run.add_argument("--fake", action="store_true", help="replay the workspace's recorded run")
     run.add_argument("--trace-dir", type=Path, help="where to save the trace")
     run.add_argument("--max-steps", type=int, help="stop after this many model calls")
     run.add_argument("--max-usd", type=float, help="stop after spending this much")
@@ -67,25 +66,17 @@ def run(args: argparse.Namespace) -> int:
     from agentic_harness import config
     from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
     from agentic_harness.limits import Limits
-    from agentic_harness.model import FakeModel, GeminiModel, ModelClient
+    from agentic_harness.model import GeminiModel, ModelClient
     from agentic_harness.workspace import Workspace
 
     workspace = Workspace.load(args.workspace)
-    model: ModelClient
-    secrets: list[str] = []
-    if args.fake:  # no key needed, so settings (and .env) are not even read
-        if not workspace.fake_replies:
-            print(f"{workspace.name} has no fake_replies.json to replay.", file=sys.stderr)
-            return 2
-        model = FakeModel(workspace.fake_replies)
-    else:
-        settings = config.load_settings()
-        try:
-            model = GeminiModel(settings)
-        except config.MissingKeyError as error:
-            print(error, file=sys.stderr)
-            return 2
-        secrets = [settings.api_key.reveal()] if settings.api_key else []  # kept out of traces
+    settings = config.load_settings()
+    try:
+        model: ModelClient = GeminiModel(settings)
+    except config.MissingKeyError as error:
+        print(error, file=sys.stderr)
+        return 2
+    secrets = [settings.api_key.reveal()] if settings.api_key else []  # kept out of traces
 
     defaults = Limits()
     limits = Limits(

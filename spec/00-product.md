@@ -194,7 +194,7 @@ Each stage adds one harness part and gives one LinkedIn episode. **Gemini never 
 
 ## How we test
 
-- **FakeModel** plays scripted Gemini replies → most tests are free, fast and identical every time.
+- **Offline tests** check our own code (config, security, limits, pricing, traces, the request we send) → free and fast. **Only Gemini answers**: no fake model (D-32).
 - **Live checks** 🔑 cost cents and run before each stage tag.
 - **Generic-harness test** on every run: no workspace words inside `src/agentic_harness/`.
 - Earlier tests keep passing. Every guardrail has a test that tries to break it. Every bug gets a test before its fix. You always see the real output.

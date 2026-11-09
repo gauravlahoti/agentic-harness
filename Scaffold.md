@@ -63,7 +63,7 @@ Folders are created when their first real file arrives: no empty placeholders.
 | Dependency bounds | **Lower bounds + lockfile; `google-genai` capped below v4** | Pinning everything in `pyproject.toml` | The lock gives exact versions; the cap stops a breaking Gemini SDK release slipping in | A deliberate bump for v4 |
 | Lint + format | **ruff** (incl. security, naming, async, docstring rules) | flake8 + black + isort + bandit | One fast tool replaces five | Rule set to maintain |
 | Types | **mypy, strict** | No type checking · pyright | Catches whole classes of bugs before runtime; the standard in Python teams | More annotations to write |
-| Tests | **pytest + pytest-asyncio + coverage ≥ 85%** | unittest | The standard; async support for the loop; coverage keeps tests honest | A coverage floor to keep |
+| Tests | **pytest + pytest-asyncio + coverage ≥ 75%** (D-33; 85% again with the evals) | unittest | The standard; async support for the loop; coverage keeps tests honest | A coverage floor to keep |
 | Live tests | **`live` marker, off by default** | Live calls in every run | Offline tests stay free and deterministic; live runs on purpose | Live breakage found later |
 | Task runner | **Makefile** | justfile, scripts folder | Already on every Mac and CI runner; one command per task | Make syntax is quirky |
 | Commit hooks | **pre-commit**: file hygiene, **gitleaks**, ruff, mypy | No hooks | Problems stop at the commit, not in review. Local hooks use `uv run`, so versions match `uv.lock`. | ~2 s per commit |
@@ -80,7 +80,7 @@ Folders are created when their first real file arrives: no empty placeholders.
 |---|---|
 | ruff lint + format check | pre-commit · `make check` · CI |
 | mypy strict | pre-commit · `make check` · CI |
-| pytest + coverage ≥ 85% (incl. naming + domain-free tests) | `make check` · CI |
+| pytest + coverage ≥ 75% (incl. naming + domain-free tests; D-33) | `make check` · CI |
 | gitleaks secret scan | pre-commit · CI (full history) |
 
 ## Not included yet (on purpose)

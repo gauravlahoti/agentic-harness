@@ -6,9 +6,9 @@
 ## What you have now
 
 - `agentic-harness run --workspace workspaces/hello "What time is it in Tokyo?"` runs a real agent in the terminal.
-- The page's **Agent** view: a calm chat. Your task in a bubble, then the agent's **Activity**: one line per harness step (model steps grey, tool steps green, tagged LOOP or TOOL), live counters (calls · tokens · $ · s), the answer as prose, and "✓ Run complete". Click any line to see its facts and the raw event. **Fake** replays a recorded Gemini run (free); **Live** calls Gemini.
+- The page's **Agent** view: a calm chat. Your task in a bubble, then the agent's **Activity**: one line per harness step (model steps grey, tool steps green, tagged LOOP or TOOL), live counters (calls · tokens · $ · s), the answer as prose, and "✓ Run complete". Click any line to see its facts and the raw event. Pick the Gemini model in the input box; every answer comes from a real model (D-32).
 - Every run is saved to `.agentic-harness/traces/<run>.jsonl`, one event per line, key scrubbed.
-- 96 offline tests (6 s) built on **real** Gemini replies, plus one live test (`make live`).
+- Offline tests for our own code (config, security, limits, pricing, traces, the request we send), plus one live test (`make live`). The loop's behaviour is judged by real Gemini runs; dedicated evals come in S08 (D-32, D-33).
 
 ## The loop in one picture
 
@@ -39,7 +39,7 @@ Gemini has no "tool_use" stop reason. A reply asks for tools by **containing** `
 
 | File | Job | Key lines |
 |---|---|---|
-| `model.py` | The only door to the model | `ModelClient` has one method. `GeminiModel` sends `store=False`, the whole history, `automatic_continuation=False`. Any SDK error becomes a `ModelError` with the key removed. `FakeModel` replays recordings and remembers what it was sent. |
+| `model.py` | The only door to the model | `ModelClient` has one method. `GeminiModel` sends `store=False`, the whole history, `automatic_continuation=False`. Any SDK error becomes a `ModelError` with the key removed. Every answer comes from Gemini; there is no fake model (D-32). |
 | `loop.py` | The loop itself | `steps.extend(reply.steps)` never edits a model step. `asyncio.timeout(budget.seconds_left())` makes the time limit cover the wait for Gemini too. A broken tool becomes a result with `is_error`, not a crash. |
 | `limits.py` | The brakes | `Budget.exceeded()` returns a *named* reason or `None`. |
 | `pricing.py` + `pricing.toml` | Cost | Thought tokens are billed as output. Prices live in a data file; an unknown model stops the harness at startup, so the cost limit can't silently count $0. |
@@ -59,12 +59,12 @@ Gemini has no "tool_use" stop reason. A reply asks for tools by **containing** `
 ## Verify it yourself
 
 1. `make check` → all green, 96 passed.
-2. `uv run agentic-harness run --workspace workspaces/hello --fake "What time is it?"` → 2 calls, a `get_time` row, `completed`.
-3. `uv run agentic-harness serve --workspace workspaces/hello` → http://127.0.0.1:8000 → click an example → send (Fake) → watch the activity lines fill in, then the answer and "✓ Run complete".
+2. `uv run agentic-harness run --workspace workspaces/hello "What time is it in Tokyo?"` → 2 calls, a `get_time` row, `completed`.
+3. `uv run agentic-harness serve --workspace workspaces/hello` → http://127.0.0.1:8000 → click an example → send → watch the activity lines fill in, then the answer and "✓ Run complete".
 4. Switch to **Live**, pick a model in the menu next to it, and send a task. You need a key in `.env`. If a model is busy (503 "high demand"), pick another one. Try "who is the prime minister of India": the model should answer without calling `get_time` (D-30).
 5. Click an activity line: a model step shows tokens in / out / thinking and cost; a tool step shows arguments, output and call ID. **Raw event** shows the exact event, including the thought `signature` (shortened).
 6. Open the newest file in `.agentic-harness/traces/` and search it for your key. It isn't there.
-7. Try a limit: `uv run agentic-harness run --workspace workspaces/hello --fake --max-steps 1 "Time?"` → `stopped … step_limit`.
+7. Try a limit: `uv run agentic-harness run --workspace workspaces/hello --max-steps 1 "What time is it in Tokyo?"` → `stopped … step_limit`.
 
 ## Explain it back
 

@@ -18,7 +18,7 @@ async def run(self, task):
 
 **Gemini difference:** there is no "tool_use" stop reason. Gemini puts `function_call` steps in its reply, so the loop asks: *did this reply contain function calls?*
 
-**Builds:** API test script · `model.py` (`ModelClient`, `GeminiModel`, `FakeModel`) · `loop.py` · `events.py` · `trace.py` · `limits.py` · `pricing.py` · `api.py` (`create_harness`) · `agentic-harness run` · timeline on the page
+**Builds:** API test script · `model.py` (`ModelClient`, `GeminiModel`) · `loop.py` · `events.py` · `trace.py` · `limits.py` · `pricing.py` · `api.py` (`create_harness`) · `agentic-harness run` · timeline on the page
 **Toy tool:** `get_time` in `workspaces/hello/`, the smallest possible workspace
 **Not yet:** context files, real tools, guardrails
 
@@ -29,7 +29,7 @@ async def run(self, task):
 | S01-AC1 | A test script records Gemini's real reply shapes in `docs/gemini-api-notes.md` (text, tool call, result, statuses, usage, max-tokens, safety block) | 🔑 📄 |
 | S01-AC2 | `ModelClient` has one method: `create(system, steps, tools)` | 🧪 |
 | S01-AC3 | `GeminiModel` sends the full history with `store=False`, never `previous_interaction_id` | 🧪 |
-| S01-AC4 | `FakeModel` replays scripted replies shaped like the real ones | 🧪 |
+| S01-AC4 | ~~`FakeModel` replays scripted replies~~ Removed: only Gemini answers (D-32) | – |
 | S01-AC5 | Plain answer → 1 call, ends `completed` | 🧪 |
 | S01-AC6 | Tool round trip → 2 calls; the result carries the matching `call_id` | 🧪 |
 | S01-AC7 | Two calls in one reply → both run in order, results sent together | 🧪 |
@@ -38,12 +38,12 @@ async def run(self, task):
 | S01-AC10 | An unexpected status ends the run with a named error, never a silent loop | 🧪 |
 | S01-AC11 | Every step emits an event and is saved to a trace file; the key never appears in it | 🧪 |
 | S01-AC12 | `create_harness(model, limits, workspace)` and `agentic-harness run "…"` both work | 🧪 |
-| S01-AC13 | Page: input box, activity timeline, status line, Fake/Live switch | 👀 |
+| S01-AC13 | Page: input box, activity timeline, status line, model menu | 👀 |
 | S01-AC14 | A real tool round trip works on Gemini (thought signatures survive) | 🔑 🧪 |
 
 ## Key choices
 
-- **One interface for any model** (`ModelClient`) → tests use a free fake; a new provider is one new class. *Cost:* one extra layer.
+- **One interface for any model** (`ModelClient`) → a new provider is one new class. *Cost:* one extra layer.
 - **History in Gemini's own step format** → no translation code. *Cost:* another provider needs an adapter.
 - **We run the tools; the SDK never does** (no automatic function calling) → the loop is the lesson. *Cost:* we write the dispatch.
 - **Stop rules from day one** → a loop without brakes is a bug, not a feature. *Cost:* a few lines.
@@ -64,3 +64,4 @@ async def run(self, task):
 
 - 2026-11-10 · Created (v3). Stop rules moved here from a later stage; `create_harness` and the CLI start here.
 - 2026-11-10 · Built. Live facts changed the loop's details, not its shape: a tool request ends `requires_action` (not `completed`); the SDK's automatic continuation and silent retries are switched off (D-29). Recordings use `gemini-3.5-flash-lite` (3.8/3.6 Flash overloaded on the free tier). Fake mode replays `workspaces/hello/fake_replies.json`.
+- 2026-11-10 · At your request: Fake mode, `FakeModel` and the replay-based loop tests removed; only Gemini answers (D-32). AC4 dropped; AC5–AC10 back to 📝 until the S08 evals re-prove them; AC13's Fake/Live switch replaced by the model menu (D-31). Coverage gate 75% (D-33).

@@ -80,6 +80,6 @@ source = ["agentic_harness"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 85
+fail_under = 75  # D-33: back to 85 when the S08 evals land
 show_missing = true
 skip_covered = true

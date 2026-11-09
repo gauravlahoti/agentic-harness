@@ -1,18 +1,14 @@
 """Workspaces: the folder that turns the harness into one particular agent (D-26).
 
-Harness part: loading. In S01 a workspace gives two things: its tools
-(``tools.py`` with a ``TOOLS`` list) and, optionally, a recorded run for
-Fake mode (``fake_replies.json``). S02 adds ``workspace.toml``, memory files
-and skills.
+Harness part: loading. In S01 a workspace gives its tools (``tools.py``
+with a ``TOOLS`` list). S02 adds ``workspace.toml``, memory files and skills.
 
 Does not: know any workspace by name. It loads whatever folder it is given.
 """
 
 import importlib.util
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from agentic_harness.tools import Tool
 
@@ -26,7 +22,6 @@ class Workspace:
     path: Path
     name: str
     tools: tuple[Tool, ...] = ()
-    fake_replies: tuple[dict[str, Any], ...] = ()
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -37,7 +32,6 @@ class Workspace:
             path=path,
             name=path.name,
             tools=_load_tools(path / "tools.py"),
-            fake_replies=_load_fake_replies(path / "fake_replies.json"),
         )
 
 
@@ -54,12 +48,3 @@ def _load_tools(file: Path) -> tuple[Tool, ...]:
     if not isinstance(tools, list | tuple) or not all(isinstance(t, Tool) for t in tools):
         raise WorkspaceError(f"{file} must define TOOLS as a list of Tool objects.")
     return tuple(tools)
-
-
-def _load_fake_replies(file: Path) -> tuple[dict[str, Any], ...]:
-    if not file.exists():
-        return ()
-    replies = json.loads(file.read_text())
-    if not isinstance(replies, list):
-        raise WorkspaceError(f"{file} must be a list of recorded Gemini replies.")
-    return tuple(replies)

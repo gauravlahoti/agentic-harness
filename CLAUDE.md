@@ -45,7 +45,7 @@ A learning project: a **general agent harness** built from scratch in plain Pyth
 ## Naming and quality
 - No ALL-CAPS file names. Root docs in Title case (`Decisions.md`); everything else lowercase. Exceptions only: `CLAUDE.md`, `AGENTS.md`, `SKILL.md`. A test enforces it.
 - Package `agentic_harness` (`src/` layout); command `agentic-harness`.
-- `make check` must pass before anything is marked 🟨: ruff, mypy strict, pytest + coverage ≥ 85%.
+- `make check` must pass before anything is marked 🟨: ruff, mypy strict, pytest + coverage ≥ 75% (D-33; back to 85% with the S08 evals).
 
 ## Git
 Commit at meaningful points. Tag `stage-N` after the user verifies. Push only when asked.

@@ -183,7 +183,7 @@
 - **Revisit if:** S01-AC1 shows signatures break after a round trip
 
 ### D-23 · FakeModel replays recorded Gemini replies
-✅ Accepted · S01
+⛔ Superseded by D-32 (2026-11-10) · S01
 - **Chose:** replies recorded from live calls (S01-AC1), saved as fixtures with the key removed
 - **Instead of:** hand-written replies
 - **Because:** free tests that match real behaviour
@@ -248,8 +248,24 @@
 
 ### D-31 · Pick the model in the input box (Live only)
 ✅ Accepted · S01 · at your request
-- **Chose:** a menu next to Fake/Live listing only models with a price in `pricing.toml`; the server refuses any other name; the last pick is remembered in this browser; the default stays `HARNESS_MODEL`
+- **Chose:** a menu in the input box listing only models with a price in `pricing.toml`; the server refuses any other name; the last pick is remembered in this browser; the default stays `HARNESS_MODEL`
 - **Instead of:** a model setting at the top of the page · free-text model names
 - **Because:** on the free tier a busy model (503) can be swapped in one click; a priced list keeps the cost limit honest (D-25)
 - **Cost:** a new model needs a price line in `pricing.toml` before it can be picked
 - **Revisit if:** we add another provider
+
+### D-32 · Only Gemini answers: no fake model anywhere
+✅ Accepted · S01 · at your request
+- **Chose:** remove Fake mode from the page and CLI, the recorded `fake_replies.json`, the `FakeModel` class, and the tests that replayed recordings through it; every answer comes from a real Gemini model; the server takes a `model_factory` (Gemini) so the client is chosen in one visible place
+- **Instead of:** a free Fake mode for demos · replay-based loop tests (D-23)
+- **Because:** the product should show real model behaviour only; the agent's quality will be judged by dedicated evals (S08) against real Gemini
+- **Cost:** no free demo mode; the loop has no offline tests until the evals (see D-33); the 9 recorded replies stay only as evidence for `docs/gemini-api-notes.md`
+- **Revisit if:** CI needs to prove loop behaviour before the evals exist
+
+### D-33 · Coverage gate 75% until the evals land
+✅ Accepted · S00-AC3 · at your request
+- **Chose:** `fail_under = 75` (was 85) after D-32 removed the loop's offline tests (coverage 97% → 76%)
+- **Instead of:** keeping 85% with CI red · live loop tests in `make live` · excluding the loop from coverage
+- **Because:** keeps CI green and free; the loop's behaviour will be checked by the S08 evals
+- **Cost:** `loop.py` is about 31% covered offline; a loop bug can pass `make check` until the evals exist
+- **Revisit if:** the evals land (then back to 85%)

@@ -166,8 +166,6 @@ let agentName = "agent";
 
 function setUpAgent() {
   const ws = health?.workspace;
-  const fake = document.querySelector('input[name="mode"][value="fake"]');
-  const live = document.querySelector('input[name="mode"][value="live"]');
   if (!ws) {
     $("send").disabled = true;
     return;
@@ -175,9 +173,7 @@ function setUpAgent() {
   agentName = ws.name;
   $("workspace-name").textContent = `${ws.name} workspace · ${plural(ws.tools.length, "tool")}`;
   $("empty-title").textContent = `What should the ${ws.name} agent do?`;
-  $("empty-hint").textContent = ws.tools.length
-    ? `Tools: ${ws.tools.join(", ")}. Every step the harness takes shows up as a line you can open.`
-    : "This workspace has no tools yet.";
+  $("empty-hint").textContent = "";
   $("examples").replaceChildren(
     ...EXAMPLES.map((text) => {
       const chip = el("button", "example", text);
@@ -189,20 +185,35 @@ function setUpAgent() {
       return chip;
     }),
   );
-  fake.disabled = !ws.fake;
-  live.disabled = health.key !== "present";
-  if (fake.disabled && !live.disabled) live.checked = true;
   setUpModelPicker();
-  updateModeHint();
+  // Every run calls a real model, so no key means nothing can run: say so only then.
+  const hasKey = health.key === "present";
+  $("send").disabled = !hasKey;
+  $("model").disabled = !hasKey;
+  $("composer-alert").textContent = hasKey ? "" : "No Gemini key: add it to .env and restart.";
 }
 
 // The model menu offers only models with a price (the server checks again, D-31).
 // Your last pick is remembered in this browser; if it's gone, the configured default wins.
 const MODEL_KEY = "live-model";
 
+// "gemini-3.5-flash-lite" → "Gemini 3.5 Flash-Lite"
+function modelLabel(id) {
+  const [version, ...words] = id.replace(/^gemini-/, "").split("-");
+  const tier = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("-");
+  return `Gemini ${version} ${tier}`.trim();
+}
+
 function setUpModelPicker() {
   const pick = $("model");
-  pick.replaceChildren(...(health.models ?? []).map((name) => el("option", null, name)));
+  // Keep the select's own trigger <button>; replace only the options.
+  for (const old of pick.querySelectorAll("option")) old.remove();
+  for (const id of health.models ?? []) {
+    const option = el("option");
+    option.value = id;
+    option.append(fromTemplate("tpl-spark"), el("span", null, modelLabel(id)));
+    pick.append(option);
+  }
   let saved = null;
   try {
     saved = localStorage.getItem(MODEL_KEY);
@@ -210,18 +221,6 @@ function setUpModelPicker() {
     // Storage blocked: fall back to the default model.
   }
   pick.value = health.models?.includes(saved) ? saved : health.model;
-}
-
-function currentMode() {
-  return document.querySelector('input[name="mode"]:checked')?.value ?? "fake";
-}
-
-function updateModeHint() {
-  const fake = currentMode() === "fake";
-  $("model").disabled = fake; // Fake replays a recording: its model is fixed
-  $("mode-hint").textContent = fake
-    ? "Fake: replays a recorded Gemini run. Free; tools still run for real."
-    : "Live: calls the chosen model with your key.";
 }
 
 // Small helpers: every element is built here, and all text goes in as text.
@@ -446,11 +445,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        task,
-        mode: currentMode(),
-        ...(currentMode() === "live" ? { model: $("model").value } : {}),
-      }),
+      body: JSON.stringify({ task, model: $("model").value }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -476,9 +471,6 @@ $("task").addEventListener("keydown", (event) => {
     $("composer").requestSubmit();
   }
 });
-for (const input of document.querySelectorAll('input[name="mode"]')) {
-  input.addEventListener("change", updateModeHint);
-}
 $("model").addEventListener("change", () => {
   try {
     localStorage.setItem(MODEL_KEY, $("model").value);

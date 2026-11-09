@@ -13,7 +13,7 @@
 |---|---|---|
 | S00-AC1 | A fresh copy: `make setup` installs exactly what `uv.lock` says; `make check` passes offline | 🧪 |
 | S00-AC2 | `src/` layout, typed package `agentic_harness`; `agentic-harness --version` works | 🧪 |
-| S00-AC3 | Quality gates: ruff lint + format, mypy strict, pytest with coverage ≥ 85% | 🧪 |
+| S00-AC3 | Quality gates: ruff lint + format, mypy strict, pytest with coverage ≥ 75% (D-33; 85% again with the evals) | 🧪 |
 | S00-AC4 | Naming: no ALL-CAPS file names (except `CLAUDE.md`, `AGENTS.md`, `SKILL.md`); folders and Python files lowercase | 🧪 |
 | S00-AC5 | Domain-free harness: no workspace words in `src/agentic_harness/` | 🧪 |
 | S00-AC6 | CI runs `make check` + a full-history secret scan, with a read-only token | 📄 |
@@ -50,3 +50,4 @@ All scaffold choices, with trade-offs, are in [`Scaffold.md`](../../Scaffold.md#
 
 - 2026-11-10 · Created (v3).
 - 2026-11-10 · Part A (production scaffold) added at your request; project renamed `agentic-harness`; checks renumbered (now 16).
+- 2026-11-10 · Coverage gate 85% → 75% until the S08 evals, at your request (D-33).
