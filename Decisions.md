@@ -269,3 +269,67 @@
 - **Because:** keeps CI green and free; the loop's behaviour will be checked by the S08 evals
 - **Cost:** `loop.py` is about 31% covered offline; a loop bug can pass `make check` until the evals exist
 - **Revisit if:** the evals land (then back to 85%)
+
+### D-34 · The agent's instruction file stays `AGENTS.md`
+✅ Accepted · S02
+- **Chose:** keep `workspaces/<name>/AGENTS.md`; the root `AGENTS.md` tells coding agents that files under `workspaces/` are product data, not their instructions
+- **Instead of:** rename to `instructions.md`
+- **Because:** keeps the clear parallel with `CLAUDE.md`; one line fixes the coding-agent collision
+- **Cost:** relies on coding agents reading the root note
+- **Revisit if:** a coding agent still picks them up
+
+### D-35 · A tiny strict reader for `SKILL.md` frontmatter
+✅ Accepted · S02
+- **Chose:** read only `name` and `description` (one line each); check the Agent Skills rules (lowercase-hyphen name matching its folder, length limits); anything else is a clear error
+- **Instead of:** the PyYAML package
+- **Because:** runtime packages are capped at four (S00-AC9)
+- **Cost:** fancier frontmatter is rejected
+- **Revisit if:** skills need more fields
+
+### D-36 · Skills load on demand, per profile
+✅ Accepted · S02
+- **Chose:** only name + description go in the prompt; the built-in `load_skill(name)` returns the full text, only for skills the current profile can see; shown as a CONTEXT line
+- **Instead of:** putting whole skills in the prompt
+- **Because:** the prompt stays small and identical on every call
+- **Cost:** one extra tool call when a skill is needed
+- **Revisit if:** skills are tiny
+
+### D-37 · Fixed system prompt order, built once per run
+✅ Accepted · S02
+- **Chose:** base → memory files → skill list; built before the first call and never changed during the run; each call carries a short prompt ID so the trace proves it
+- **Instead of:** rebuilding per call
+- **Because:** Gemini caches a prompt that starts the same way (S02-AC8)
+- **Cost:** none
+- **Revisit if:** —
+
+### D-38 · Size budget for memory files
+✅ Accepted · S02
+- **Chose:** estimate tokens as characters ÷ 4; warn above the workspace's `memory_budget_tokens` (default 2,000) on the CONTEXT line and in the CLI
+- **Instead of:** a real tokenizer
+- **Because:** memory files are paid for on every call; a rough number is enough to act on
+- **Cost:** the estimate is rough
+- **Revisit if:** warnings prove misleading
+
+### D-39 · Profiles come from `workspace.toml`
+✅ Accepted · S02
+- **Chose:** the page sends the chosen profile and the CLI takes `--profile`; switching profile starts a fresh thread; rights per profile arrive in S05
+- **Instead of:** profiles in harness code
+- **Because:** each profile gets its own files and skills, with no harness change
+- **Cost:** none
+- **Revisit if:** —
+
+### D-40 · Each workspace declares its own domain words
+✅ Accepted · S02
+- **Chose:** `domain_words` in `workspace.toml`; the domain-free test checks every text file in `src/agentic_harness/` against every workspace's list (S02-AC9)
+- **Instead of:** one hard-coded list in the test
+- **Because:** the guard grows with each agent and covers the page's JS/HTML too
+- **Cost:** none
+- **Revisit if:** —
+
+### D-41 · `workspace.toml` is optional
+✅ Accepted · S02
+- **Chose:** a folder with only `tools.py` still loads, with sensible defaults
+- **Instead of:** requiring it
+- **Because:** shows how little a workspace needs
+- **Cost:** two code paths
+- **Revisit if:** —

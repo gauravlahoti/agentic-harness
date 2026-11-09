@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S01 built → waiting for your verification · S00 built (verification waived for now)
+> **Now:** building S02 (context) · S00 and S01 built, verification waived for now
 > **Updated:** 2026-11-10 · **Checks:** 22 built · 0 verified · 107 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -9,7 +9,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 1 | Verify S01: "Verify it yourself" in `docs/stage-1.md` | S01 → ✅, then S02 |
+| 1 | Verify S01 when convenient: "Verify it yourself" in `docs/stage-1.md` (waived to start S02) | S01 → ✅ |
 | 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
 | 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
 | 3 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
@@ -21,7 +21,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 |---|---|---|---|---|---|
 | [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
 | [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 7/13 | 0/13 | 2 |
-| [S02](spec/stages/S02-context.md) | Context | 📝 | 0/12 | 0/12 | 1 |
+| [S02](spec/stages/S02-context.md) | Context | 🟦 | 0/12 | 0/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 📝 | 0/11 | 0/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | 📝 | 0/11 | 0/11 | 1 |
@@ -75,18 +75,18 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | The harness reads `workspace.toml`: memory files, skill folders, tools file | 🧪 | 📝 |  |
-| AC2 | System prompt is built in a fixed order: base → memory files → skill list | 🧪 | 📝 |  |
-| AC3 | `{profile}` in a path picks the active profile's file | 🧪 | 📝 |  |
-| AC4 | Only skill names + descriptions go in the prompt; `load_skill` returns the full text | 🧪 | 📝 |  |
-| AC5 | Skills use the open `SKILL.md` format (name, description) and are checked on load | 🧪 | 📝 |  |
-| AC6 | Each profile sees only its own skill folders | 🧪 | 📝 |  |
-| AC7 | A memory file over its size budget gives a warning | 🧪 | 📝 |  |
-| AC8 | The prompt is identical on every call in a session | 🧪 | 📝 |  |
-| AC9 | The domain-free test (from S00) also checks each workspace's own words, declared in its `workspace.toml` | 🧪 | 📝 |  |
-| AC10 | CloudCo files written: `AGENTS.md`, 3 team files, 4 skills, 2 policies | 📄 | 📝 |  |
-| AC11 | Answers follow: Summary → Needs a human decision → Sources | 🔑 👀 | 📝 |  |
-| AC12 | Page: profile switcher, Context tags, the skill listed in Sources | 👀 | 📝 |  |
+| AC1 | The harness reads `workspace.toml`: memory files, skill folders, tools file | 🧪 | 🟦 |  |
+| AC2 | System prompt is built in a fixed order: base → memory files → skill list | 🧪 | 🟦 |  |
+| AC3 | `{profile}` in a path picks the active profile's file | 🧪 | 🟦 |  |
+| AC4 | Only skill names + descriptions go in the prompt; `load_skill` returns the full text | 🧪 | 🟦 |  |
+| AC5 | Skills use the open `SKILL.md` format (name, description) and are checked on load | 🧪 | 🟦 |  |
+| AC6 | Each profile sees only its own skill folders | 🧪 | 🟦 |  |
+| AC7 | A memory file over its size budget gives a warning | 🧪 | 🟦 |  |
+| AC8 | The prompt is identical on every call in a session | 🧪 | 🟦 |  |
+| AC9 | The domain-free test (from S00) also checks each workspace's own words, declared in its `workspace.toml` | 🧪 | 🟦 |  |
+| AC10 | CloudCo files written: `AGENTS.md`, 3 team files, 4 skills, 2 policies | 📄 | 🟦 |  |
+| AC11 | Answers follow: Summary → Needs a human decision → Sources | 🔑 👀 | 🟦 |  |
+| AC12 | Page: profile switcher, Context tags, the skill listed in Sources | 👀 | 🟦 |  |
 
 ### S03 · Tools
 
@@ -212,3 +212,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | Agent view restyled to the calm-chat layout (task bubble, Activity lines that open to an X-ray, prose answer, run footer); sidebar pinned so the theme toggle stays visible. Approved by you. |
 | 2026-11-10 | Your report: "who is the prime minister" called `get_time`. Cause: vague base prompt. Tightened (D-30): needless calls 5/5 → 1/5 on Flash-Lite. Model menu added to the input box (D-31): 3.8 Flash, 3.6 Flash, 3.5 Flash-Lite. |
 | 2026-11-10 | At your request: only Gemini answers. Fake mode, `FakeModel`, `fake_replies.json` and the replay-based loop tests removed (D-32). S01-AC4 dropped; AC5–AC10 → 📝 until the evals. Coverage gate 75% (D-33). Model menu restyled (animated customizable select); helper phrases removed. UI baseline written in `spec/02-ui.md` and guarded by `test_page_baseline.py`. |
+| 2026-11-10 | You waived S01 verification and approved the S02 brief ("proceed with stage 2"); choice 8 (Fake recordings) dropped per D-32. S02-AC1–AC12 → 🟦. Choices recorded as D-34–D-41. |
