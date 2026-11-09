@@ -51,7 +51,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC13 | `agentic-harness serve` listens on `127.0.0.1:8000` only and serves the page shell | 🧪 👀 | 📝 |  |
 | AC14 | Checks panel runs one fixed test command, one row per test, live | 🧪 👀 | 📝 |  |
 | AC15 | Smoke row: server up ✓ · key present ✓ or skipped (never ✗) | 👀 | 📝 |  |
-| AC16 | First commit, tag `stage-0`, walkthrough in `docs/stage-0.md` | 📄 | 📝 |  |
+| AC16 | First commit, tag `stage-0`, walkthrough in `docs/stage-0.md` | 📄 | 📝 | Commits `51e31c0` · `3fe0a62` · `d617ca8` pushed · tag + walkthrough after your verification |
 
 ### S01 · The loop
 
