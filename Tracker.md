@@ -14,7 +14,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 3 | Create `.env` from `.env.example` and paste your key (the AI never reads it) | Every 🔑 check |
 | 4 | Confirm access type: AI Studio key (default) or Agent Platform (D-08) | Every 🔑 check |
 | 5 | Second workspace for the swap test: code reviewer (default) or other | S08-AC1 |
-| 6 | Public or private GitHub repo | First push, CI's first run, license |
+| 6 | Repo is **private** (github.com/gauravlahoti/agentic-harness); make it public when ready for LinkedIn | License, public demo |
 
 ## Stages
 
@@ -36,12 +36,12 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | A fresh copy: `make setup` installs exactly what `uv.lock` says; `make check` passes offline | 🧪 | 🟨 | `make check` green in working copy · fresh-clone run after first commit |
+| AC1 | A fresh copy: `make setup` installs exactly what `uv.lock` says; `make check` passes offline | 🧪 | 🟨 | CI run 42684153010: fresh clone → `uv sync --locked` → `make check` ✓ |
 | AC2 | `src/` layout, typed package `agentic_harness`; `agentic-harness --version` works | 🧪 | 🟨 | `test_cli.py` (3 tests) · `agentic-harness --version` → 0.1.0 |
 | AC3 | Quality gates: ruff lint + format, mypy strict, pytest with coverage ≥ 85% | 🧪 | 🟨 | `make check`: ruff ✓ · mypy strict ✓ · 7 tests ✓ · coverage 100% |
 | AC4 | Naming: no ALL-CAPS file names (except `CLAUDE.md`, `AGENTS.md`, `SKILL.md`); folders and Python files lowercase | 🧪 | 🟨 | `test_naming.py` · proven: a `NOTES.md` file made it fail |
 | AC5 | Domain-free harness: no workspace words in `src/agentic_harness/` | 🧪 | 🟨 | `test_generic_harness.py` · proven: the word 'contract' in cli.py made it fail |
-| AC6 | CI runs `make check` + a full-history secret scan, with a read-only token | 📄 | 🟨 | `.github/workflows/ci.yml` written · first run once the repo is on GitHub |
+| AC6 | CI runs `make check` + a full-history secret scan, with a read-only token | 📄 | 🟨 | CI run 42684153010 green (check 11 s · secret scan 54 s) · actions pinned to commit SHAs |
 | AC7 | Pre-commit runs file hygiene, gitleaks, ruff and mypy at the locked versions | 📄 | 🟨 | `.pre-commit-config.yaml` validated · run `make hooks` to install |
 | AC8 | Repo documents: Readme, Scaffold, Decisions, Tracker, Security, Contributing, Changelog | 📄 | 🟨 | All 7 documents present |
 | AC9 | Runtime packages are only `google-genai`, `fastapi`, `uvicorn`, `python-dotenv` | 📄 | 🟨 | `pyproject.toml` dependencies |
@@ -203,3 +203,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 |---|---|
 | 2026-11-10 | Spec v3 written: general harness + CloudCo Contract Assistant workspace, 9 stages. Old spec deleted. |
 | 2026-11-10 | Production scaffold built (S00 Part A, 10 checks 🟨). Renamed `agentic-harness`; docs to Title case. |
+| 2026-11-10 | Repo created (private) and pushed. First CI run failed (`setup-uv@v10` tag doesn't exist); fixed by pinning actions to commit SHAs → CI green. |
