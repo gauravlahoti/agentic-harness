@@ -48,6 +48,9 @@ class Budget:
     def elapsed(self) -> float:
         return self._clock() - self._start
 
+    def usd_left(self) -> float:
+        return max(self.limits.max_usd - self.usd, 0.0)
+
     def seconds_left(self) -> float:
         return max(self.limits.max_seconds - self.elapsed(), 0.0)
 

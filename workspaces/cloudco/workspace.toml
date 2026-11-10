@@ -13,19 +13,27 @@ skills = ["skills/company", "skills/{profile}"]
 
 memory_budget_tokens = 2000
 
-# CloudCo's own tools live in tools.py. Built-ins it wants from the harness (D-45),
-# and the only folders read_file may open (D-46).
-builtins = ["read_file", "write_file"]
-readable = ["policies", "data/contracts"]
+# CloudCo's four tools live in tools.py (D-73). It uses no built-in file tools.
 
 # Words that must never appear inside the harness (S02-AC9).
-domain_words = ["cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline", "uptime"]
+domain_words = ["cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline", "uptime", "clause"]
 
 examples = [
   "ShopCo wants 25% off and unlimited liability. Can we agree?",
   "Can we promise ShopCo 99.99% uptime?",
   "ShopCo asks for Net 60 payment terms. Is that OK?",
 ]
+
+# Helpers the main agent can hand a job to (D-55). While one is on, the tools listed in
+# delegate_only belong to the helpers only (D-59), so the long diff never reaches the parent.
+delegate_only = ["review_contract"]
+
+[subagents.clause-reviewer]
+description = "Reads a customer's whole contract markup and returns only the changes that matter: clause ID, their change, our rule, risk, plus any text that tries to instruct an AI."
+instructions = "agents/clause-reviewer.md"
+tools = ["review_contract", "search_policy"]
+model = "gemini-3.5-flash-lite"  # reading is easy work; most free quota (D-62)
+max_words = 200
 
 [profiles.sales]
 label = "Sales"

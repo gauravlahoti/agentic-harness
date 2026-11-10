@@ -187,6 +187,7 @@ function setUpAgent() {
     }),
   );
   setUpModelPicker();
+  setUpPane();
   // Every run calls a real model, so no key means nothing can run: say so only then.
   const hasKey = health.key === "present";
   $("send").disabled = !hasKey;
@@ -244,6 +245,7 @@ function switchProfile() {
   }
   for (const turn of $("thread").querySelectorAll(".turn")) turn.remove();
   $("empty-state").hidden = false;
+  loadPane(); // each profile has its own context, tools and switches
   $("task").focus();
 }
 
@@ -311,7 +313,7 @@ function newTurn(task) {
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0 };
+  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map() };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
@@ -404,13 +406,18 @@ const announce = (text) => {
 // Turn one event from the harness into a change on the page.
 function onEvent(ev, turn) {
   const d = ev.data;
+  // A helper's events carry agent_id (D-63): they go to its own lane, not the main list.
+  if (d.agent_id) return onLaneEvent(ev, turn);
   if (ev.type === "run_started") {
+    const off = d.off ?? {};
+    const switchedOff = [...(off.tools ?? []), ...(off.skills ?? []), ...(off.subagents ?? [])];
     addActivity(turn, {
-      text: `Started a run · ${d.model}`,
+      text: `Started a run · ${d.model}${switchedOff.length ? ` · ${switchedOff.length} off` : ""}`,
       state: "done",
       facts: [
         ["Model", d.model],
         ["Tools", d.tools.join(", ") || "none"],
+        ...(switchedOff.length ? [["Switched off", switchedOff.join(", ")]] : []),
         ["Limits", `${d.limits.max_steps} calls · $${d.limits.max_usd} · ${d.limits.max_seconds} s`],
         ["Run", ev.run_id],
       ],
@@ -448,7 +455,7 @@ function onEvent(ev, turn) {
     turn.tokens += used;
     let text = `Model replied: ${d.status}`;
     if (d.tool_calls.length) {
-      // ["lookup", "lookup"] → "lookup ×2"
+      // ["search", "search"] → "search ×2"
       const counts = new Map();
       for (const name of d.tool_calls) counts.set(name, (counts.get(name) ?? 0) + 1);
       const names = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
@@ -472,11 +479,13 @@ function onEvent(ev, turn) {
     const brief = argBrief(d.arguments);
     const part = d.part === "context" ? "context" : "tool";
     // load_skill is the harness's own context tool: name it for what it does.
-    const label =
-      d.name === "load_skill" ? `Read skill ${d.arguments?.name ?? ""}` : `${d.name}${brief ? ` · ${brief}` : ""}`;
+    let label = `${d.name}${brief ? ` · ${brief}` : ""}`;
+    if (d.name === "load_skill") label = `Read skill ${d.arguments?.name ?? ""}`;
+    if (d.name === "delegate_task") label = `Handed the job to ${d.arguments?.agent ?? "a helper"}`;
     const risk = part === "tool" ? d.risk : undefined;
     const row = addActivity(turn, { text: `Running ${label}`, part, risk, raw: d });
     turn.tools.set(d.call_id, { row, args, label, arguments: d.arguments ?? {} });
+    if (d.name === "delegate_task") turn.delegateRow = row; // its helper's lane goes under it
   } else if (ev.type === "tool_finished") {
     const started = turn.tools.get(d.call_id);
     if (started) {
@@ -517,6 +526,39 @@ function onEvent(ev, turn) {
   }
 }
 
+// A helper's lane (S04): nested under the line that started it, with its own counters.
+function newLane(turn, d) {
+  const box = el("div", "lane");
+  const head = el("div", "lane-head");
+  const stats = el("span", "lane-stats working", "Working…");
+  head.append(fromTemplate("tpl-mark"), el("span", "lane-name", d.agent), el("span", "lane-meta", ""), stats);
+  const activity = el("ol", "activity lane-activity");
+  activity.setAttribute("aria-label", `What ${d.agent} did`);
+  box.append(head, activity);
+  (turn.delegateRow?.li ?? turn.activity).append(box);
+  return { box, head, stats, activity, model: null, tools: new Map(), tokens: 0, lanes: new Map() };
+}
+
+function onLaneEvent(ev, turn) {
+  const { agent_id: id, parent_id: _parent, agent: _agent, ...data } = ev.data;
+  let lane = turn.lanes.get(id);
+  if (!lane) {
+    lane = newLane(turn, ev.data);
+    turn.lanes.set(id, lane);
+  }
+  if (ev.type === "run_started") {
+    lane.head.querySelector(".lane-meta").textContent = `${data.model} · ${plural(data.tools.length, "tool")}`;
+  } else if (ev.type === "run_finished") {
+    if (lane.model?.li.classList.contains("working")) setActivity(lane.model, { state: "error" });
+    lane.stats.classList.remove("working");
+    const why = data.outcome === "completed" ? "" : ` · ${REASONS[data.reason] ?? data.reason}`;
+    lane.stats.textContent = `${plural(data.model_calls, "call")} · ${lane.tokens} tokens · ${money(data.usd)} · ${data.seconds.toFixed(1)} s${why}`;
+    lane.box.classList.add(data.outcome);
+  } else {
+    onEvent({ ...ev, data }, lane); // same lines as the main agent, in the lane
+  }
+}
+
 // A file a tool saved: name and place on the card, the text when opened (D-53).
 function fileCard(d) {
   const card = el("details", `file-card folder-${d.folder}`);
@@ -545,7 +587,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, model: $("model").value, profile: currentProfile() }),
+      body: JSON.stringify({ task, model: $("model").value, profile: currentProfile(), off: currentOff() }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -559,6 +601,269 @@ async function runTask(event) {
     send.disabled = false;
     input.focus();
   }
+}
+
+// ── Harness pane (S04): the harness parts, for this profile, with switches ──
+// Built from GET /api/harness, the same code a run uses (D-68). A switch can only take
+// something away, and the run request says what (D-70). Switch state is kept per
+// workspace + profile in this browser (D-71).
+let paneInfo = null;
+const offKey = () => `off:${health.workspace.name}:${currentProfile() ?? ""}`;
+const PANE_OPEN = "pane-open";
+
+function readOff() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(offKey()) ?? "{}");
+    return { tools: saved.tools ?? [], skills: saved.skills ?? [], subagents: saved.subagents ?? [] };
+  } catch {
+    return { tools: [], skills: [], subagents: [] };
+  }
+}
+
+function saveOff(off) {
+  try {
+    localStorage.setItem(offKey(), JSON.stringify(off));
+  } catch {
+    // Storage blocked: the switches still apply to this page.
+  }
+}
+
+// Only names this profile actually has: an old saved name never reaches the server.
+function currentOff() {
+  if (!paneInfo) return { tools: [], skills: [], subagents: [] };
+  const off = readOff();
+  const has = {
+    tools: paneInfo.tools.map((t) => t.name),
+    skills: paneInfo.skills.map((s) => s.name),
+    subagents: paneInfo.subagents.map((a) => a.name),
+  };
+  return Object.fromEntries(Object.entries(off).map(([kind, names]) => [kind, names.filter((n) => has[kind].includes(n))]));
+}
+
+const offCount = (off) => off.tools.length + off.skills.length + off.subagents.length;
+
+function setPaneOpen(open, remember = true) {
+  $("harness-pane").hidden = !open;
+  $("pane-toggle").hidden = open || !health?.workspace;
+  $("pane-toggle").setAttribute("aria-expanded", String(open));
+  if (remember) {
+    try {
+      localStorage.setItem(PANE_OPEN, open ? "1" : "0");
+    } catch {
+      // Storage blocked: the pane just won't remember.
+    }
+  }
+}
+
+function setUpPane() {
+  if (!health?.workspace) return;
+  let saved = null;
+  try {
+    saved = localStorage.getItem(PANE_OPEN);
+  } catch {
+    // Storage blocked: decide by screen width.
+  }
+  setPaneOpen(saved === null ? matchMedia("(min-width: 1100px)").matches : saved === "1", false);
+  loadPane();
+}
+
+async function loadPane() {
+  const profile = currentProfile();
+  const query = profile ? `?profile=${encodeURIComponent(profile)}` : "";
+  try {
+    const response = await fetch(`/api/harness${query}`);
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    paneInfo = await response.json();
+  } catch (error) {
+    $("pane-body").replaceChildren(el("p", "pane-error", `Couldn't load the harness: ${error.message}`));
+    return;
+  }
+  renderPane();
+}
+
+// One switch. Checked = on. Native switch semantics, styled the same in every browser.
+function switchFor(kind, name) {
+  const label = el("label", "switch-wrap");
+  const input = el("input", "switch");
+  input.type = "checkbox";
+  input.setAttribute("switch", "");
+  input.setAttribute("role", "switch");
+  input.checked = !readOff()[kind].includes(name);
+  input.addEventListener("change", () => {
+    const off = readOff();
+    off[kind] = input.checked ? off[kind].filter((n) => n !== name) : [...new Set([...off[kind], name])];
+    saveOff(off);
+    renderPane();
+  });
+  label.append(input, el("span", "visually-hidden", `Use ${name}`));
+  return label;
+}
+
+// A line you can open: name and tags on top, the details below.
+function paneItem({ kind, name, tags = [], detail, off }) {
+  const li = el("li", `pane-item${off ? " is-off" : ""}`);
+  const details = el("details");
+  const summary = el("summary");
+  summary.append(el("span", "item-name", name), ...tags, fromTemplate("tpl-chevron"));
+  details.append(summary, detail);
+  if (kind) li.append(switchFor(kind, name));
+  li.append(details);
+  return li;
+}
+
+// A sub-heading inside a part: a plain title, and a quiet note on the right.
+function subhead(title, note) {
+  const head = el("div", "pane-sub");
+  head.append(el("span", "sub-title", title), el("span", "sub-note", note));
+  return head;
+}
+
+function facts(rows) {
+  const dl = el("dl", "facts");
+  dl.append(...rows.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+  return dl;
+}
+
+function paneSection(part, title, summaryText, body, open = false) {
+  const section = el("details", `pane-part part-${part}`);
+  section.open = open;
+  const summary = el("summary");
+  summary.append(el("span", "part-dot"), el("span", "part-title", title), el("span", "part-sum", summaryText), fromTemplate("tpl-chevron"));
+  section.append(summary, ...body);
+  return section;
+}
+
+function renderPane() {
+  const info = paneInfo;
+  const off = currentOff();
+  const n = offCount(off);
+  $("pane-reset").hidden = n === 0;
+  $("off-chip").hidden = n === 0;
+  $("off-chip").textContent = `${n} off`;
+
+  // Context: what is in the prompt on every call, and the skills it can load.
+  const files = el("ul", "pane-list");
+  files.append(
+    ...info.context.files.map((f) => {
+      const li = el("li", "pane-file");
+      li.append(el("span", "item-name", f.path), el("span", "sub-note", `~${f.tokens} tokens`));
+      return li;
+    }),
+  );
+  const fileTokens = info.context.files.reduce((sum, f) => sum + f.tokens, 0);
+  const skills = el("ul", "pane-list");
+  skills.append(
+    ...info.skills.map((s) =>
+      paneItem({
+        kind: "skills",
+        name: s.name,
+        off: off.skills.includes(s.name),
+        detail: facts([["Description", s.description], ["Source", s.source]]),
+      }),
+    ),
+  );
+  const context = paneSection("context", "Context", `${plural(info.context.files.length, "file")} · ${plural(info.skills.length, "skill")} · ~${info.context.prompt_tokens} tokens`, [
+    subhead("System instructions", `always loaded · ~${fileTokens} tokens`),
+    files,
+    subhead("Skills", "progressive disclosure · loaded when relevant"),
+    skills,
+  ]);
+
+  // Tools: what the agent can do, with each tool's risk; helpers are tools too.
+  const tools = el("ul", "pane-list");
+  tools.append(
+    ...info.tools.map((t) => {
+      const tags = [el("span", `act-risk risk-${t.risk}`, t.risk)];
+      if (t.source === "built-in") tags.push(el("span", "pane-tag", "built-in"));
+      if (t.delegate_only) tags.push(el("span", "pane-tag", "helper only"));
+      const params = Object.entries(t.parameters?.properties ?? {}).map(([k, v]) => `${k}: ${v.type}${v.enum ? ` (${v.enum.join(", ")})` : ""}`);
+      return paneItem({
+        kind: "tools",
+        name: t.name,
+        tags,
+        off: off.tools.includes(t.name),
+        // Docstrings wrap at 100 characters; show them as one flowing paragraph.
+        detail: facts([["Description", t.description.replace(/\s*\n\s*/g, " ")], ["Parameters", params.join("\n") || "none"]]),
+      });
+    }),
+  );
+  const helpers = el("ul", "pane-list");
+  helpers.append(
+    ...info.subagents.map((a) =>
+      paneItem({
+        kind: "subagents",
+        name: a.name,
+        tags: [el("span", "pane-tag", a.model ? modelLabel(a.model) : "same model")],
+        off: off.subagents.includes(a.name),
+        detail: facts([
+          ["Does", a.description],
+          ["Tools", a.tools.join(", ")],
+          ["Returns", `at most ${a.max_words} words`],
+          ["Instructions", a.source],
+        ]),
+      }),
+    ),
+  );
+  // Local: functions running inside the harness. Remote: tools on other servers (MCP).
+  const remote = info.remote_tools ?? [];
+  const toolBody = [
+    subhead("Local tools", "run inside the harness"),
+    tools,
+    subhead("Remote tools", "MCP"),
+    remote.length ? el("p", "pane-note", remote.join(", ")) : el("p", "pane-note", "None connected"),
+  ];
+  if (info.subagents.length) toolBody.push(subhead("Sub-agents", "own context · read-only"), helpers);
+  const toolsSection = paneSection("tools", "Tools", `${plural(info.tools.length, "tool")}${info.subagents.length ? ` · ${plural(info.subagents.length, "sub-agent")}` : ""}`, toolBody);
+
+  // Memory: not built yet. Say so plainly rather than hide the part.
+  const m = info.memory.planned;
+  const memory = paneSection("memory", "Memory", `${m.stage}`, [el("p", "pane-note", `Not built yet (${m.stage}): ${m.what}.`)]);
+
+  // Guardrails: what protects you today, and what is still missing.
+  const g = info.guardrails;
+  const guardBody = [
+    facts([
+      ["Risk levels", `${g.risks.read} read · ${g.risks.write} write · ${g.risks.action} action`],
+      ["Can read", g.readable.map((f) => `${f}/`).join(", ") || "nothing"],
+      ["Writes only to", g.writes.join(", ")],
+      ["Helpers", g.helpers],
+    ]),
+  ];
+  if (!g.actions_ask_first && g.risks.action) guardBody.push(el("p", "pane-warn", `${plural(g.risks.action, "action")} run without asking anyone.`));
+  const planned = el("ul", "pane-list");
+  planned.append(...g.planned.map((p) => el("li", "pane-line muted", `${p.stage} · ${p.what}`)));
+  guardBody.push(subhead("Planned", g.planned.map((p) => p.stage).join(" · ")), planned);
+  const guard = paneSection("guard", "Guardrails", g.actions_ask_first ? "on" : "partial", guardBody);
+
+  // Agentic loop: the brakes and the model, for the next run.
+  const l = info.loop;
+  // Plain words for anyone: what the loop does, when it stops. Raw values are in the trace.
+  const time = l.max_seconds % 60 === 0 ? `${l.max_seconds / 60} minutes` : `${l.max_seconds} seconds`;
+  const share = (x) => ({ 0.5: "half", 0.25: "a quarter" })[x] ?? `${x * 100}%`;
+  const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} steps · $${l.max_usd} · ${time}`, [
+    facts([
+      ["How it works", "Thinks, uses a tool, reads the result, and repeats until it has an answer"],
+      ["Thinks with", modelLabel($("model").value || health.model)],
+      ["Stops", `When it has an answer, or after ${l.max_steps} steps, $${l.max_usd} or ${time}, whichever comes first`],
+      ["Helpers get", `Up to ${share(l.helper_slice.time)} the time left and ${share(l.helper_slice.money)} of the budget`],
+      // A fixed prompt keeps every request's start identical, which is what Gemini's
+      // caching needs; cached input is billed at a lower price (pricing.toml).
+      ["Prompt caching", "The prompt stays fixed for the whole run, so Gemini can cache it and charge less"],
+    ]),
+  ]);
+
+  // Keep which sections you had open across re-renders.
+  const wasOpen = new Map([...$("pane-body").querySelectorAll(".pane-part")].map((d) => [d.className, d.open]));
+  // The order of one run, and of the docs: the loop is the core; context and tools are
+  // what it works with; guardrails gate the tools; memory is kept at the end (D-67).
+  const sections = [loopSection, context, toolsSection, guard, memory];
+  for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
+  $("pane-body").replaceChildren(...sections);
+}
+
+function resetOff() {
+  saveOff({ tools: [], skills: [], subagents: [] });
+  renderPane();
 }
 
 // ── Wiring ──────────────────────────────────────────────────────────────────
@@ -579,6 +884,11 @@ $("model").addEventListener("change", () => {
   }
 });
 $("profile").addEventListener("change", switchProfile);
+$("model").addEventListener("change", () => paneInfo && renderPane());
+$("pane-toggle").addEventListener("click", () => setPaneOpen(true));
+$("pane-close").addEventListener("click", () => setPaneOpen(false));
+$("off-chip").addEventListener("click", () => setPaneOpen(true));
+$("pane-reset").addEventListener("click", resetOff);
 addEventListener("hashchange", showView);
 showView();
 loadHealth();

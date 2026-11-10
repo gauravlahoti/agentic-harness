@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from agentic_harness.limits import Budget
+
 Risk = Literal["read", "write", "action"]
 RISKS: tuple[Risk, ...] = ("read", "write", "action")
 
@@ -59,6 +61,7 @@ class ToolContext:
     readable: tuple[str, ...] = ()  # folders read_file may open (D-46)
     emit: Callable[..., None] = _no_events
     call_id: str = ""  # which tool call is running, so the page can tie a file to it
+    budget: Budget | None = None  # the run's budget: a helper gets a slice of it (S04)
 
     @property
     def task_dir(self) -> Path:

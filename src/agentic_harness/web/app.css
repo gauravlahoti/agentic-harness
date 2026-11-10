@@ -699,3 +699,191 @@ details[open] > summary .chev { rotate: 180deg; }
   .view-agent { min-height: auto; }
   .bubble { max-width: 92%; }
 }
+
+/* ── Harness pane (S04): one section per harness part, colour by part ─────── */
+body:has(> .harness-pane:not([hidden])) { grid-template-columns: 240px 1fr 340px; }
+.harness-pane {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13.5px;
+}
+.harness-pane[hidden] { display: none; }
+body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display: none; }
+.pane-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* Title centred; the buttons sit in the right column. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.pane-head h2 { grid-column: 2; margin: 0; font-size: 15px; text-align: center; }
+.pane-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 6px; }
+.pane-reset {
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pane-close, .pane-toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pane-close svg, .pane-toggle svg { width: 18px; height: 18px; }
+.pane-close:hover, .pane-toggle:hover { color: var(--text); border-color: var(--line); }
+:is(.pane-close, .pane-toggle, .pane-reset, .off-chip):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pane-toggle {
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  z-index: 5;
+  background: var(--surface);
+  border-color: var(--line);
+}
+.pane-toggle[hidden] { display: none; }
+.pane-body { padding: 6px 12px 28px; }
+.pane-error { color: var(--fail); padding: 0 4px; }
+
+.pane-part { --part: var(--part-loop); border-bottom: 1px solid var(--line); padding: 4px 0 10px; }
+.pane-part.part-context { --part: var(--part-context); }
+.pane-part.part-tools { --part: var(--part-actions); }
+.pane-part.part-memory { --part: var(--part-memory); }
+.pane-part.part-guard { --part: var(--part-guard); }
+.pane-part > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 6px;
+  cursor: pointer;
+  list-style: none;
+}
+.pane-part > summary::-webkit-details-marker, .pane-item summary::-webkit-details-marker { display: none; }
+.part-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--part); flex: none; }
+.part-title { font-weight: 650; color: var(--text); }
+.part-sum { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+.pane-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 4px 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--line);
+}
+.sub-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.sub-note { margin-left: auto; color: var(--muted); font-size: 11.5px; text-align: right; }
+.pane-file { display: flex; align-items: baseline; gap: 8px; padding: 4px 4px 4px 40px; }
+.pane-list { list-style: none; margin: 0; padding: 0; }
+.pane-line { padding: 3px 4px; overflow-wrap: anywhere; }
+.pane-line.muted, .pane-note { color: var(--muted); }
+.pane-note { margin: 4px 4px 0; }
+.pane-warn {
+  margin: 8px 4px 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--part-block) 10%, transparent);
+  color: var(--part-block);
+}
+.pane-part .facts { margin: 4px 4px 0; font-size: 12.5px; }
+
+.pane-item { display: flex; align-items: flex-start; gap: 8px; padding: 3px 4px; }
+.pane-item details { flex: 1; min-width: 0; }
+.pane-item summary { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; cursor: pointer; list-style: none; padding: 2px 0; }
+.pane-item .facts { margin: 4px 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--bg); }
+.item-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--text); overflow-wrap: anywhere; }
+.pane-tag { padding: 0 5px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; }
+.pane-item.is-off .item-name { color: var(--muted); text-decoration: line-through; }
+.pane-item.is-off summary :is(.act-risk, .pane-tag) { opacity: 0.5; }
+
+/* A switch: the native `switch` checkbox where supported, the same look everywhere. */
+.switch-wrap { display: inline-flex; padding-top: 3px; }
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+}
+.switch::before {
+  content: "";
+  position: absolute;
+  inset: 2px auto auto 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+}
+.switch:checked { background: var(--accent); }
+.switch:checked::before { translate: 12px 0; }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .switch, .switch::before { transition: background-color 0.2s ease, translate 0.2s ease; }
+}
+
+/* "2 off" in the input box: shown only when something is switched off (D-71). */
+.off-chip {
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--part-guard) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--part-guard) 10%, transparent);
+  color: var(--part-guard);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.off-chip[hidden] { display: none; }
+
+/* A helper's lane: nested under the line that started it, with its own counters. */
+.lane {
+  margin: 4px 0 8px 31px;
+  padding: 6px 0 2px 12px;
+  border-left: 2px solid color-mix(in srgb, var(--part-actions) 45%, transparent);
+}
+.lane-head { display: flex; align-items: center; gap: 7px; font-size: 12.5px; }
+.lane-head .agent-mark { width: 14px; height: 14px; color: var(--part-actions); }
+.lane-name { font-weight: 650; }
+.lane-meta { color: var(--muted); }
+.lane-stats { margin-left: auto; color: var(--muted); font-size: 12px; }
+.lane-stats.working { color: var(--accent); }
+.lane.stopped .lane-stats, .lane.failed .lane-stats { color: var(--skip); }
+.lane-activity { margin-top: 4px; }
+.lane-activity .act-text { font-size: 13px; }
+
+/* Narrow screens: the pane slides over the page instead of taking a column. */
+@media (max-width: 1100px) {
+  body:has(> .harness-pane:not([hidden])) { grid-template-columns: 240px 1fr; }
+  .harness-pane {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 10;
+    width: min(360px, 100vw - 32px);
+    box-shadow: -8px 0 24px rgb(0 0 0 / 0.18);
+  }
+}

@@ -23,7 +23,7 @@ Each tool declares a **risk**: `read`, `write` or `action`. Permissions (S5) and
 | S03-AC2 | Built-in tools work for any workspace | 🧪 |
 | S03-AC3 | Workspace tools load from `tools.py`; the harness knows none of them by name | 🧪 |
 | S03-AC4 | CloudCo lookups return records with IDs | 🧪 |
-| S03-AC5 | `compare_to_standard` returns every edit (~60) with clause IDs | 🧪 |
+| S03-AC5 | `review_contract` returns every edit (~60) with clause IDs | 🧪 |
 | S03-AC6 | `search_policy` returns the rule and its section number | 🧪 |
 | S03-AC7 | Actions write only to the local outbox, never to real email | 🧪 |
 | S03-AC8 | Tool errors go back to the model; the loop never crashes | 🧪 |
@@ -54,3 +54,4 @@ Each tool declares a **risk**: `read`, `write` or `action`. Permissions (S5) and
 - 2026-11-10 · Created (v3).
 - 2026-11-10 · Brief approved with choices D-43–D-53. Files are written only through the harness's `ctx` and shown via a `file_saved` event.
 - 2026-11-10 · Built: S03-AC1–AC11 → 🟨. Found while checking the page: the browser ran an old `app.js`; the server now sends `Cache-Control: no-cache` (D-54). No change to the checks.
+- 2026-11-10 · Reopened at your request (D-73): four CloudCo tools (`lookup`, `review_contract`, `search_policy`, `send_to_customer`); no built-in file tools for CloudCo. AC4, AC5, AC7, AC10, AC11 reset and re-proven.

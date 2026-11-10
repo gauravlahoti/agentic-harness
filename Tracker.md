@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S03 verified · next: S04 (sub-agent) brief · S02 verified · S00 and S01 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 45 built · 23 verified · 107 total
+> **Now:** S04 verified except AC10 (clause IDs) · next: S05 (permissions) brief · S02 verified · S00 and S01 built, verification waived for now
+> **Updated:** 2026-11-10 · **Checks:** 56 built · 30 verified · 110 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -9,7 +9,8 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 0 | Approve the S04 (Sub-agent) brief | S04 → 🟦 |
+| 0 | Yes/no: add "name every change with its clause ID" to the contract-review skill | S04-AC10, S03-AC11 |
+| 0b | Approve the S05 (Permissions) brief | S05 → 🟦 |
 | 1 | Verify S01 when convenient: "Verify it yourself" in `docs/stage-1.md` (waived to start S02) | S01 → ✅ |
 | 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
 | 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
@@ -23,8 +24,8 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
 | [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 7/13 | 0/13 | 2 |
 | [S02](spec/stages/S02-context.md) | Context | ✅ | 12/12 | 12/12 | 1 |
-| [S03](spec/stages/S03-tools.md) | Tools | ✅ | 11/11 | 11/11 | 1 |
-| [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
+| [S03](spec/stages/S03-tools.md) | Tools | 🟨 | 10/11 | 6/11 | 1 |
+| [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | 📝 | 0/11 | 0/11 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 📝 | 0/12 | 0/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
@@ -96,29 +97,32 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC1 | `@tool` records name, description, schema and risk, and outputs Gemini's tool format | 🧪 | ✅ | `test_tool_registry.py::test_s03_ac1_*` (6): name, docstring, risk; schema from hints (str/int/float/bool/Literal/list, `Annotated` descriptions, defaults); `ctx` hidden; Gemini function format; risk required; bad types fail at load |
 | AC2 | Built-in tools work for any workspace | 🧪 | ✅ | `test_builtin_tools.py::test_s03_ac2_*` (12) + `test_api.py`: `read_file` only inside `readable` (refuses `..`, links out, `.env`, `workspace.toml`, absolute paths); folders list; `write_file` only to `tasks/<run-id>/`; only opted-in built-ins added |
 | AC3 | Workspace tools load from `tools.py`; the harness knows none of them by name | 🧪 | ✅ | `test_workspace.py` + `test_api.py` + `test_generic_harness.py::test_s03_ac3_*` (5): `@tool` tools load from `tools.py`; unknown built-in and name clash are errors; no workspace tool name appears in `src/` |
-| AC4 | CloudCo lookups return records with IDs | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac4_*` (4): 9 tools with risks; customer `CUS-0042`, deal `DL-3108`, `UP-…`, `INV-…`; unknown records list what exists; contract outline then one clause |
-| AC5 | `compare_to_standard` returns every edit (~60) with clause IDs | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac5_*`: 61 edits, each with a clause ID; 2.1, 3.2, 4.1, 6.1, 9.2 and B.7 among them; output under the 20k cap |
+| AC4 | CloudCo lookups return records with IDs | 🧪 | 🟨 | `test_cloudco_tools.py::test_s03_ac4_*` (4): `lookup` returns records with IDs; unknown records list what exists; one clause in both versions |
+| AC5 | `review_contract` returns every edit (~60) with clause IDs | 🧪 | 🟨 | `test_s03_ac5_*`: `review_contract` returns 61 edits with clause IDs, under the 20k cap |
 | AC6 | `search_policy` returns the rule and its section number | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac6_*`: "discount approval CFO" → `standard-terms §2` with its text; no match → empty list |
-| AC7 | Actions write only to the local outbox, never to real email | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac7_*` (2) + `test_tool_registry.py::test_s03_ac7_*`: actions write only under `outbox/`; plain file names only; `tools.py` imports no network module |
+| AC7 | Actions write only to the local outbox, never to real email | 🧪 | 🟨 | `test_s03_ac7_*` (3): `send_to_customer` writes only under `outbox/`; no network imports |
 | AC8 | Tool errors go back to the model; the loop never crashes | 🧪 | ✅ | `test_tool_registry.py::test_s03_ac8_*` (7): bad arguments, exceptions and a missing workspace all come back as error results; async tools; output cut with a visible note; `file_saved` announced |
 | AC9 | CloudCo data is made up and labelled fictional | 📄 | ✅ | `test_cloudco_tools.py::test_s03_ac9_*` (3): data matches `make_data.py` exactly; every data file says fictional; one hidden line in a ~19,000-word redline |
-| AC10 | Page: tool steps, record IDs in Sources, file cards | 👀 | ✅ | `test_page_baseline.py::test_s03_ac10_*` · Chrome, both themes: risk tags (read/write; action via synthetic event), one row per argument, Draft and Outbox file cards, console clean · fixed stale `app.js` (D-54) |
-| AC11 | Live: finds all 5 changes that matter, with IDs | 🔑 👀 | ✅ | `make live` passed on 3.5 Flash-Lite: `test_s03_ac11_finds_all_five_changes_with_ids` · CLI: 2 calls, 13 s, $0.004, all 5 + injection flagged · page: same, with draft card |
+| AC10 | Page: tool steps, record IDs in Sources, file cards | 👀 | 🟨 | Chrome: risk tags, short labels, outbox file card (synthetic event); drafts no longer saved (D-73) |
+| AC11 | Live: finds all 5 changes that matter, with IDs | 🔑 👀 | 📝 | Live run failed: changes found, clause IDs missing (same cause as S04-AC10) |
 
 ### S04 · Sub-agent
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Sub-agents come from `workspace.toml`; the harness has none built in | 🧪 | 📝 |  |
-| AC2 | `delegate_task` starts the child with an empty history | 🧪 | 📝 |  |
-| AC3 | The child has only its declared tools, and none are actions | 🧪 | 📝 |  |
-| AC4 | The child can't delegate (depth 1) | 🧪 | 📝 |  |
-| AC5 | Budget slice enforced (25% of what's left, ≤ 15 steps); out of budget → partial answer + reason | 🧪 | 📝 |  |
-| AC6 | The child returns the declared short shape | 🧪 | 📝 |  |
-| AC7 | The parent's history holds only the result, not the 40 pages | 🧪 | 📝 |  |
-| AC8 | Child events are tagged `agent_id` + `parent_id` | 🧪 | 📝 |  |
-| AC9 | Page: nested sub-agent lane with its own mini counters | 👀 | 📝 |  |
-| AC10 | Live: same 5 findings with delegation on and off; the parent uses fewer tokens with it on | 🔑 👀 | 📝 |  |
+| AC1 | Sub-agents come from `workspace.toml`; the harness has none built in | 🧪 | ✅ | `test_subagents.py::test_s04_ac1_*` (8): `[subagents.*]` read from `workspace.toml`; bad declarations are clear errors; no helper without config |
+| AC2 | `delegate_task` starts the child with an empty history | 🧪 | ✅ | Live (Chrome + `test_live_subagent.py`): the helper's first call sends 1 step (the brief) · `child_system` = base + its own file |
+| AC3 | The child has only its declared tools, and none are actions | 🧪 | ✅ | `test_s04_ac3_*` (2): helpers may only read; the child gets exactly its declared tools |
+| AC4 | The child can't delegate (depth 1) | 🧪 | ✅ | `test_s04_ac4_*` + `test_s04_ac3_ac4_*`: no `delegate_task` in a child; declaring it is refused |
+| AC5 | Budget slice enforced (50% of the time left, 25% of the money, ≤ 15 steps); out of budget → partial answer + reason | 🧪 | ✅ | `test_s04_ac5_*` (3): 50% time / 25% money / ≤ 15 steps; delegate-only tools leave the parent; partial answer + reason on stop |
+| AC6 | The child returns the declared short shape | 🧪 | ✅ | `test_s04_ac6_*`: result cut at `max_words` with a note · live result under 200 words |
+| AC7 | The parent's history holds only the result, not the 40 pages | 🧪 | ✅ | Live trace: the parent's history holds `delegate_task`'s result, never `review_contract`'s |
+| AC8 | Child events are tagged `agent_id` + `parent_id` | 🧪 | ✅ | `test_s04_ac8_*` (2): child events tagged `agent_id`/`parent_id`/`agent`; a helper's finish no longer ends the page stream (bug found live, fixed) |
+| AC9 | Page: nested sub-agent lane with its own mini counters | 👀 | ✅ | Chrome: `clause-reviewer` lane under "Handed the job to…", own counters (3 calls · 6.7k tokens · $0.003 · 19 s) |
+| AC10 | Live: same 5 findings with delegation on and off; the parent uses fewer tokens with it on | 🔑 👀 | 🟦 | Live run failed: both answers find the changes and flag B.7, but omit clause IDs (skill asks for policy sections only). Fix proposed: one line in the contract-review skill, awaiting your yes |
+| AC11 | Page: a collapsible Harness pane shows the profile's memory files, skills, tools (risk, description) and sub-agents | 🧪 👀 | ✅ | `test_s04_ac11_*` + `/api/harness` test · Chrome: Agentic Loop · Context · Tools · Guardrails · Memory, collapsed, plain words |
+| AC12 | Switching a skill, tool or sub-agent off removes it for the next run only; unknown names are refused; nothing is switched on beyond the workspace | 🧪 | ✅ | `test_s04_ac12_*` (3): switches remove tools/skills/helpers, unknown names refused · Chrome: real click → "1 off" chip |
+| AC13 | Each run records what was off (event, trace, "Started a run" line) | 🧪 👀 | ✅ | `run_started.off` recorded; "Started a run · 1 off" line · live test checks the event |
 
 ### S05 · Permissions
 
@@ -220,3 +224,8 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You approved the S03 brief ("go ahead"): S03-AC1–AC11 → 🟦. Choices recorded as D-43–D-53. |
 | 2026-11-10 | S03-AC1–AC11 → 🟨: 168 offline tests pass; `make live` 3/3 on 3.5 Flash-Lite; page checked in Chrome. Found and fixed: stale `app.js` in the browser (D-54). Walkthrough in `docs/stage-3.md`. Waiting for your verification. |
 | 2026-11-10 | You verified S03 ("looks good to me"): S03-AC1–AC11 → ✅. Tagged `stage-3`. |
+| 2026-11-10 | You approved the S04 brief ("go ahead"): S04-AC1–AC10 → 🟦. Choices recorded as D-55–D-65. You also asked for a Harness pane with on/off switches; its brief is pending. |
+| 2026-11-10 | You approved the Harness pane add-on ("sound fair, go ahead"): S04-AC11–AC13 added → 🟦 (D-66–D-72); D-64 changed. |
+| 2026-11-10 | S04-AC5 changed at your choice (D-60): helpers get 50% of the time left, 25% of the money. Seen live: a 30 s slice ran out under load. |
+| 2026-11-10 | At your request: CloudCo consolidated to four tools (D-73). S03 reopened: AC4, AC5, AC7, AC10, AC11 → 📝 until re-proven. Harness pane grouped by part and collapsed by default. Found and fixed: a helper's finish ended the page stream and cancelled the main run. |
+| 2026-11-10 | You verified S04 ("s4 looks ok"): 12 of 13 checks ✅. S04-AC10 open: live answers omit clause IDs. S03 re-proven with four tools: AC4, AC5, AC7, AC10 → 🟨; AC11 → 📝 (same cause). |

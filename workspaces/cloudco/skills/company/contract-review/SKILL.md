@@ -10,6 +10,7 @@ description: Check each change a customer made to a contract against CloudCo's s
 ## Steps
 
 1. List every change the customer asked for. Ignore pure wording changes.
+   If you can delegate to `clause-reviewer`, hand it the whole markup (give it the contract ID) and work from its findings; otherwise use `review_contract` yourself.
 2. For each change, find the matching row below and decide:
    - **OK**: within standard terms, or within what the person you're helping may approve.
    - **Needs a decision**: name who decides (Sales, Finance, Engineering or the CFO) and why.

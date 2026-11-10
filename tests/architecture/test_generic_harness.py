@@ -45,7 +45,7 @@ def test_s00_ac5_s02_ac9_harness_source_has_no_domain_words() -> None:
 
 
 def test_s03_ac3_harness_names_no_workspace_tool() -> None:
-    """The harness may run ``get_contract`` but must never mention it (spec rule 1)."""
+    """The harness may run ``review_contract`` but must never mention it (spec rule 1)."""
     names = set()
     for tools_file in ROOT.glob("workspaces/*/tools.py"):
         names |= set(

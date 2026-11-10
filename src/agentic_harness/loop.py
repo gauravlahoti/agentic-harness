@@ -74,9 +74,11 @@ class Harness:
         context: dict[str, Any] | None = None,
         root: Path | None = None,
         readable: Sequence[str] = (),
+        off: dict[str, list[str]] | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
+        self.off = off or {}  # what was switched off for this harness (D-72)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -102,6 +104,7 @@ class Harness:
                 "max_seconds": self.limits.max_seconds,
             },
             context=self.context,
+            off=self.off,
         )
 
         def finish(outcome: Outcome, reason: str, answer: str = "") -> RunResult:
@@ -164,11 +167,11 @@ class Harness:
                 return finish("failed", f"unexpected_status: {reply.status}")
 
             # Run every call in order, then send all results back together.
-            steps.extend([await self._run_tool(call, run) for call in calls])
+            steps.extend([await self._run_tool(call, run, budget) for call in calls])
 
         return finish("stopped", limit)
 
-    async def _run_tool(self, call: Step, run: "_Run") -> Step:
+    async def _run_tool(self, call: Step, run: "_Run", budget: Budget) -> Step:
         name, arguments = call.get("name", ""), call.get("arguments") or {}
         call_id = call.get("id")
         tool = self.tools.get(name)
@@ -182,7 +185,7 @@ class Harness:
             # A fresh context per call: it knows the call, so a saved file can be tied to it.
             ctx = None
             if self.root is not None:
-                ctx = ToolContext(run.id, self.root, self.readable, run.emit, call_id or "")
+                ctx = ToolContext(run.id, self.root, self.readable, run.emit, call_id or "", budget)
             result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
             output, is_error = result.output, result.is_error
         run.emit(

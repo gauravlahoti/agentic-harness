@@ -63,6 +63,7 @@
           <div class="composer-bar">
             <label class="visually-hidden" for="model">Model</label>
             <select class="model-pick" id="model" name="model"><button type="button"><selectedcontent></selectedcontent></button></select>
+            <button type="button" class="off-chip" id="off-chip" hidden></button>
             <p class="composer-alert" id="composer-alert" role="status"></p>
             <button type="submit" class="send" id="send" aria-label="Send">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -112,5 +113,24 @@
       </div>
     </section>
   </main>
+
+  <!-- ── Harness pane (S04): what each harness part gives this profile; switches only remove ── -->
+  <button type="button" class="pane-toggle" id="pane-toggle" aria-controls="harness-pane" aria-expanded="false" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span class="visually-hidden">Show the harness</span>
+  </button>
+  <aside class="harness-pane" id="harness-pane" aria-labelledby="pane-title" hidden>
+    <header class="pane-head">
+      <h2 id="pane-title">Harness</h2>
+      <div class="pane-actions">
+        <button type="button" class="pane-reset" id="pane-reset" hidden>Reset</button>
+        <button type="button" class="pane-close" id="pane-close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="visually-hidden">Hide the harness</span>
+        </button>
+      </div>
+    </header>
+    <div class="pane-body" id="pane-body"></div>
+  </aside>
 </body>
 </html>

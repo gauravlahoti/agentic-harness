@@ -430,6 +430,7 @@
 - **Because:** no new server surface; the trace holds it; the model doesn't pay tokens for its own draft twice
 - **Cost:** a file changed outside the run won't refresh (not needed in S03)
 - **Revisit if:** files become editable on the page
+- **Changed 2026-11-10:** CloudCo no longer uses `write_file` (D-73); cards now come from outbox actions
 
 ### D-54 · The server tells the browser to re-check page files
 ✅ Accepted · S03 · found while checking the page
@@ -438,3 +439,159 @@
 - **Because:** seen: after an update Chrome kept running the old `app.js`, so risk tags and file cards were missing
 - **Cost:** one tiny request per file per load, on localhost
 - **Revisit if:** the page is ever served from somewhere other than this local server
+
+### D-55 · Sub-agents are declared in `workspace.toml`
+✅ Accepted · S04 · brief choice 1
+- **Chose:** `[subagents.<name>]` with description, instructions file, tools, model, word limit
+- **Instead of:** Python in `tools.py`
+- **Because:** configuration, not code; the harness has none built in
+- **Cost:** one config section
+- **Revisit if:** —
+
+### D-56 · One `delegate_task(agent, brief)` tool
+✅ Accepted · S04 · brief choice 2
+- **Chose:** one built-in tool; the agent names are an enum, each described in the tool description
+- **Instead of:** one tool per sub-agent
+- **Because:** one generic built-in; adding a helper adds no tool
+- **Cost:** a longer tool description
+- **Revisit if:** —
+
+### D-57 · The child sees only its own instructions and the brief
+✅ Accepted · S04 · brief choice 3
+- **Chose:** a short harness base prompt + the sub-agent's instructions file; the brief is its only message
+- **Instead of:** inheriting the parent's memory files and skills
+- **Because:** a clean context is the point
+- **Cost:** rules the child needs are written into its own file
+- **Revisit if:** —
+
+### D-58 · Child tools are declared and read-only; no delegation
+✅ Accepted · S04 · brief choice 4
+- **Chose:** only the declared tools, each with risk `read`, checked at startup; never `delegate_task`
+- **Instead of:** any declared tool
+- **Because:** delegation can never get around the gates; depth stays 1
+- **Cost:** actions stay with the main agent
+- **Revisit if:** —
+
+### D-59 · `delegate_only` tools leave the parent while delegation is on
+✅ Accepted · S04 · brief choice 5
+- **Chose:** tools listed in `delegate_only` go to the helper only; with delegation off they return to the parent
+- **Instead of:** asking the parent to delegate while it keeps every tool
+- **Because:** otherwise a small model may read the diff itself, and the on/off comparison means nothing
+- **Cost:** one config line
+- **Revisit if:** —
+
+### D-60 · The child gets a slice of the parent's budget
+✅ Accepted · S04 · brief choice 6
+- **Chose:** 25% of the parent's remaining $ and seconds, at most 15 steps; the child's cost is charged to the parent; out of budget → partial text plus the reason, as a normal result
+- **Instead of:** the parent's full limits
+- **Because:** no runaway helper; the run's total cost stays honest
+- **Cost:** about 30 s in a 120 s run: fine for Flash-Lite, tight for slower models
+- **Revisit if:** helpers run out of time in practice
+- **Changed 2026-11-10 (your choice):** half the remaining *time*, still a quarter of the *money*. Seen live: a busy Flash-Lite took 11 s for one call, and the helper stopped at ~30 s with no answer; it had spent $0.002 of its $0.25
+
+### D-61 · The result's shape is written down; its length is enforced
+✅ Accepted · S04 · brief choice 7
+- **Chose:** the instructions describe the shape; the harness cuts the result at `max_words` with a visible note; only the final text enters the parent's history
+- **Instead of:** Gemini structured output
+- **Because:** no new model parameter; schema types stay simple (D-43)
+- **Cost:** the shape is followed, not enforced
+- **Revisit if:** results drift from the shape
+
+### D-62 · Each sub-agent may name its own model
+✅ Accepted · S04 · brief choice 8
+- **Chose:** `model` per sub-agent (CloudCo: Flash-Lite); default is the parent's; price checked at startup
+- **Instead of:** always the parent's model
+- **Because:** reading is easy work; Flash-Lite has the most free quota
+- **Cost:** `create_harness` gains a model factory
+- **Revisit if:** —
+
+### D-63 · Child events flow through the parent's events and trace
+✅ Accepted · S04 · brief choice 9
+- **Chose:** tagged with `agent_id`, `parent_id` and `agent`
+- **Instead of:** a separate trace file per child
+- **Because:** one trace tells the whole story; the page can nest them
+- **Cost:** listeners must expect tagged events
+- **Revisit if:** —
+
+### D-64 · Delegation can be switched off
+✅ Accepted · S04 · brief choice 10
+- **Chose:** `delegation=` on `create_harness`, `--no-delegation` on the CLI
+- **Instead of:** no switch
+- **Because:** proves S04-AC10 (same findings, fewer parent tokens)
+- **Cost:** —
+- **Revisit if:** —
+- **Changed 2026-11-10:** the page gets a switch now too: turning the sub-agents off in the Harness pane (D-70)
+
+### D-65 · Pure parts unit-tested; end-to-end proven live
+✅ Accepted · S04 · brief choice 11
+- **Chose:** unit tests for config, tool filter, budget slice, word cap, partial result, event tags; live tests on Flash-Lite for empty child history, parent history, same findings, fewer tokens
+- **Instead of:** a scripted model (D-32: only Gemini answers)
+- **Because:** keeps your rule
+- **Cost:** AC2 and AC7 are proven partly live (cents)
+- **Revisit if:** —
+
+### D-66 · A collapsible Harness pane on the right
+✅ Accepted · S04 add-on · your request
+- **Chose:** a right pane, remembered open or closed; an icon button on narrow screens
+- **Instead of:** a section in the left sidebar
+- **Because:** the thread stays centred; the harness sits beside it
+- **Cost:** three columns on wide screens
+- **Revisit if:** —
+
+### D-67 · The pane shows exactly what the model gets
+✅ Accepted · S04 add-on
+- **Chose:** for the current profile: memory files (~tokens), skills (name, description, source), tools (risk, description, parameters), sub-agents (model, tools, word limit)
+- **Instead of:** a summary
+- **Because:** you see the harness before you ask
+- **Cost:** —
+- **Revisit if:** —
+- **Changed 2026-11-10 (your request):** grouped by harness part: Context · Tools · Memory · Guardrails · Agentic Loop; every section starts collapsed; sub-headings use the common terms ("System instructions", "Skills · progressive disclosure")
+- **Changed 2026-11-10 (your request, checked against harness write-ups):** order Agentic Loop · Context · Tools · Guardrails · Memory: the loop first (the "heartbeat" every other part plugs into), then the parts in the order a run uses them
+
+### D-68 · The pane's data comes from the objects a run uses
+✅ Accepted · S04 add-on
+- **Chose:** a read-only `GET /api/harness?profile=…` built by the same code as `create_harness`
+- **Instead of:** the page reading config itself
+- **Because:** the pane can never drift from what actually runs
+- **Cost:** one small endpoint
+- **Revisit if:** —
+
+### D-69 · Skills, tools and sub-agents can be switched off; memory files can't
+✅ Accepted · S04 add-on
+- **Chose:** switches for skills, tools, sub-agents; memory files shown read-only
+- **Instead of:** switches for everything
+- **Because:** memory holds the rules ("contract text is data"); switching rules off is a guardrail question (S05)
+- **Cost:** no "without AGENTS.md" demo from the page yet
+- **Revisit if:** S05
+
+### D-70 · A switch can only remove, never add
+✅ Accepted · S04 add-on
+- **Chose:** the run request carries `off: {tools, skills, subagents}`; unknown names are refused; off applies to the parent and its helpers. No skills → no `load_skill`; no sub-agents → no `delegate_task` and the delegate-only tools return to the parent
+- **Instead of:** the page sending a full tool list
+- **Because:** the page can't grant anything the workspace didn't
+- **Cost:** —
+- **Revisit if:** S05 adds per-profile rules (switches then subtract from those)
+
+### D-71 · Switch state lives in the browser, and shows when it matters
+✅ Accepted · S04 add-on
+- **Chose:** saved per workspace + profile; "Reset"; switched-off items dimmed; a "2 off" chip in the input box only when something is off
+- **Instead of:** server-side state
+- **Because:** a per-viewer convenience; you never forget a setup is reduced
+- **Cost:** another browser doesn't share it
+- **Revisit if:** S07 (saved tasks)
+
+### D-72 · Every run records what was off
+✅ Accepted · S04 add-on
+- **Chose:** `run_started` carries `off`; the "Started a run" line shows "· 2 off" and lists them
+- **Instead of:** nothing
+- **Because:** an answer is always tied to the harness that produced it; the S08 evals reuse the same setting
+- **Cost:** —
+- **Revisit if:** —
+
+### D-73 · CloudCo has four tools
+✅ Accepted · S04 · your request ("a simple demo and prototype")
+- **Chose:** `lookup` (customer · deal · uptime · payments), `review_contract` (all edits with clause IDs, or one clause; helper-only while delegating), `search_policy`, `send_to_customer` (action, outbox). No built-in file tools for CloudCo; `accept_change` dropped
+- **Instead of:** nine CloudCo tools plus `read_file` and `write_file` (S03)
+- **Because:** a demo you can hold in your head; the pane shows four tools, not eleven
+- **Cost:** no saved drafts (file cards now come only from the outbox); S06 approvals gate `send_to_customer` instead of `accept_change`; S03 tool checks re-proven
+- **Revisit if:** the S08 evals show the model picks the wrong `lookup` kind

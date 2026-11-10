@@ -31,16 +31,12 @@ async def call(tools: dict[str, Tool], name: str, ctx: ToolContext | None = None
     return json.loads(result.output)
 
 
-def test_s03_ac4_the_tools_and_their_risks(tools: dict[str, Tool]) -> None:
+def test_s03_ac4_four_tools_and_their_risks(tools: dict[str, Tool]) -> None:
+    """Four tools on purpose: a simple demo (D-73)."""
     assert {n: t.risk for n, t in tools.items()} == {
-        "get_customer": "read",
-        "get_deal": "read",
-        "get_contract": "read",
-        "compare_to_standard": "read",
+        "lookup": "read",
+        "review_contract": "read",
         "search_policy": "read",
-        "get_uptime": "read",
-        "get_payment_history": "read",
-        "accept_change": "action",
         "send_to_customer": "action",
     }
     for t in tools.values():
@@ -48,41 +44,38 @@ def test_s03_ac4_the_tools_and_their_risks(tools: dict[str, Tool]) -> None:
 
 
 async def test_s03_ac4_lookups_return_records_with_ids(tools: dict[str, Tool]) -> None:
-    customer = await call(tools, "get_customer", customer="shopco")
+    customer = await call(tools, "lookup", kind="customer", customer="shopco")
     assert customer["id"] == "CUS-0042"
-    deals = await call(tools, "get_deal", customer_id="CUS-0042")
+    deals = (await call(tools, "lookup", kind="deal", customer="CUS-0042"))["deals"]
     assert deals[0]["id"] == "DL-3108"
     assert deals[0]["contract_id"] == "CT-2207"
     assert deals[0]["annual_value_usd"] == 480_000
-    uptime = await call(tools, "get_uptime", months=12)
+    uptime = await call(tools, "lookup", kind="uptime")
     assert all(re.fullmatch(r"UP-\d{4}-\d{2}", m["id"]) for m in uptime["months"])
     assert uptime["average_percent"] == 99.95
-    payments = await call(tools, "get_payment_history", customer_id="CUS-0042")
+    payments = await call(tools, "lookup", kind="payments", customer="ShopCo")
     assert all(i["id"].startswith("INV-") for i in payments["invoices"])
     assert payments["average_days_late"] == 9
 
 
 async def test_s03_ac4_unknown_records_are_clear_errors(tools: dict[str, Tool]) -> None:
-    result = await call_tool(tools["get_customer"], {"customer": "Nobody Inc"}, None)
+    result = await call_tool(tools["lookup"], {"kind": "customer", "customer": "Nobody Inc"}, None)
     assert result.is_error
     assert "CUS-0042" in result.output  # tells the model what does exist
+    missing = await call_tool(tools["lookup"], {"kind": "deal"}, None)
+    assert missing.is_error
+    assert "needs a customer" in missing.output
 
 
-async def test_s03_ac4_contract_outline_then_one_clause(tools: dict[str, Tool]) -> None:
-    outline = await call(tools, "get_contract", contract_id="CT-2207")
-    clauses = [c["clause"] for c in outline["clauses"]]
-    assert {"2.1", "9.2", HIDDEN} <= set(clauses)
-    clause = await call(tools, "get_contract", contract_id="CT-2207", clause="6.1")
-    assert "99.99%" in clause["text"]  # the customer's version by default
-    standard = await call(
-        tools, "get_contract", contract_id="CT-2207", clause="6.1", version="standard"
-    )
-    assert "99.9%" in standard["text"]
-    assert "99.99%" not in standard["text"]
+async def test_s03_ac4_one_clause_in_both_versions(tools: dict[str, Tool]) -> None:
+    clause = await call(tools, "review_contract", contract_id="CT-2207", clause="6.1")
+    assert "99.99%" in clause["customer"]
+    assert "99.9%" in clause["standard"]
+    assert "99.99%" not in clause["standard"]
 
 
-async def test_s03_ac5_compare_returns_every_edit_with_clause_ids(tools: dict[str, Tool]) -> None:
-    diff = await call(tools, "compare_to_standard", contract_id="CT-2207")
+async def test_s03_ac5_review_returns_every_edit_with_clause_ids(tools: dict[str, Tool]) -> None:
+    diff = await call(tools, "review_contract", contract_id="CT-2207")
     edits = diff["edits"]
     assert 55 <= len(edits) <= 65  # ~60 edits, mostly wording
     assert diff["count"] == len(edits)
@@ -94,7 +87,7 @@ async def test_s03_ac5_compare_returns_every_edit_with_clause_ids(tools: dict[st
     by_clause = {e["clause"]: e for e in edits}
     assert "25%" in by_clause["3.2"]["added"]
     assert "unlimited" in by_clause["9.2"]["added"].lower()
-    result = await call_tool(tools["compare_to_standard"], {"contract_id": "CT-2207"}, None)
+    result = await call_tool(tools["review_contract"], {"contract_id": "CT-2207"}, None)
     assert len(result.output) < 20_000  # fits under the tool output cap (D-50)
 
 
@@ -119,11 +112,8 @@ async def test_s03_ac7_actions_write_only_to_the_local_outbox(
         subject="Our reply",
         body="Hello ShopCo.",
     )
-    accepted = await call(
-        tools, "accept_change", ctx, contract_id="CT-2207", clause="2.1", note="Term is fine."
-    )
     written = files_under(tmp_path)
-    assert written == sorted([sent["saved"], accepted["saved"]])
+    assert written == [sent["saved"]]
     assert all(path.startswith("outbox/") for path in written)
     assert "not sent" in sent["status"]
 

@@ -43,6 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--max-steps", type=int, help="stop after this many model calls")
     run.add_argument("--max-usd", type=float, help="stop after spending this much")
     run.add_argument("--max-seconds", type=float, help="stop after this long")
+    run.add_argument(
+        "--no-delegation", action="store_true", help="no helper agents: do everything itself"
+    )
     return parser
 
 
@@ -64,6 +67,8 @@ def serve(port: int, workspace: Path | None) -> int:
 
 def run(args: argparse.Namespace) -> int:
     """Run one task and print each step. Exit code: 0 completed, 1 stopped/failed, 2 setup."""
+    from dataclasses import replace
+
     from agentic_harness import config
     from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
     from agentic_harness.limits import Limits
@@ -88,7 +93,15 @@ def run(args: argparse.Namespace) -> int:
     trace_dir = args.trace_dir or DEFAULT_TRACE_DIR
     try:
         harness = create_harness(
-            model, limits, workspace, profile=args.profile, trace_dir=trace_dir, secrets=secrets
+            model,
+            limits,
+            workspace,
+            profile=args.profile,
+            trace_dir=trace_dir,
+            secrets=secrets,
+            # A helper may name its own model (D-62).
+            model_factory=lambda name: GeminiModel(replace(settings, model=name)),
+            delegation=not args.no_delegation,
         )
     except WorkspaceError as error:
         print(error, file=sys.stderr)
@@ -100,9 +113,11 @@ def run(args: argparse.Namespace) -> int:
 
 
 def print_event(event: Event) -> None:
-    """One short line per step, for people."""
+    """One short line per step, for people. A helper's steps are indented under it."""
     d = event.data
-    if event.type == "run_started":
+    if d.get("agent_id"):
+        _print_helper_event(event)
+    elif event.type == "run_started":
         print(f"▶ {d['task']}  [{d['model']}]")
         context = d.get("context") or {}
         if context.get("files") or context.get("skills"):
@@ -134,6 +149,20 @@ def print_event(event: Event) -> None:
             f"■ {d['outcome']} in {calls} call{'s' if calls != 1 else ''} · "
             f"{d['reason']} · ${d['usd']:.5f} · {d['seconds']:.1f} s"
         )
+
+
+def _print_helper_event(event: Event) -> None:
+    d, bar = event.data, f"    ┆ {event.data['agent']}"
+    if event.type == "run_started":
+        print(f"{bar} ▶ started · {d['model']} · tools: {', '.join(d['tools']) or 'none'}")
+    elif event.type == "model_replied":
+        wants = f" · wants {', '.join(d['tool_calls'])}" if d["tool_calls"] else ""
+        print(f"{bar} ← {d['status']}{wants} · ${d['usd']:.5f}")
+    elif event.type == "tool_started":
+        print(f"{bar} ⚙ {d['name']}")
+    elif event.type == "run_finished":
+        calls, usd, secs = d["model_calls"], d["usd"], d["seconds"]
+        print(f"{bar} ■ {d['outcome']} · {calls} calls · ${usd:.5f} · {secs:.1f} s")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

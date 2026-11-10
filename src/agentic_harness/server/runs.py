@@ -31,11 +31,17 @@ async def stream_run(harness: Harness, task: str) -> AsyncIterator[str]:
         while True:
             event = await queue.get()
             yield json.dumps(event, ensure_ascii=False) + "\n"
-            if event["type"] == "run_finished":
+            if ends_stream(event):
                 break
     finally:
         if not running.done():  # the page closed mid-run: stop paying for it
             running.cancel()
+
+
+def ends_stream(event: dict[str, Any]) -> bool:
+    """Only the main agent's finish ends the stream. A helper's finish carries agent_id
+    (D-63); stopping on it would cancel the main run mid-call (seen live in S04)."""
+    return event["type"] == "run_finished" and not event["data"].get("agent_id")
 
 
 def _crash(error: Exception) -> dict[str, Any]:

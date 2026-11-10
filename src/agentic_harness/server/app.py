@@ -14,6 +14,7 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -23,11 +24,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import agentic_harness
 from agentic_harness import __version__
-from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
+from agentic_harness.api import DEFAULT_TRACE_DIR, Off, create_harness, describe_harness
 from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
 from agentic_harness.limits import Limits
 from agentic_harness.model import GeminiModel, ModelClient
-from agentic_harness.pricing import load_prices
+from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
 from agentic_harness.workspace import Workspace, WorkspaceError
@@ -49,12 +50,24 @@ SECURITY_HEADERS = {
 }
 
 
+Name = Annotated[str, Field(max_length=100)]  # one tool, skill or helper name
+
+
+class OffRequest(BaseModel):
+    """Names switched off in the Harness pane. Each must exist; nothing can be added (D-70)."""
+
+    tools: list[Name] = Field(default_factory=list, max_length=100)
+    skills: list[Name] = Field(default_factory=list, max_length=100)
+    subagents: list[Name] = Field(default_factory=list, max_length=100)
+
+
 class RunRequest(BaseModel):
-    """What the page may send: a task and, optionally, a model. Nothing else."""
+    """What the page may send: a task, and optionally a model, profile and switches."""
 
     task: str = Field(min_length=1, max_length=4000)
     model: str | None = Field(default=None, max_length=100)  # must have a price (D-31)
     profile: str | None = Field(default=None, max_length=50)  # must be one of the workspace's
+    off: OffRequest = Field(default_factory=OffRequest)
 
 
 def create_app(
@@ -119,6 +132,16 @@ def create_app(
             },
         }
 
+    @app.get("/api/harness")
+    async def harness_info(profile: str | None = None) -> dict[str, object]:
+        """What a run for this profile gets: the page's Harness pane (D-67, D-68)."""
+        if workspace is None:
+            raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
+        try:
+            return describe_harness(workspace, profile, Limits())  # the limits a run gets
+        except WorkspaceError as error:
+            raise HTTPException(400, str(error)) from None
+
     @app.post("/api/checks")
     async def checks(request: Request) -> StreamingResponse:
         # No parameters and no body: the page can start the fixed command, nothing more.
@@ -156,9 +179,21 @@ def create_app(
             raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
         model = model_factory(replace(settings, model=name))
         secrets = [settings.api_key.reveal()] if settings.api_key else []
-        harness = create_harness(
-            model, Limits(), workspace, profile=profile, trace_dir=trace_dir, secrets=secrets
-        )
+        off = Off(tuple(body.off.tools), tuple(body.off.skills), tuple(body.off.subagents))
+        try:
+            harness = create_harness(
+                model,
+                Limits(),
+                workspace,
+                profile=profile,
+                trace_dir=trace_dir,
+                secrets=secrets,
+                # A helper may name its own model (D-62); same settings, other name.
+                model_factory=lambda helper: model_factory(replace(settings, model=helper)),
+                off=off,
+            )
+        except (WorkspaceError, PriceNotFoundError) as error:
+            raise HTTPException(400, str(error)) from None
         app.state.run_active = True
 
         async def lines() -> AsyncIterator[str]:

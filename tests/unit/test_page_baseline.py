@@ -61,3 +61,17 @@ def test_s03_ac10_tool_lines_show_risk_and_saved_files() -> None:
     assert "d.risk" in JS  # the risk tag on tool lines
     for rule in (".file-card", ".act-risk", ".risk-action"):
         assert rule in CSS, f"S03 style missing from app.css: {rule}"
+
+
+def test_s04_ac11_harness_pane_and_switches() -> None:
+    assert 'id="harness-pane"' in HTML  # the right pane (D-66)
+    assert 'id="pane-toggle"' in HTML
+    assert "/api/harness" in JS  # built from what a run uses (D-68)
+    assert "off:" in JS  # switches travel with the run request (D-70)
+    for rule in (".harness-pane", ".switch", ".lane", ".off-chip"):
+        assert rule in CSS, f"S04 style missing from app.css: {rule}"
+
+
+def test_s04_ac9_subagent_lane_and_ac13_off_on_the_started_line() -> None:
+    assert "agent_id" in JS  # child events go to their lane
+    assert "d.off" in JS  # the Started line says what was off

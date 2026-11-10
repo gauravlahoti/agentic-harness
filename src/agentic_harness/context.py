@@ -14,6 +14,7 @@ Does not: read files itself (workspace.py does) or talk to the model.
 
 import hashlib
 import math
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
@@ -57,9 +58,12 @@ class Context:
         }
 
 
-def build_context(workspace: Workspace, profile: str | None) -> Context:
+def build_context(
+    workspace: Workspace, profile: str | None, *, skip_skills: Collection[str] = ()
+) -> Context:
     files = workspace.memory_files(profile)
-    skills = workspace.skills(profile)
+    # A switched-off skill is not even listed: the model can't ask for it (D-70).
+    skills = [s for s in workspace.skills(profile) if s.name not in skip_skills]
 
     parts = [SYSTEM_PROMPT]
     parts += [f"## From {f.path}\n\n{f.text.strip()}" for f in files]

@@ -37,7 +37,7 @@ async def test_s03_ac11_finds_all_five_changes_with_ids(tmp_path: Path) -> None:
 
     assert result.outcome == "completed", result.reason
     used = [e.data["name"] for e in events if e.type == "tool_started"]
-    assert "compare_to_standard" in used
+    assert "review_contract" in used  # by the agent or its helper (helper events are forwarded)
 
     def cited(clause: str) -> bool:  # "2.1" as a whole ID, not inside "12.1" or "2.10"
         return re.search(rf"(?<![\d.]){re.escape(clause)}(?!\d)", result.answer) is not None

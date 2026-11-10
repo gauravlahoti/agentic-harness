@@ -24,8 +24,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Built-in tools a workspace can opt into: `read_file` (listed folders only; never `.env` or `workspace.toml`) and `write_file` (this run's folder).
 - CloudCo tools: `get_customer`, `get_deal`, `get_contract`, `compare_to_standard` (61 edits, each with its clause ID), `search_policy`, `get_uptime`, `get_payment_history`; actions `accept_change` and `send_to_customer` write only to the local outbox. Made-up data from a committed generator (`make_data.py`).
 - Page: a risk tag on every tool line; a file card for every saved draft or outbox message.
+- Sub-agents (S04): declared in `workspace.toml`; one built-in `delegate_task`; the child gets a clean context, read-only tools, ½ the time and ¼ the money left; only its short result returns; its events are tagged and nested on the page in their own lane.
+- Harness pane: Agentic Loop · Context · Tools · Guardrails · Memory, in plain words; switches remove skills, tools or sub-agents for the next run (`GET /api/harness`, `off` in the run request).
 
 ### Changed
+- CloudCo has four tools: `lookup`, `review_contract`, `search_policy`, `send_to_customer` (D-73).
 - The server sends `Cache-Control: no-cache`, so the browser never runs an old page script after an update (D-54).
 - `hello`'s `get_time` uses `@tool`.
 - SDK retries are off; a failed model call ends the run at once with Gemini's own message ("Gemini 429: … retry in 41m") instead of waiting silently until the time limit (D-42).
