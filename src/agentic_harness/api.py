@@ -19,6 +19,7 @@ from agentic_harness.approvals import ask_human_tool
 from agentic_harness.context import build_context
 from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
+from agentic_harness.memory import SessionStore, load_notes, note_path, save_note_tool
 from agentic_harness.model import ModelClient
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.scope import scope_check
@@ -36,6 +37,7 @@ from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
 from agentic_harness.workspace import Workspace, WorkspaceError
 
+DEFAULT_MEMORY_DIR = Path(".agentic-harness")  # sessions and notes live under it (S07)
 DEFAULT_TRACE_DIR = Path(".agentic-harness") / "traces"  # git-ignored
 
 ModelFactory = Callable[[str], ModelClient]  # model name → a client for it (D-62)
@@ -70,6 +72,7 @@ def create_harness(
     delegation: bool = True,
     off: Off | None = None,
     approver: Approver | None = None,
+    memory_dir: Path | None = DEFAULT_MEMORY_DIR,
 ) -> Harness:
     """A harness for this model, workspace and profile.
 
@@ -81,7 +84,12 @@ def create_harness(
     prices.for_model(model.name)  # no price → fail now, not after the first call (D-25)
     profile = workspace.check_profile(profile)
     off = _check_off(workspace, profile, off or Off())
-    context = build_context(workspace, profile, skip_skills=off.skills)
+    notes_file = (
+        note_path(memory_dir, workspace.name, profile) if memory_dir and workspace.notes else None
+    )
+    # Notes are read once, here: the prompt is the same for every call of the task (D-92).
+    notes = load_notes(notes_file) if notes_file else ""
+    context = build_context(workspace, profile, skip_skills=off.skills, notes=notes)
     gate = workspace.gate(profile)  # what this profile may use, see, never do, must ask (S05)
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.
@@ -93,6 +101,8 @@ def create_harness(
     tools = [t for t in available.values() if not (helpers and t.name in workspace.delegate_only)]
     if context.skills:
         tools.append(load_skill_tool(context.skills))  # built in: reads a skill on demand
+    if notes_file is not None:
+        tools.append(save_note_tool(notes_file))  # the agent keeps notes for next time (D-92)
     if workspace.ask_human:
         tools.append(ask_human_tool())  # the model may pause to ask a person (D-89)
     if helpers:
@@ -180,7 +190,10 @@ def _helper_model(
 
 
 def describe_harness(
-    workspace: Workspace, profile: str | None, limits: Limits | None = None
+    workspace: Workspace,
+    profile: str | None,
+    limits: Limits | None = None,
+    memory_dir: Path | None = None,
 ) -> dict[str, Any]:
     """What a run for this profile gets, before any switch (the page's Harness pane).
 
@@ -221,7 +234,16 @@ def describe_harness(
             ],
         },
         "memory": {
-            "planned": {"stage": "S07", "what": "saved tasks, notes per profile, trimming"},
+            "notes_on": workspace.notes,
+            # Newest first, as the agent will see them at the start of its next task.
+            "notes": list(
+                reversed(load_notes(note_path(memory_dir, workspace.name, profile)).splitlines())
+            )
+            if memory_dir and workspace.notes
+            else [],
+            "conversations": len(SessionStore(memory_dir, workspace.name).list(profile))
+            if memory_dir
+            else 0,
         },
         "context": {
             "files": context.summary()["files"],

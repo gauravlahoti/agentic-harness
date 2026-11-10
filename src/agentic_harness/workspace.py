@@ -67,6 +67,7 @@ class Workspace:
     rules: tuple[Rule, ...] = ()  # "never" rules (D-77)
     approvals: tuple[Approval, ...] = ()  # who must approve a tool call, and when (D-79, D-88)
     ask_human: bool = False  # the model may pause to ask a person a question (D-89)
+    notes: bool = False  # the agent may keep notes between tasks (D-92)
     title_model: str = ""  # the small model that titles a conversation (D-91); "" = the scope's
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
     scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
@@ -108,6 +109,7 @@ class Workspace:
             rules=_rules(config.get("rules", []), known_tools),
             approvals=_approvals(config.get("approvals", []), known_tools),
             ask_human=_flag(config, "ask_human"),
+            notes=_flag(config, "notes"),
             title_model=_conversations(config.get("conversations", {})),
             flag_patterns=_texts(config, "flag_patterns"),
             scope=_scope(config.get("scope")),

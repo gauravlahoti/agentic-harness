@@ -1245,9 +1245,20 @@ function renderPane() {
   if (info.subagents.length) toolBody.push(subhead("Sub-agents", "own context · read-only"), helpers);
   const toolsSection = paneSection("tools", "Tools", `${plural(info.tools.length, "tool")}${info.subagents.length ? ` · ${plural(info.subagents.length, "sub-agent")}` : ""}`, toolBody);
 
-  // Memory: not built yet. Say so plainly rather than hide the part.
-  const m = info.memory.planned;
-  const memory = paneSection("memory", "Memory", `${m.stage}`, [el("p", "pane-note", `Not built yet (${m.stage}): ${m.what}.`)]);
+  // Memory (S07): what it keeps between tasks. Conversations are the left pane's list.
+  const m = info.memory;
+  const noteList = el("ul", "note-list");
+  noteList.append(...m.notes.map((n) => el("li", null, n.replace(/^- /, ""))));
+  const memory = paneSection("memory", "Memory", `${plural(m.conversations, "conversation")} · ${m.notes_on ? plural(m.notes.length, "note") : "no notes"}`, [
+    subhead("Conversations", "this profile"),
+    el("p", "pane-note", `${plural(m.conversations, "conversation")} saved. Open one from Your work to carry on; the agent remembers it.`),
+    subhead("Notes", "kept across tasks"),
+    !m.notes_on
+      ? el("p", "pane-note", "This agent doesn't keep notes.")
+      : m.notes.length
+        ? noteList
+        : el("p", "pane-note", "None yet. The agent saves a note when it learns something worth keeping."),
+  ]);
 
   // Guardrails (S05): three colour-coded cards, one short line per rule. Details on hover.
   const g = info.guardrails;

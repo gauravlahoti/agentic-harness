@@ -130,9 +130,8 @@ def create_app(
         # Browsers ask for this path on their own; answer instead of logging a 404.
         return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml")
 
-    sessions = SessionStore(
-        memory_dir or project_root / ".agentic-harness", workspace.name if workspace else "_"
-    )
+    memory_root = memory_dir or project_root / ".agentic-harness"
+    sessions = SessionStore(memory_root, workspace.name if workspace else "_")
 
     def need_workspace() -> Workspace:
         if workspace is None:
@@ -229,7 +228,8 @@ def create_app(
         if workspace is None:
             raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
         try:
-            return describe_harness(workspace, profile, Limits())  # the limits a run gets
+            # The limits a run gets, and what it remembers (S07).
+            return describe_harness(workspace, profile, Limits(), memory_root)
         except WorkspaceError as error:
             raise HTTPException(400, str(error)) from None
 
@@ -293,6 +293,7 @@ def create_app(
                 ),
                 off=off,
                 approver=approvals.ask,  # the page's ⏸ card answers (D-79)
+                memory_dir=memory_root,
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None

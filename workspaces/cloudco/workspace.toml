@@ -9,6 +9,9 @@ logo = "logo.svg"  # a made-up mark, shown at the top of the page
 # The agent may pause to ask the person a question when something it needs is missing (D-89).
 ask_human = true
 
+# The agent may keep short notes between tasks, per profile (D-92).
+notes = true
+
 # Always in the prompt, in this order. {profile} picks the active profile's file.
 memory = ["AGENTS.md", "teams/{profile}.md"]
 

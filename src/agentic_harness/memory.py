@@ -15,6 +15,11 @@ byte for byte, because Gemini needs their thought signatures back (D-05).
 On load, a tool call with no result (the server stopped mid-call) gets a "cancelled"
 result. It is never run again: it might have been an action.
 
+Notes (S07-AC4, D-92): ``save_note`` appends one dated line to
+``notes/<workspace>/<profile>.md``. They are read once, when a task starts, and put at the end
+of the system prompt, newest kept, capped. A note saved mid-task therefore shows up from the
+next task: the prompt stays identical for the whole task and keeps caching.
+
 Does not: trim what is sent to the model (``trimming.py``) or decide what a title says
 beyond one small model call and a plain fallback.
 """
@@ -26,11 +31,15 @@ import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from agentic_harness.model import ModelClient, Step
+from agentic_harness.tools import Tool
+from agentic_harness.tools.registry import tool
 
 CANCELLED = "Cancelled: the server stopped before this finished. It was not run again."
+NOTES_BUDGET_TOKENS = 2000  # about 4 characters a token
+NOTE_MAX_CHARS = 500
 TITLE_WORDS = 6
 TITLE_CHARS = 48
 SESSION_ID = re.compile(r"^[0-9a-z-]{8,40}$")
@@ -198,3 +207,50 @@ async def make_title(model: ModelClient, task: str) -> str:
         return fallback_title(task)
     title = reply.text.strip().strip("\"'“”").rstrip(".").strip()
     return title[:TITLE_CHARS] if title else fallback_title(task)
+
+
+# ── Notes ────────────────────────────────────────────────────────────────────────
+
+
+def note_path(root: Path, workspace: str, profile: str | None) -> Path:
+    return root / "notes" / workspace / f"{profile or '_'}.md"
+
+
+def load_notes(file: Path, budget_tokens: int = NOTES_BUDGET_TOKENS) -> str:
+    """The notes for the prompt: whole lines, the newest that fit the budget."""
+    if not file.is_file():
+        return ""
+    kept: list[str] = []
+    used = 0
+    for line in reversed(file.read_text(encoding="utf-8").splitlines()):
+        if not line.strip():
+            continue
+        used += len(line) + 1
+        if used > budget_tokens * 4:
+            break
+        kept.append(line)
+    return "\n".join(reversed(kept))
+
+
+def save_note_tool(file: Path) -> Tool:
+    """``save_note``: the only way the agent keeps something for next time (D-92)."""
+
+    @tool(risk="write")
+    def save_note(
+        note: Annotated[str, "One short fact worth remembering, in a sentence"],
+    ) -> str:
+        """Save one short note for yourself that you will see at the start of future tasks.
+        Use it for a decision, a limit someone set, or a fact about the person's work that
+        you could not look up again. Not for the conversation itself (that is kept already),
+        and not for anything you can find with your tools."""
+        text = " ".join(note.split())
+        if not text:
+            raise ValueError("The note is empty.")
+        if len(text) > NOTE_MAX_CHARS:
+            raise ValueError(f"A note is one short fact: at most {NOTE_MAX_CHARS} characters.")
+        file.parent.mkdir(parents=True, exist_ok=True)
+        with file.open("a", encoding="utf-8") as out:
+            out.write(f"- {time.strftime('%Y-%m-%d')} · {text}\n")
+        return "Saved. You will see it at the start of future tasks."
+
+    return save_note

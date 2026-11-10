@@ -261,7 +261,7 @@ def test_s04_ac11_pane_sections_follow_the_harness_parts(tmp_path: Path) -> None
     assert guard["never"] == []
     assert guard["approvals"] == []
     assert "workspace.toml" in guard["protected"]
-    assert info["memory"]["planned"]["stage"] == "S07"
+    assert info["memory"] == {"notes_on": False, "notes": [], "conversations": 0}
 
 
 def test_s04_ac8_only_the_main_agents_finish_ends_the_page_stream() -> None:

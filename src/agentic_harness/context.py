@@ -60,7 +60,11 @@ class Context:
 
 
 def build_context(
-    workspace: Workspace, profile: str | None, *, skip_skills: Collection[str] = ()
+    workspace: Workspace,
+    profile: str | None,
+    *,
+    skip_skills: Collection[str] = (),
+    notes: str = "",
 ) -> Context:
     files = workspace.memory_files(profile)
     # A switched-off skill is not even listed: the model can't ask for it (D-70).
@@ -73,6 +77,9 @@ def build_context(
     if skills:
         lines = [f"- {s.name}: {s.description} ({s.source})" for s in skills]
         parts.append(SKILLS_HEADER + "\n" + "\n".join(lines))
+    if notes.strip():
+        # Last, so the start of the prompt is the same with or without notes (caching, D-92).
+        parts.append(f"## Notes from earlier tasks\n\n{notes.strip()}")
     system = "\n\n".join(parts) + "\n"
 
     budget = workspace.memory_budget_tokens
