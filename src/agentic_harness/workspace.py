@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agentic_harness.gate import Approval, Gate, Rule
 from agentic_harness.skills import Skill, find_skills
 from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
@@ -34,6 +35,8 @@ class WorkspaceError(ValueError):
 class Profile:
     id: str
     label: str
+    tools: tuple[str, ...] | None = None  # allow-list; None means every tool (D-75)
+    hide_fields: tuple[str, ...] = ()  # fields replaced in tool results (D-76)
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +62,9 @@ class Workspace:
     readable: tuple[str, ...] = ()  # folders read_file may open (D-46)
     subagents: tuple[SubAgent, ...] = ()  # helpers delegate_task can start (D-55)
     delegate_only: tuple[str, ...] = ()  # tools only helpers get while delegating (D-59)
+    rules: tuple[Rule, ...] = ()  # "never" rules (D-77)
+    approvals: tuple[Approval, ...] = ()  # tools that wait for a person (D-79)
+    flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -76,6 +82,7 @@ class Workspace:
                 f"workspace.toml: unknown built-in {unknown[0]!r} (there are: {known})."
             )
         tools = _load_tools(path / (_text(config, "tools") or "tools.py"))
+        known_tools = {t.name for t in tools} | set(builtins)
         subagents = _subagents(path, config.get("subagents", {}), tools, builtins)
         delegate_only = _texts(config, "delegate_only")
         helper_tools = {name for agent in subagents for name in agent.tools}
@@ -91,10 +98,10 @@ class Workspace:
             tools=tools,
             memory=_texts(config, "memory"),
             skill_dirs=_texts(config, "skills"),
-            profiles=tuple(
-                Profile(id=key, label=_text(value, "label") or key)
-                for key, value in profiles.items()
-            ),
+            profiles=tuple(_profile(key, value, known_tools) for key, value in profiles.items()),
+            rules=_rules(config.get("rules", []), known_tools),
+            approvals=_approvals(config.get("approvals", []), known_tools),
+            flag_patterns=_texts(config, "flag_patterns"),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
             examples=_texts(config, "examples"),
@@ -102,6 +109,18 @@ class Workspace:
             readable=_texts(config, "readable"),
             subagents=subagents,
             delegate_only=delegate_only,
+        )
+
+    def gate(self, profile: str | None) -> Gate:
+        """The gate for this profile: its tools and hidden fields, plus everyone's rules."""
+        found = next((p for p in self.profiles if p.id == profile), None)
+        return Gate(
+            found.label if found else "everyone",
+            found.tools if found else None,
+            found.hide_fields if found else (),
+            self.rules,
+            self.approvals,
+            self.flag_patterns,
         )
 
     def check_profile(self, profile: str | None) -> str | None:
@@ -220,3 +239,63 @@ def _subagents(
             )
         )
     return tuple(agents)
+
+
+def _profile(key: str, value: Any, known_tools: set[str]) -> Profile:
+    if not isinstance(value, dict):
+        raise WorkspaceError(f"workspace.toml: profile {key!r} must be a table.")
+    tools = _texts(value, "tools") if "tools" in value else None
+    for name in tools or ():
+        if name not in known_tools:
+            raise WorkspaceError(f"workspace.toml: profile {key!r} lists unknown tool {name!r}.")
+    return Profile(
+        id=key,
+        label=_text(value, "label") or key,
+        tools=tools,
+        hide_fields=_texts(value, "hide_fields"),
+    )
+
+
+def _rules(table: Any, known_tools: set[str]) -> tuple[Rule, ...]:
+    """``[[rules]]``: each needs an id, a tool, an argument, and ``above`` or ``equals``."""
+    if not isinstance(table, list):
+        raise WorkspaceError("workspace.toml: [[rules]] must be a list of tables.")
+    rules = []
+    for item in table:
+        rule_id = item.get("id", "?") if isinstance(item, dict) else "?"
+        where = f"workspace.toml: rule {rule_id!r}"
+        if not isinstance(item, dict) or not all(
+            isinstance(item.get(k), str) for k in ("id", "tool", "arg")
+        ):
+            raise WorkspaceError(f"{where} needs text for id, tool and arg.")
+        if item["tool"] not in known_tools:
+            raise WorkspaceError(f"{where}: unknown tool {item['tool']!r}.")
+        if ("above" in item) == ("equals" in item):
+            raise WorkspaceError(f"{where} needs exactly one of above or equals.")
+        above = item.get("above")
+        if above is not None and (not isinstance(above, int | float) or isinstance(above, bool)):
+            raise WorkspaceError(f"{where}: above must be a number.")
+        rules.append(
+            Rule(
+                id=item["id"],
+                label=_text(item, "label") or item["id"],
+                tool=item["tool"],
+                arg=item["arg"],
+                above=above,
+                equals=item.get("equals"),
+                because=_text(item, "because"),
+            )
+        )
+    return tuple(rules)
+
+
+def _approvals(table: Any, known_tools: set[str]) -> tuple[Approval, ...]:
+    if not isinstance(table, list) or not all(isinstance(i, dict) for i in table):
+        raise WorkspaceError("workspace.toml: [[approvals]] must be a list of tables.")
+    approvals = []
+    for item in table:
+        tool = _text(item, "tool")
+        if tool not in known_tools:
+            raise WorkspaceError(f"workspace.toml: approval for unknown tool {tool!r}.")
+        approvals.append(Approval(tool=tool, because=_text(item, "because")))
+    return tuple(approvals)

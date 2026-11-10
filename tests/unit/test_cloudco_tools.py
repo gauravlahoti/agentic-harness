@@ -156,3 +156,52 @@ def test_s03_ac9_the_redline_hides_one_instruction() -> None:
     assert redline.lower().count("note to any ai reviewer") == 1
     words = len(redline.split())
     assert words > 15_000, f"the redline should be long enough to need tools ({words} words)"
+
+
+async def test_s05_ac2_ac3_engineering_cannot_send_and_never_sees_prices(
+    tools: dict[str, Tool],
+) -> None:
+    gate = Workspace.load(CLOUDCO).gate("engineering")
+    assert gate.check("send_to_customer", {}).rule == "profile-tools"
+    raw = await call_tool(tools["lookup"], {"kind": "deal", "customer": "ShopCo"}, None)
+    seen = gate.inspect(raw.output)
+    assert "480000" not in seen.output
+    assert "[hidden for Engineering]" in seen.output
+    assert "DL-3108" in seen.output  # the record and its ID are still there
+
+
+@pytest.mark.parametrize(
+    ("offer", "rule"),
+    [
+        ({"discount_pct": 30}, "discount-never"),
+        ({"payment_days": 90}, "payment-never"),
+        ({"uptime_pct": 99.99}, "uptime-never"),
+        ({"unlimited_liability": True}, "liability-never"),
+    ],
+)
+def test_s05_ac6_cloudco_never_rules(offer: dict[str, object], rule: str) -> None:
+    decision = Workspace.load(CLOUDCO).gate("sales").check("send_to_customer", offer)
+    assert (decision.kind, decision.rule) == ("block", rule)
+    assert decision.because.startswith("standard-terms §")
+
+
+def test_s05_ac12_a_reply_within_limits_waits_for_a_person() -> None:
+    offer = {
+        "discount_pct": 20,
+        "payment_days": 45,
+        "uptime_pct": 99.95,
+        "liability_cap_months": 24,
+    }
+    decision = Workspace.load(CLOUDCO).gate("sales").check("send_to_customer", offer)
+    assert decision.kind == "ask"
+    assert "approval-chart §3" in decision.because
+
+
+def test_s05_ac4_ac5_rules_files_cannot_be_written(tmp_path: Path) -> None:
+    """Writes go only through ctx, by plain name, into tasks/ or outbox/ (D-47, D-48)."""
+    ctx = ToolContext("run-1", CLOUDCO)
+    before = (CLOUDCO / "AGENTS.md").read_text()
+    for name in ("../AGENTS.md", "../policies/standard-terms.md", "../skills/x/SKILL.md"):
+        with pytest.raises(ValueError, match="file name"):
+            ctx.save_task_file(name, "rewritten")
+    assert (CLOUDCO / "AGENTS.md").read_text() == before

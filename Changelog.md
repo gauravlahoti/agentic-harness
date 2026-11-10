@@ -27,7 +27,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Sub-agents (S04): declared in `workspace.toml`; one built-in `delegate_task`; the child gets a clean context, read-only tools, ½ the time and ¼ the money left; only its short result returns; its events are tagged and nested on the page in their own lane.
 - Harness pane: Agentic Loop · Context · Tools · Guardrails · Memory, in plain words; switches remove skills, tools or sub-agents for the next run (`GET /api/harness`, `off` in the run request).
 
+### Added (S05)
+- The gate (`gate.py`): tools per profile (hidden and blocked), hidden fields per profile, "never" rules on offer fields, flags for instruction-like text, and human approval for `send_to_customer` (⏸ card with Approve / Reject on the page; y/N in the CLI; the wait doesn't count toward the time limit).
+- Guardrails in the Harness pane: Allowed · Not allowed · Human in the loop.
+
 ### Changed
+- Two demo profiles, Sales and Engineering (D-74). `send_to_customer` takes explicit offer fields (D-77).
 - CloudCo has four tools: `lookup`, `review_contract`, `search_policy`, `send_to_customer` (D-73).
 - The server sends `Cache-Control: no-cache`, so the browser never runs an old page script after an update (D-54).
 - `hello`'s `get_time` uses `@tool`.

@@ -71,3 +71,4 @@ model asks to act → gate: allowed → approval rule matches? ── no ──�
 ## Changes
 
 - 2026-11-10 · Created (v3).
+- 2026-11-10 · Human approval for `send_to_customer` moved to S05 at your request (D-79). S06 to be re-briefed with what's left.

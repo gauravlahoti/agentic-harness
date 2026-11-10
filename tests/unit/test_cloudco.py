@@ -24,17 +24,15 @@ def test_s02_ac10_the_files_are_there(cloudco: Workspace) -> None:
         "AGENTS.md",
         "teams/sales.md",
         "teams/engineering.md",
-        "teams/finance.md",
         "skills/company/contract-review/SKILL.md",
         "skills/sales/reply-to-customer/SKILL.md",
         "skills/engineering/uptime-check/SKILL.md",
-        "skills/finance/payment-terms-check/SKILL.md",
         "policies/standard-terms.md",
         "policies/approval-chart.md",
     ):
         assert (CLOUDCO / relative).is_file(), relative
     assert cloudco.title == "Contract Assistant"
-    assert [p.id for p in cloudco.profiles] == ["sales", "engineering", "finance", "cfo"]
+    assert [p.id for p in cloudco.profiles] == ["sales", "engineering"]  # D-74
 
 
 @pytest.mark.parametrize(
@@ -42,8 +40,6 @@ def test_s02_ac10_the_files_are_there(cloudco: Workspace) -> None:
     [
         ("sales", ["contract-review", "reply-to-customer"]),
         ("engineering", ["contract-review", "uptime-check"]),
-        ("finance", ["contract-review", "payment-terms-check"]),
-        ("cfo", ["contract-review"]),
     ],
 )
 def test_s02_ac10_each_profile_gets_its_skills(

@@ -257,9 +257,10 @@ def test_s04_ac11_pane_sections_follow_the_harness_parts(tmp_path: Path) -> None
     assert loop["helper_slice"] == {"time": 0.5, "money": 0.25, "max_steps": MAX_CHILD_STEPS}
     assert loop["prompt_id"]
     guard = info["guardrails"]
-    assert guard["risks"] == {"read": 2, "write": 0, "action": 1}
-    assert guard["actions_ask_first"] is False  # true only once approvals exist (S06)
-    assert [p["stage"] for p in guard["planned"]] == ["S05", "S06"]
+    assert guard["allowed"] == ["look", "scan", "poke"]  # no profile: every tool
+    assert guard["never"] == []
+    assert guard["approvals"] == []
+    assert "workspace.toml" in guard["protected"]
     assert info["memory"]["planned"]["stage"] == "S07"
 
 
@@ -271,3 +272,16 @@ def test_s04_ac8_only_the_main_agents_finish_ends_the_page_stream() -> None:
     helper = {"type": "run_finished", "data": {"outcome": "completed", "agent_id": "c1"}}
     assert not ends_stream(helper)
     assert not ends_stream({"type": "model_called", "data": {}})
+
+
+def test_s05_ac8_a_helper_never_has_more_rights_than_its_caller(tmp_path: Path) -> None:
+    toml = TOML + '\n[profiles.narrow]\nlabel = "Narrow"\ntools = ["look", "scan"]\n'
+    toml += '\n[profiles.tiny]\nlabel = "Tiny"\ntools = ["scan"]\n'
+    ws = make(tmp_path, toml)
+    h, _ = harness(ws, profile="tiny")
+    child = h.tools["delegate_task"].function.make_child(ws.subagents[0], Limits())  # type: ignore[attr-defined]
+    assert sorted(child.tools) == ["scan"]  # declared look+scan, but Tiny may only use scan
+    assert child.gate is not None
+    assert child.gate.label == "Tiny"  # the same gate as its caller
+    narrow, _ = harness(ws, profile="narrow")
+    assert "poke" not in [t.name for t in narrow.visible_tools()]

@@ -48,6 +48,10 @@ class Budget:
     def elapsed(self) -> float:
         return self._clock() - self._start
 
+    def exclude(self, seconds: float) -> None:
+        """Don't count this time: the run was paused waiting for a person (D-79)."""
+        self._start += seconds
+
     def usd_left(self) -> float:
         return max(self.limits.max_usd - self.usd, 0.0)
 

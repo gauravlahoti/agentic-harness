@@ -35,14 +35,51 @@ tools = ["review_contract", "search_policy"]
 model = "gemini-3.5-flash-lite"  # reading is easy work; most free quota (D-62)
 max_words = 200
 
+# ── Guardrails (S05): read by the harness's gate, never shown to the model ──────────
+# Permissions: what each profile may use (allow-list) and must not see (D-75, D-76).
 [profiles.sales]
 label = "Sales"
+tools = ["lookup", "review_contract", "search_policy", "send_to_customer"]
 
 [profiles.engineering]
 label = "Engineering"
+tools = ["lookup", "review_contract", "search_policy"]
+hide_fields = ["annual_value_usd", "amount_usd", "days_late", "average_days_late"]
 
-[profiles.finance]
-label = "Finance"
+# Never allowed: blocked for everyone, and no one can approve them (D-77).
+[[rules]]
+id = "discount-never"
+label = "A discount above 25%"
+tool = "send_to_customer"
+arg = "discount_pct"
+above = 25
+because = "standard-terms §2"
 
-[profiles.cfo]
-label = "CFO"
+[[rules]]
+id = "payment-never"
+label = "Payment terms beyond Net 60"
+tool = "send_to_customer"
+arg = "payment_days"
+above = 60
+because = "standard-terms §3"
+
+[[rules]]
+id = "uptime-never"
+label = "Uptime above our 99.95% record"
+tool = "send_to_customer"
+arg = "uptime_pct"
+above = 99.95
+because = "standard-terms §4"
+
+[[rules]]
+id = "liability-never"
+label = "Unlimited liability"
+tool = "send_to_customer"
+arg = "unlimited_liability"
+equals = true
+because = "standard-terms §5"
+
+# Human in the loop: these wait for a person to approve them (D-79).
+[[approvals]]
+tool = "send_to_customer"
+because = "approval-chart §3: sending anything to the customer always needs a person"

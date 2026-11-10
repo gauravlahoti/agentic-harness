@@ -887,3 +887,116 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
     box-shadow: -8px 0 24px rgb(0 0 0 / 0.18);
   }
 }
+
+/* ── Guardrails on the page (S05) ────────────────────────────────────────── */
+.part-guard .act-text { color: var(--part-guard); }
+.part-guard .act-tag { color: var(--part-guard); border-color: color-mix(in srgb, var(--part-guard) 40%, transparent); }
+.act.error .act-text { color: var(--fail); }
+
+.switch-spacer { flex: none; width: 28px; }
+.pane-item.is-locked .item-name { color: var(--muted); }
+.pane-item.is-locked summary .act-risk { opacity: 0.5; }
+.pane-rule { color: var(--text); }
+.pane-rule-row { display: flex; align-items: baseline; gap: 10px; padding: 3px 4px; }
+.pane-rule-row .pane-rule { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rule-mark { flex: none; width: 14px; text-align: center; font-size: 12px; font-weight: 700; }
+.tone-ok .rule-mark { color: var(--pass); }
+.tone-no .rule-mark { color: var(--fail); }
+.tone-pause .rule-mark { color: var(--part-guard); }
+.pane-group { margin: 8px 4px 2px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.pane-rule-row .sub-note { max-width: 45%; }
+
+/* ⏸ The run waits here for a person. */
+.approval-card {
+  margin: 4px 0 10px 31px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--part-guard) 45%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--part-guard) 6%, var(--surface));
+  font-size: 13.5px;
+}
+.approval-card.approved { border-color: color-mix(in srgb, var(--pass) 45%, var(--line)); background: var(--surface); }
+.approval-card.rejected { border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); background: var(--surface); }
+.approval-why { margin: 0 0 8px; color: var(--part-guard); font-weight: 600; }
+.approval-card .facts dd { max-height: 220px; overflow: auto; }
+.approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+.approval-actions button {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.approval-actions .approve { border: 0; background: var(--accent); color: var(--accent-text); }
+.approval-actions .reject { border: 1px solid var(--line); background: none; color: var(--text); }
+.approval-actions button:disabled { opacity: 0.5; cursor: default; }
+.approval-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.approval-error { margin: 8px 0 0; color: var(--fail); }
+
+/* Scrolling to a line or an approval card must stop above the docked input box,
+   or the Approve button sits behind it (found live in S05). */
+.act, .approval-card, .run-foot, .file-card { scroll-margin-bottom: 190px; }
+
+/* ── Guardrails cards: green allowed · red not allowed · amber asks you ─────── */
+.guard-card {
+  --tone: var(--pass);
+  margin: 10px 4px 0;
+  padding: 10px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--line));
+  border-left: 3px solid var(--tone);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tone) 6%, var(--surface));
+}
+.guard-card.tone-no { --tone: var(--fail); }
+.guard-card.tone-pause { --tone: var(--part-guard); }
+.guard-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.guard-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone);
+  font-size: 11px;
+  font-weight: 800;
+  flex: none;
+}
+.guard-title { font-weight: 650; color: var(--text); }
+.guard-note { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+.guard-group { display: grid; gap: 4px; padding: 5px 0; }
+.guard-label { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+.guard-limits.guard-hitl li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.guard-limits.guard-hitl .limit-label { grid-column: 1 / -1; color: var(--text-soft); font-size: 12.5px; }
+.guard-text { font-size: 12.5px; color: var(--text-soft); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font: 11.5px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-soft);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.chip-ok { border-color: color-mix(in srgb, var(--pass) 40%, transparent); color: var(--pass); background: color-mix(in srgb, var(--pass) 10%, transparent); }
+.chip-no { border-color: color-mix(in srgb, var(--fail) 40%, transparent); color: var(--fail); text-decoration: line-through; }
+.chip-hidden, .chip-locked { border-color: color-mix(in srgb, var(--fail) 25%, transparent); color: var(--text-soft); }
+.chip-hidden::before { content: "◌ "; color: var(--fail); }
+.chip-locked::before { content: "⊘ "; color: var(--fail); }
+.chip-pause { border-color: color-mix(in srgb, var(--part-guard) 45%, transparent); color: var(--part-guard); background: color-mix(in srgb, var(--part-guard) 10%, transparent); }
+
+.guard-limits { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.guard-limits li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.guard-limits .limit-label { flex: 1; min-width: 0; color: var(--text); }
+.tone-no .guard-limits li::before { content: "✕"; color: var(--fail); font-weight: 700; font-size: 11px; }
+.limit-badge {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--tone);
+  font-size: 11px;
+  font-weight: 600;
+}

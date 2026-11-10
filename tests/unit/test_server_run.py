@@ -105,7 +105,7 @@ def test_s02_ac12_health_describes_profiles_and_examples(tmp_path: Path) -> None
     body = client(tmp_path, workspace=CLOUDCO).get("/api/health").json()["workspace"]
     assert body["title"] == "Contract Assistant"
     assert body["owner"] == "CloudCo"
-    assert [p["id"] for p in body["profiles"]] == ["sales", "engineering", "finance", "cfo"]
+    assert [p["id"] for p in body["profiles"]] == ["sales", "engineering"]  # D-74
     assert body["examples"]
 
 
@@ -137,7 +137,11 @@ def test_s04_ac11_harness_endpoint_shows_what_a_run_gets(tmp_path: Path) -> None
     assert body["subagents"][0]["name"] == "clause-reviewer"
     assert body["remote_tools"] == []  # no MCP servers: every tool runs locally
     assert set(body) >= {"context", "skills", "tools", "subagents", "memory", "guardrails", "loop"}
-    assert body["guardrails"]["risks"] == {"read": 3, "write": 0, "action": 1}  # D-73
+    guard = body["guardrails"]
+    assert guard["profile"] == "Engineering"
+    assert "send_to_customer" in guard["not_allowed"]  # Engineering can't send (S05)
+    assert "annual_value_usd" in guard["hidden_fields"]
+    assert guard["approvals"][0]["tool"] == "send_to_customer"
     assert web.get("/api/harness", params={"profile": "pirates"}).status_code == 400
     assert client(tmp_path, workspace=None).get("/api/harness").status_code == 409
 
@@ -161,3 +165,27 @@ def test_s04_ac12_run_refuses_unknown_switches(tmp_path: Path) -> None:
     assert "launch_rockets" in response.json()["detail"]
     too_many = {"task": "Hi", "off": {"tools": ["x"] * 200}}
     assert web.post("/api/run", headers=PAGE_HEADER, json=too_many).status_code == 422
+
+
+async def test_s05_ac12_the_page_answers_a_waiting_approval() -> None:
+    import asyncio
+
+    from agentic_harness.gate import ApprovalRequest
+    from agentic_harness.server.approvals import Approvals
+
+    approvals = Approvals()
+    request = ApprovalRequest("run-1", "c1", "send", {"body": "hi"}, "chart §3")
+    waiting = asyncio.create_task(approvals.ask(request))
+    await asyncio.sleep(0)
+    assert approvals.waiting() == ["c1"]
+    assert not approvals.answer("nope", True, "")  # nothing waits under that ID
+    assert approvals.answer("c1", False, "wrong price")
+    assert await waiting == (False, "wrong price")
+    assert approvals.waiting() == []
+
+
+def test_s05_ac12_approval_endpoint_needs_the_page_and_a_waiting_request(tmp_path: Path) -> None:
+    web = client(tmp_path, workspace=CLOUDCO)
+    body = {"call_id": "c1", "approved": True}
+    assert web.post("/api/approval", json=body).status_code == 403
+    assert web.post("/api/approval", headers=PAGE_HEADER, json=body).status_code == 404

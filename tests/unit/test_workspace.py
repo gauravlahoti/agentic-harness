@@ -155,3 +155,54 @@ def test_s03_ac3_tools_load_from_tools_py_with_the_decorator(tmp_path: Path) -> 
     )
     ws = Workspace.load(tmp_path)
     assert [(t.name, t.risk) for t in ws.tools] == [("find_widget", "read")]
+
+
+GATED = """
+[profiles.alpha]
+label = "Alpha"
+tools = ["find"]
+hide_fields = ["value"]
+
+[profiles.beta]
+label = "Beta"
+
+[[rules]]
+id = "price-never"
+label = "Price above 50"
+tool = "send"
+arg = "price"
+above = 50
+because = "terms §2"
+
+[[approvals]]
+tool = "send"
+because = "chart §3"
+"""
+
+
+GATED_TOOLS = (
+    "from agentic_harness.tools.registry import tool\n\n"
+    '@tool(risk="read")\ndef find(item: str) -> str:\n    """Find."""\n    return item\n\n'
+    '@tool(risk="action")\ndef send(price: int = 0) -> str:\n    """Send."""\n    return "sent"\n\n'
+    "TOOLS = [find, send]\n"
+)
+
+
+def test_s05_ac1_profiles_rules_and_approvals_come_from_workspace_toml(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text(GATED)
+    (tmp_path / "tools.py").write_text(GATED_TOOLS)
+    ws = Workspace.load(tmp_path)
+    alpha, beta = ws.profiles
+    assert (alpha.tools, alpha.hide_fields) == (("find",), ("value",))
+    assert beta.tools is None  # no list: every tool
+    gate = ws.gate("alpha")
+    assert gate.check("send", {}).rule == "profile-tools"
+    assert ws.gate("beta").check("send", {"price": 60}).rule == "price-never"
+    assert ws.gate("beta").check("send", {"price": 1}).kind == "ask"
+
+
+def test_s05_ac1_bad_rules_are_clear_errors(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text(GATED.replace("above = 50", ""))
+    (tmp_path / "tools.py").write_text(GATED_TOOLS)
+    with pytest.raises(WorkspaceError, match="price-never"):
+        Workspace.load(tmp_path)

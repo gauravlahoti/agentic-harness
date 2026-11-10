@@ -27,7 +27,7 @@ All of it is declared in `workspace.toml` and enforced by `src/agentic_harness/g
 |---|---|---|
 | S05-AC1 | Profiles come from `workspace.toml`; the model can't read or change them | 🧪 |
 | S05-AC2 | Tools outside the profile are hidden from Gemini and blocked by the gate if called | 🧪 |
-| S05-AC3 | Fields are masked per profile (Engineering never sees prices or payments) | 🧪 |
+| S05-AC3 | Fields in structured results are masked per profile (Engineering never sees prices or payments) | 🧪 |
 | S05-AC4 | Memory files, skills and policies are read-only for everyone, the agent included | 🧪 |
 | S05-AC5 | Writes only inside the current task folder | 🧪 |
 | S05-AC6 | "Never" rules always block and can't be approved | 🧪 |
@@ -35,7 +35,9 @@ All of it is declared in `workspace.toml` and enforced by `src/agentic_harness/g
 | S05-AC8 | A sub-agent's rights are always within its caller's | 🧪 |
 | S05-AC9 | Every block names the rule that blocked it | 🧪 |
 | S05-AC10 | Page: ⛔ and ⚠ cards, "This profile can…" panel | 👀 |
-| S05-AC11 | Live: the same question under 3 profiles gives 3 different, correct answers | 🔑 👀 |
+| S05-AC11 | Live: the same question as Sales and as Engineering gives 2 different, correct answers | 🔑 👀 |
+| S05-AC12 | `send_to_customer` waits for a person: approve runs it, reject sends the reason back; the wait doesn't count toward the time limit | 🧪 👀 |
+| S05-AC13 | Harness pane: Guardrails shows Permissions, Never allowed, Human in the loop for the current profile | 👀 |
 
 ## Key choices
 
@@ -58,3 +60,4 @@ All of it is declared in `workspace.toml` and enforced by `src/agentic_harness/g
 ## Changes
 
 - 2026-11-10 · Created (v3).
+- 2026-11-10 · Brief approved (D-75–D-80) with your changes: two profiles (D-74); human approval for `send_to_customer` moved here from S06 (D-79, AC12); Guardrails pane in three parts (AC13); AC3 covers structured fields; no permissions-off switch.

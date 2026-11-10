@@ -16,6 +16,7 @@ from pathlib import Path
 
 from agentic_harness import __version__
 from agentic_harness.events import Event
+from agentic_harness.gate import ApprovalRequest
 
 # Fixed, not an option: nothing on your network can reach the harness (D-20).
 HOST = "127.0.0.1"
@@ -102,6 +103,7 @@ def run(args: argparse.Namespace) -> int:
             # A helper may name its own model (D-62).
             model_factory=lambda name: GeminiModel(replace(settings, model=name)),
             delegation=not args.no_delegation,
+            approver=ask_in_terminal,  # a person answers y/N here (D-79)
         )
     except WorkspaceError as error:
         print(error, file=sys.stderr)
@@ -110,6 +112,19 @@ def run(args: argparse.Namespace) -> int:
     result = asyncio.run(harness.run(args.task))
     print(f"trace: {trace_dir / (result.run_id + '.jsonl')}")
     return 0 if result.outcome == "completed" else 1
+
+
+async def ask_in_terminal(request: ApprovalRequest) -> tuple[bool, str]:
+    """Human in the loop, in the terminal: show what would happen, wait for y/N."""
+    print(f"  ⏸ {request.tool} needs your approval · {request.because}")
+    for key, value in request.arguments.items():
+        print(f"      {key}: {value}")
+    try:
+        answer = await asyncio.to_thread(input, "    Approve? [y/N] ")
+    except EOFError:  # no terminal to ask: the answer is no
+        return False, "no one at the terminal"
+    approved = answer.strip().lower() in ("y", "yes")
+    return approved, "" if approved else "rejected in the terminal"
 
 
 def print_event(event: Event) -> None:
@@ -139,8 +154,18 @@ def print_event(event: Event) -> None:
         mark = "📖" if d.get("part") == "context" else "⚙"
         print(f"  {mark} {d['name']}({args})")
     elif event.type == "tool_finished":
+        if blocked := d.get("blocked"):
+            print(f"    ⛔ blocked: {blocked['label']} ({blocked['because']})")
+            return
         mark = "✗" if d["is_error"] else "✓"
         print(f"    {mark} {d['output'][:200]}")
+        if d.get("hidden"):
+            print(f"    🔒 hidden: {', '.join(d['hidden'])}")
+        if d.get("flags"):
+            print(f"    ⚠ flagged: {d['flags'][0]!r}")
+    elif event.type == "approval_decided":
+        verdict = "✓ approved" if d["approved"] else "✗ rejected"
+        print(f"    {verdict}{': ' + d['note'] if d['note'] else ''}")
     elif event.type == "run_finished":
         if d["answer"]:
             print(f"\n{d['answer']}\n")

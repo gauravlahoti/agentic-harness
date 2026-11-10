@@ -17,7 +17,7 @@ from typing import Any
 
 from agentic_harness.context import build_context
 from agentic_harness.limits import Limits
-from agentic_harness.loop import Harness
+from agentic_harness.loop import Approver, Harness
 from agentic_harness.model import ModelClient
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.skills import load_skill_tool
@@ -29,7 +29,7 @@ from agentic_harness.subagents import (
     child_system,
     delegate_tool,
 )
-from agentic_harness.tools import RISKS, Tool
+from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
 from agentic_harness.workspace import Workspace, WorkspaceError
@@ -67,6 +67,7 @@ def create_harness(
     model_factory: ModelFactory | None = None,
     delegation: bool = True,
     off: Off | None = None,
+    approver: Approver | None = None,
 ) -> Harness:
     """A harness for this model, workspace and profile.
 
@@ -79,6 +80,7 @@ def create_harness(
     profile = workspace.check_profile(profile)
     off = _check_off(workspace, profile, off or Off())
     context = build_context(workspace, profile, skip_skills=off.skills)
+    gate = workspace.gate(profile)  # what this profile may use, see, never do, must ask (S05)
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.
     available = _tools(workspace, off)
@@ -93,8 +95,9 @@ def create_harness(
         models = {a.name: _helper_model(a, model, model_factory, prices) for a in helpers}
 
         def make_child(agent: SubAgent, child_limits: Limits) -> Harness:
-            # Only its declared tools that are still on; never delegate_task (D-58).
-            own = [available[name] for name in agent.tools if name in available]
+            # Only its declared tools that are still on and that its caller may use;
+            # never delegate_task (D-58). Same gate as its caller (S05-AC8).
+            own = [available[n] for n in agent.tools if n in available and gate.allows(n)]
             return Harness(
                 models[agent.name],
                 child_limits,
@@ -104,6 +107,7 @@ def create_harness(
                 context={"subagent": agent.name, "instructions": agent.source},
                 root=workspace.path,
                 readable=workspace.readable,
+                gate=gate,
             )
 
         tools.append(delegate_tool(helpers, make_child))
@@ -118,6 +122,8 @@ def create_harness(
         root=workspace.path,  # where tools may read (readable) and write (tasks/, outbox/)
         readable=workspace.readable,
         off=off.summary(),
+        gate=gate,
+        approver=approver,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
@@ -186,15 +192,14 @@ def describe_harness(
             },
             "prompt_id": context.prompt_id,
         },
+        # Guardrails in three parts (S05): Permissions, Never allowed, Human in the loop.
         "guardrails": {
-            "risks": {risk: sum(t.risk == risk for t in tools) for risk in RISKS},
-            "readable": list(workspace.readable),
+            **workspace.gate(profile).summary(tools),
             "writes": ["tasks/<run-id>/", "outbox/"],
-            "helpers": "read-only tools, cannot delegate (depth 1)",
-            "actions_ask_first": False,  # nothing asks a person yet: approvals come in S06
-            "planned": [
-                {"stage": "S05", "what": "tools and fields per profile, protected files"},
-                {"stage": "S06", "what": "a person approves actions before they run"},
+            "protected": [
+                "workspace.toml",
+                *(f.path for f in context.files),
+                *(d.replace("{profile}", profile or "") for d in workspace.skill_dirs),
             ],
         },
         "memory": {

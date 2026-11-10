@@ -187,12 +187,32 @@ def send_to_customer(
     subject: str,
     body: Annotated[str, "The full message"],
     ctx: ToolContext,
+    discount_pct: Annotated[int | None, "Discount offered, in percent, if any"] = None,
+    payment_days: Annotated[int | None, "Payment terms offered, in days (Net 45 → 45)"] = None,
+    uptime_pct: Annotated[float | None, "Uptime promised, in percent"] = None,
+    liability_cap_months: Annotated[int | None, "Liability cap offered, in months of fees"] = None,
+    unlimited_liability: Annotated[
+        bool, "True only if the message accepts unlimited liability"
+    ] = False,
 ) -> dict[str, str]:
-    """Send a message to a customer. Use it only when the person you are helping asked
-    you to send. This demo never emails: the message is saved to the local outbox."""
+    """Send a message to a customer. Use it only when the person you are helping asked you
+    to send. Fill in every term the message offers (discount, payment days, uptime,
+    liability): the harness checks them against CloudCo's limits, and a person approves
+    the message before it goes. This demo never emails: it is saved to the local outbox."""
     row = _customer(customer_id)
+    offered = {
+        "Discount": f"{discount_pct}%" if discount_pct is not None else None,
+        "Payment": f"Net {payment_days}" if payment_days is not None else None,
+        "Uptime": f"{uptime_pct}%" if uptime_pct is not None else None,
+        "Liability cap": "unlimited"
+        if unlimited_liability
+        else (
+            f"{liability_cap_months} months of fees" if liability_cap_months is not None else None
+        ),
+    }
+    terms = "\n".join(f"- {k}: {v}" for k, v in offered.items() if v) or "- none"
     footer = "(Local outbox: not sent. Fictional demo.)"
-    text = f"To: {row['id']}\nSubject: {subject}\n\n{body}\n\n{footer}\n"
+    text = f"To: {row['id']}\nSubject: {subject}\n\n{body}\n\nOffered terms:\n{terms}\n\n{footer}\n"
     saved = ctx.save_outbox_file(f"{ctx.run_id}-to-{row['id']}.md", text)
     return {"saved": saved, "status": "saved to the local outbox, not sent"}
 

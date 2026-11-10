@@ -21,12 +21,13 @@ import asyncio
 import hashlib
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
 from agentic_harness.events import Event, EventBus, Listener
+from agentic_harness.gate import ApprovalRequest, Gate
 from agentic_harness.limits import Budget, Limits
 from agentic_harness.model import ModelClient, ModelError, Step
 from agentic_harness.pricing import Prices
@@ -44,6 +45,10 @@ SYSTEM_PROMPT = (
 )
 
 Outcome = Literal["completed", "stopped", "failed"]
+
+# A person's answer to an approval request: (approved, note). The server and CLI supply one.
+Approver = Callable[[ApprovalRequest], Awaitable[tuple[bool, str]]]
+APPROVAL_TIMEOUT = 600.0  # seconds; no answer counts as "no" (D-79)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,15 +80,24 @@ class Harness:
         root: Path | None = None,
         readable: Sequence[str] = (),
         off: dict[str, list[str]] | None = None,
+        gate: Gate | None = None,
+        approver: Approver | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
         self.off = off or {}  # what was switched off for this harness (D-72)
+        self.gate = gate  # what this profile may use, see, never do, and must ask for (S05)
+        self.approver = approver  # who answers "may I?"; none means no (D-79)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
         self.tools = {tool.name: tool for tool in tools}
         self._bus = EventBus()
+
+    def visible_tools(self) -> list[Tool]:
+        """The tools the model is told about. A gated-out tool is hidden *and* blocked."""
+        tools = list(self.tools.values())
+        return self.gate.visible(tools) if self.gate else tools
 
     def subscribe(self, listener: Listener) -> None:
         self._bus.subscribe(listener)
@@ -91,7 +105,7 @@ class Harness:
     async def run(self, task: str) -> RunResult:
         run = _Run(self._bus)
         budget = Budget(self.limits)
-        declarations = [tool.declaration() for tool in self.tools.values()]
+        declarations = [tool.declaration() for tool in self.visible_tools()]
         steps: list[Step] = [user_input(task)]
         run.emit(
             "run_started",
@@ -179,15 +193,51 @@ class Harness:
         run.emit(
             "tool_started", call_id=call_id, name=name, arguments=arguments, part=part, risk=risk
         )
+        guard: dict[str, Any] = {}  # what the gate did, for the page and the trace
         if tool is None:
             output, is_error = f"Unknown tool: {name}", True
         else:
-            # A fresh context per call: it knows the call, so a saved file can be tied to it.
-            ctx = None
-            if self.root is not None:
-                ctx = ToolContext(run.id, self.root, self.readable, run.emit, call_id or "", budget)
-            result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
-            output, is_error = result.output, result.is_error
+            # The gate decides before anything runs (S05): ① profile, ② never rules, ③ a person.
+            decision = self.gate.check(name, arguments) if self.gate else None
+            if decision and decision.kind == "block":
+                guard["blocked"] = {
+                    "rule": decision.rule,
+                    "label": decision.label,
+                    "because": decision.because,
+                }
+                output = (
+                    f"Blocked by the harness: {decision.label} ({decision.because}). "
+                    "This can't be done or approved; tell the person instead of retrying."
+                )
+                is_error = True
+            else:
+                approved, note = True, ""
+                if decision and decision.kind == "ask":
+                    approved, note = await self._ask(
+                        run, call_id or "", name, arguments, decision.because, budget
+                    )
+                    guard["approval"] = {"approved": approved, "note": note}
+                if not approved:
+                    output = "A person rejected this, so it was not done" + (
+                        f": {note}" if note else "."
+                    )
+                    is_error = True
+                else:
+                    # A fresh context per call: it knows the call, so a file can be tied to it.
+                    ctx = None
+                    if self.root is not None:
+                        ctx = ToolContext(
+                            run.id, self.root, self.readable, run.emit, call_id or "", budget
+                        )
+                    result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
+                    output, is_error = result.output, result.is_error
+                    if self.gate and not is_error:
+                        seen = self.gate.inspect(output)  # ④ hide fields, ⑤ flag instructions
+                        output = seen.output
+                        if seen.hidden:
+                            guard["hidden"] = seen.hidden
+                        if seen.flags:
+                            guard["flags"] = seen.flags
         run.emit(
             "tool_finished",
             call_id=call_id,
@@ -196,6 +246,7 @@ class Harness:
             is_error=is_error,
             part=part,
             risk=risk,
+            **guard,
         )
         result_step: Step = {
             "type": "function_result",
@@ -206,6 +257,32 @@ class Harness:
         if is_error:
             result_step["is_error"] = True
         return result_step
+
+    async def _ask(
+        self,
+        run: "_Run",
+        call_id: str,
+        name: str,
+        arguments: dict[str, Any],
+        because: str,
+        budget: Budget,
+    ) -> tuple[bool, str]:
+        """Pause for a person. The wait is not run time: it doesn't count toward the limit."""
+        run.emit(
+            "approval_requested", call_id=call_id, name=name, arguments=arguments, because=because
+        )
+        started = budget.elapsed()
+        if self.approver is None:
+            approved, note = False, "no one is here to approve it"
+        else:
+            request = ApprovalRequest(run.id, call_id, name, dict(arguments), because)
+            try:
+                approved, note = await asyncio.wait_for(self.approver(request), APPROVAL_TIMEOUT)
+            except TimeoutError:
+                approved, note = False, "no answer in 10 minutes"
+        budget.exclude(budget.elapsed() - started)
+        run.emit("approval_decided", call_id=call_id, name=name, approved=approved, note=note)
+        return approved, note
 
 
 class _Run:

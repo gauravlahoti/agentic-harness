@@ -29,6 +29,7 @@ from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
 from agentic_harness.limits import Limits
 from agentic_harness.model import GeminiModel, ModelClient
 from agentic_harness.pricing import PriceNotFoundError, load_prices
+from agentic_harness.server.approvals import Approvals
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
 from agentic_harness.workspace import Workspace, WorkspaceError
@@ -61,6 +62,14 @@ class OffRequest(BaseModel):
     subagents: list[Name] = Field(default_factory=list, max_length=100)
 
 
+class ApprovalAnswer(BaseModel):
+    """A person's click on a ⏸ card: approve or reject one waiting tool call (D-79)."""
+
+    call_id: str = Field(min_length=1, max_length=200)
+    approved: bool
+    note: str = Field(default="", max_length=500)
+
+
 class RunRequest(BaseModel):
     """What the page may send: a task, and optionally a model, profile and switches."""
 
@@ -86,6 +95,7 @@ def create_app(
     app = FastAPI(title="agentic-harness", version=__version__, docs_url=None, redoc_url=None)
     app.state.checks_running = False
     app.state.run_active = False
+    approvals = Approvals()  # tool calls waiting for the person on the page
     priced_models = load_prices().models()
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 
@@ -142,6 +152,14 @@ def create_app(
         except WorkspaceError as error:
             raise HTTPException(400, str(error)) from None
 
+    @app.post("/api/approval")
+    async def approval(request: Request, body: ApprovalAnswer) -> dict[str, bool]:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        if not approvals.answer(body.call_id, body.approved, body.note):
+            raise HTTPException(404, "Nothing is waiting for that approval.")
+        return {"ok": True}
+
     @app.post("/api/checks")
     async def checks(request: Request) -> StreamingResponse:
         # No parameters and no body: the page can start the fixed command, nothing more.
@@ -191,6 +209,7 @@ def create_app(
                 # A helper may name its own model (D-62); same settings, other name.
                 model_factory=lambda helper: model_factory(replace(settings, model=helper)),
                 off=off,
+                approver=approvals.ask,  # the page's ⏸ card answers (D-79)
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None

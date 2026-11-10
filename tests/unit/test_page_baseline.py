@@ -75,3 +75,20 @@ def test_s04_ac11_harness_pane_and_switches() -> None:
 def test_s04_ac9_subagent_lane_and_ac13_off_on_the_started_line() -> None:
     assert "agent_id" in JS  # child events go to their lane
     assert "d.off" in JS  # the Started line says what was off
+
+
+def test_s05_ac10_ac12_ac13_guardrails_on_the_page() -> None:
+    for piece in (
+        '"approval_requested"',
+        "/api/approval",
+        "⛔ Blocked",
+        "⚠ Flagged",
+        "Human in the loop",
+    ):
+        assert piece in JS, f"S05 piece missing from app.js: {piece}"
+    for rule in (".approval-card", ".part-guard", ".is-locked"):
+        assert rule in CSS, f"S05 style missing from app.css: {rule}"
+
+
+def test_s05_ac12_approval_card_scrolls_above_the_input_box() -> None:
+    assert "scroll-margin-bottom" in CSS  # the docked composer must not cover Approve

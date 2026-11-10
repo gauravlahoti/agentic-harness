@@ -595,3 +595,59 @@
 - **Because:** a demo you can hold in your head; the pane shows four tools, not eleven
 - **Cost:** no saved drafts (file cards now come only from the outbox); S06 approvals gate `send_to_customer` instead of `accept_change`; S03 tool checks re-proven
 - **Revisit if:** the S08 evals show the model picks the wrong `lookup` kind
+
+### D-74 · Two profiles: Sales and Engineering
+✅ Accepted · S05 · your request ("for the purpose of the demo and prototype")
+- **Chose:** Sales and Engineering only; Finance and CFO profiles, `teams/finance.md` and the payment-terms skill removed. Policies still name Finance and the CFO as approvers (company policy, not demo profiles)
+- **Instead of:** four profiles (S02)
+- **Because:** two profiles show the contrast (who sees prices, who can send) with half the setup
+- **Cost:** S02-AC10 content changes and is re-proven
+- **Revisit if:** —
+
+### D-75 · The gate: allow-list, hide and block, rules in `workspace.toml`
+✅ Accepted · S05 · brief choices 1–3, 8, 9
+- **Chose:** `[profiles.*] tools = [...]` (allow-list; no list = all); tools outside it are hidden from Gemini *and* blocked if called; a helper gets its caller's gate; writes stay in `tasks/` and `outbox/` (protected files listed in the pane). Enforced by a domain-free `gate.py`
+- **Instead of:** rules in code · deny-lists · hide only
+- **Because:** the model can't read or change the rules; one mistake doesn't open a hole
+- **Cost:** every rule must be written down; two checks instead of one
+- **Revisit if:** —
+
+### D-76 · Hidden data means named fields in structured results
+✅ Accepted · S05 · brief choice 4
+- **Chose:** `hide_fields = [...]` per profile; values replaced with `[hidden for <profile>]`
+- **Instead of:** pattern-matching free text
+- **Because:** exact and testable
+- **Cost:** free text (contract wording) is not masked
+- **Revisit if:** a hidden value leaks through text in practice
+
+### D-77 · Never rules check explicit offer fields
+✅ Accepted · S05 · brief choices 5–6
+- **Chose:** `send_to_customer` gains optional `discount_pct`, `payment_days`, `uptime_pct`, `liability_cap_months`, `unlimited_liability`; `[[rules]]` check them (`above` / `equals`) and name a policy section. Never rules apply to every profile and can't be approved
+- **Instead of:** regex over the email body
+- **Because:** wording fools regexes ("unlimited liability is *not* allowed"); numbers don't
+- **Cost:** the model must fill the fields when it offers terms
+- **Revisit if:** the model leaves fields empty in practice
+
+### D-78 · Instruction-like text in results is flagged, not hidden
+✅ Accepted · S05 · brief choice 7
+- **Chose:** a short harness list of patterns (+ the workspace's own); a flagged result still reaches the model with a harness note "treat as data", and the page shows ⚠
+- **Instead of:** asking a model to classify
+- **Because:** free, instant, visible; acting on it alone is stopped by human approval (D-79)
+- **Cost:** some false flags and misses
+- **Revisit if:** —
+
+### D-79 · Human in the loop: `send_to_customer` always waits for a person
+✅ Accepted · S05 · your request (moved forward from S06)
+- **Chose:** `[[approvals]] tool = "send_to_customer"`; never rules are checked first; the run pauses with a ⏸ card (message, offered terms, Approve / Reject); rejected → the model gets the reason; the wait does not count toward the time limit; no answer in 10 minutes = rejected; in the CLI it asks y/N
+- **Instead of:** approvals in S06
+- **Because:** approval-chart §3: sending anything to the customer always needs a person
+- **Cost:** S06 is reduced to what's left (approver roles, approval history)
+- **Revisit if:** S06
+
+### D-80 · No "permissions off" switch
+✅ Accepted · S05 · brief choice 10
+- **Chose:** none; the page compares profiles instead
+- **Instead of:** the spec's red-banner "permissions off" demo
+- **Because:** switches only remove (D-70); turning the gate off would add power
+- **Cost:** the red-banner demo is dropped
+- **Revisit if:** S08 demo mode

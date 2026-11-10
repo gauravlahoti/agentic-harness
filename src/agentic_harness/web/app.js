@@ -313,7 +313,7 @@ function newTurn(task) {
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map() };
+  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
@@ -489,8 +489,9 @@ function onEvent(ev, turn) {
   } else if (ev.type === "tool_finished") {
     const started = turn.tools.get(d.call_id);
     if (started) {
+      const blocked = d.blocked;
       setActivity(started.row, {
-        text: started.label,
+        text: blocked ? `⛔ Blocked · ${started.label} · ${blocked.label} (${blocked.because})` : started.label,
         state: d.is_error ? "error" : "done",
         facts: [
           // One row per argument, so a long draft doesn't swallow the others.
@@ -498,13 +499,32 @@ function onEvent(ev, turn) {
             ? Object.entries(started.arguments).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])
             : [["Arguments", "none"]]),
           ...(d.risk ? [["Risk", d.risk]] : []),
+          ...(d.blocked ? [["Blocked by", `${d.blocked.rule}: ${d.blocked.label} (${d.blocked.because})`]] : []),
+          ...(d.hidden ? [["Hidden", `${d.hidden.join(", ")} (not for this profile)`]] : []),
           ["Output", d.output],
           ["Call ID", d.call_id ?? "–"],
           ["Sent back as", d.is_error ? "an error the model can read" : "a result"],
         ],
         raw: d,
       });
+      // ⚠ A result that tries to instruct the AI gets its own Guardrail line (D-78).
+      if (d.flags?.length) {
+        addActivity(turn, {
+          text: `⚠ Flagged · ${d.name} returned text that tries to instruct the AI`,
+          part: "guard",
+          state: "done",
+          facts: [
+            ["Text", d.flags[0]],
+            ["What happened", "The model was told it is data, not an instruction. Actions still need a person."],
+          ],
+          raw: { flags: d.flags },
+        });
+      }
     }
+  } else if (ev.type === "approval_requested") {
+    turn.approvals.set(d.call_id, approvalCard(turn, d));
+  } else if (ev.type === "approval_decided") {
+    turn.approvals.get(d.call_id)?.decided(d);
   } else if (ev.type === "file_saved") {
     turn.files.append(fileCard(d));
   } else if (ev.type === "run_finished") {
@@ -557,6 +577,59 @@ function onLaneEvent(ev, turn) {
   } else {
     onEvent({ ...ev, data }, lane); // same lines as the main agent, in the lane
   }
+}
+
+// ⏸ Human in the loop (D-79): the run waits here until you approve or reject.
+function approvalCard(turn, d) {
+  const row = addActivity(turn, {
+    text: `⏸ Waiting for your approval · ${d.name}`,
+    part: "guard",
+    facts: [["Why", d.because]],
+    raw: d,
+  });
+  const card = el("div", "approval-card");
+  const terms = facts(
+    Object.entries(d.arguments ?? {})
+      .filter(([, v]) => v !== null && v !== false && v !== "")
+      .map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)]),
+  );
+  const buttons = el("div", "approval-actions");
+  const approve = el("button", "approve", "Approve");
+  const reject = el("button", "reject", "Reject");
+  for (const b of [approve, reject]) b.type = "button";
+  buttons.append(approve, reject);
+  card.append(el("p", "approval-why", d.because), terms, buttons);
+  row.li.append(card);
+  card.scrollIntoView({ block: "nearest" });
+  announce(`${d.name} is waiting for your approval`);
+
+  async function answer(approved) {
+    approve.disabled = reject.disabled = true;
+    try {
+      const response = await fetch("/api/approval", {
+        method: "POST",
+        headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
+        body: JSON.stringify({ call_id: d.call_id, approved, note: approved ? "" : "rejected on the page" }),
+      });
+      if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    } catch (error) {
+      approve.disabled = reject.disabled = false;
+      card.append(el("p", "approval-error", `Couldn't send your answer: ${error.message}`));
+    }
+  }
+  approve.addEventListener("click", () => answer(true));
+  reject.addEventListener("click", () => answer(false));
+
+  return {
+    decided(result) {
+      buttons.remove();
+      setActivity(row, {
+        text: `${result.approved ? "✓ Approved by you" : "✗ Rejected by you"} · ${d.name}`,
+        state: result.approved ? "done" : "error",
+      });
+      card.classList.add(result.approved ? "approved" : "rejected");
+    },
+  };
 }
 
 // A file a tool saved: name and place on the card, the text when opened (D-53).
@@ -700,13 +773,14 @@ function switchFor(kind, name) {
 }
 
 // A line you can open: name and tags on top, the details below.
-function paneItem({ kind, name, tags = [], detail, off }) {
-  const li = el("li", `pane-item${off ? " is-off" : ""}`);
+function paneItem({ kind, name, tags = [], detail, off, locked = false }) {
+  const li = el("li", `pane-item${locked ? " is-locked" : off ? " is-off" : ""}`);
   const details = el("details");
   const summary = el("summary");
   summary.append(el("span", "item-name", name), ...tags, fromTemplate("tpl-chevron"));
   details.append(summary, detail);
-  if (kind) li.append(switchFor(kind, name));
+  // A locked item is a permission (S05), not a switch: nothing to turn on here.
+  li.append(kind && !locked ? switchFor(kind, name) : el("span", "switch-spacer"));
   li.append(details);
   return li;
 }
@@ -776,11 +850,14 @@ function renderPane() {
       const tags = [el("span", `act-risk risk-${t.risk}`, t.risk)];
       if (t.source === "built-in") tags.push(el("span", "pane-tag", "built-in"));
       if (t.delegate_only) tags.push(el("span", "pane-tag", "helper only"));
+      const locked = info.guardrails.not_allowed.includes(t.name);
+      if (locked) tags.push(el("span", "pane-tag", `not for ${info.guardrails.profile}`));
       const params = Object.entries(t.parameters?.properties ?? {}).map(([k, v]) => `${k}: ${v.type}${v.enum ? ` (${v.enum.join(", ")})` : ""}`);
       return paneItem({
         kind: "tools",
         name: t.name,
         tags,
+        locked,
         off: off.tools.includes(t.name),
         // Docstrings wrap at 100 characters; show them as one flowing paragraph.
         detail: facts([["Description", t.description.replace(/\s*\n\s*/g, " ")], ["Parameters", params.join("\n") || "none"]]),
@@ -819,21 +896,69 @@ function renderPane() {
   const m = info.memory.planned;
   const memory = paneSection("memory", "Memory", `${m.stage}`, [el("p", "pane-note", `Not built yet (${m.stage}): ${m.what}.`)]);
 
-  // Guardrails: what protects you today, and what is still missing.
+  // Guardrails (S05): three colour-coded cards, so allowed vs blocked vs "asks you" reads at a glance.
   const g = info.guardrails;
-  const guardBody = [
-    facts([
-      ["Risk levels", `${g.risks.read} read · ${g.risks.write} write · ${g.risks.action} action`],
-      ["Can read", g.readable.map((f) => `${f}/`).join(", ") || "nothing"],
-      ["Writes only to", g.writes.join(", ")],
-      ["Helpers", g.helpers],
-    ]),
-  ];
-  if (!g.actions_ask_first && g.risks.action) guardBody.push(el("p", "pane-warn", `${plural(g.risks.action, "action")} run without asking anyone.`));
-  const planned = el("ul", "pane-list");
-  planned.append(...g.planned.map((p) => el("li", "pane-line muted", `${p.stage} · ${p.what}`)));
-  guardBody.push(subhead("Planned", g.planned.map((p) => p.stage).join(" · ")), planned);
-  const guard = paneSection("guard", "Guardrails", g.actions_ask_first ? "on" : "partial", guardBody);
+  const chips = (items, kind) => {
+    const box = el("div", "chips");
+    box.append(...items.map((item) => el("span", `chip chip-${kind}`, item)));
+    return box;
+  };
+  const group = (label, content) => {
+    const row = el("div", "guard-group");
+    row.append(el("span", "guard-label", label), typeof content === "string" ? el("span", "guard-text", content) : content);
+    return row;
+  };
+  const card = (tone, icon, title, note, body) => {
+    const box = el("section", `guard-card tone-${tone}`);
+    const head = el("header", "guard-head");
+    head.append(el("span", "guard-icon", icon), el("span", "guard-title", title), el("span", "guard-note", note));
+    box.append(head, ...body);
+    return box;
+  };
+  const section = (because) => because.match(/§\d+/)?.[0] ?? because;
+  const limits = el("ul", "guard-limits");
+  limits.append(
+    ...g.never.map((r) => {
+      const li = el("li");
+      const badge = el("span", "limit-badge", section(r.because));
+      badge.title = r.because; // the full policy name on hover
+      li.append(el("span", "limit-label", r.label), badge);
+      return li;
+    }),
+  );
+  const allowedCard = card("ok", "✓", "Allowed", `for ${g.profile}`, [
+    group("Tools", chips(g.allowed, "ok")),
+    group("Data", g.hidden_fields.length ? "Everything except the hidden fields" : "All fields"),
+    group("Writes to", chips(g.writes, "path")),
+  ]);
+  const notAllowedCard = card("no", "✕", "Not allowed", "blocked by the harness", [
+    ...(g.not_allowed.length ? [group("Tools", chips(g.not_allowed, "no"))] : []),
+    ...(g.hidden_fields.length ? [group("Hidden data", chips(g.hidden_fields, "hidden"))] : []),
+    group("Locked files", chips(g.protected, "locked")),
+    ...(g.never.length ? [group("Hard limits", el("span", "guard-text", "No one can approve these")), limits] : []),
+  ]);
+  const hitl = el("ul", "guard-limits guard-hitl");
+  hitl.append(
+    ...g.approvals.map((a) => {
+      const li = el("li");
+      const why = a.because.replace(/^[^:]*:\s*/, "");
+      const badge = el("span", "limit-badge", section(a.because));
+      badge.title = a.because;
+      const chip = el("span", "chips");
+      chip.append(el("span", "chip chip-pause", a.tool));
+      li.append(chip, badge, el("span", "limit-label", why)); // tool + section, then why
+      return li;
+    }),
+  );
+  const pauseCard = card("pause", "⏸", "Human in the loop", "always asks you first", [
+    g.approvals.length ? hitl : el("p", "pane-note", "Nothing waits for a person"),
+  ]);
+  const guardBody = [allowedCard, notAllowedCard, pauseCard];
+  // Say so plainly if an action this profile may use would run without a person.
+  const asks = new Set(g.approvals.map((a) => a.tool));
+  const unguarded = info.tools.filter((t) => t.risk === "action" && g.allowed.includes(t.name) && !asks.has(t.name));
+  if (unguarded.length) guardBody.push(el("p", "pane-warn", `${plural(unguarded.length, "action")} run without asking anyone.`));
+  const guard = paneSection("guard", "Guardrails", `${plural(g.never.length, "hard limit")} · ${plural(g.approvals.length, "approval")}`, guardBody);
 
   // Agentic loop: the brakes and the model, for the next run.
   const l = info.loop;

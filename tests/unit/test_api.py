@@ -63,12 +63,12 @@ CLOUDCO = ROOT / "workspaces" / "cloudco"
 def test_s02_ac2_create_harness_builds_the_context(tmp_path: Path) -> None:
     model = GeminiModel(Settings(model="gemini-3.6-flash"), client=object())
     agent = create_harness(
-        model, Limits(), Workspace.load(CLOUDCO), profile="finance", trace_dir=None
+        model, Limits(), Workspace.load(CLOUDCO), profile="engineering", trace_dir=None
     )
-    assert "Finance team" in agent.system
+    assert "**Engineering**" in agent.system
     assert "load_skill" in agent.tools  # built in, because this profile has skills
     assert agent.tools["load_skill"].part == "context"
-    assert agent.context["profile"] == "finance"
+    assert agent.context["profile"] == "engineering"
     assert agent.context["prompt_id"] == agent.prompt_id
 
 
