@@ -956,7 +956,7 @@ function renderPane() {
   const pauseCard = card("pause", "⏸", "Human in the loop", "asks you first", [
     g.approvals.length
       ? list(g.approvals.map((a) => line(a.tool, a.because)))
-      : el("p", "guard-text", "Nothing here waits for a person"),
+      : el("p", "guard-text", `Not applicable for ${g.profile}`),
   ]);
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
   // Say so plainly if an action this profile may use would run without a person.
