@@ -74,3 +74,17 @@ Recorded by `scripts/record_gemini_shapes.py` into `tests/fixtures/gemini/` (mod
 - `documents/docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/interactions-api`
 - `documents/aistudio.google.com/docs/pricing`, `documents/aistudio.google.com/docs/billing`
 - SDK: `google/genai/_gaos/types/interactions/{functioncallstep,functionresultstep,thoughtstep,safetysetting}.py`, `google/genai/_gaos/google_genai.py` (continuation, retries)
+
+## Claude (Anthropic), from S09 (D-102)
+
+Checked 2026-11-10 against the `claude-api` reference (SDK `anthropic` 2.8.0).
+
+| Fact | Used in |
+|---|---|
+| Models `claude-haiku-5-5` ($0.10 / $0.50 per 1M, ≤100K-token prompts), `claude-sonnet-5-5` ($2 / $10; cache reads $0.20) | `pricing.toml` |
+| Effort: `output_config.effort` = low · medium · high (also xhigh, max); defaults: Haiku medium, Sonnet high. Thinking is adaptive and always on; `budget_tokens` is a 400 | `anthropic_model.py` |
+| Tool use: assistant `tool_use` {id, name, input}; reply with user `tool_result` {tool_use_id, content, is_error}; all results of one turn in one user message | `to_messages` |
+| Thinking blocks go back unchanged; a model that can't read a block drops it, unbilled | `to_messages` |
+| `stop_reason`: end_turn, tool_use, max_tokens, pause_turn, refusal | `STOP_TO_STATUS` |
+| Cache: top-level `cache_control: {type: "ephemeral"}`; writes 1.25× input, reads ~0.1×; minimum prefix 512 tokens on these models | `create`, `pricing.py` |
+| SDK retries 429/5xx twice by default → `max_retries=0` (D-42) | `_make_client` |

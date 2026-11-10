@@ -20,3 +20,17 @@ cached_input = 0.075   # doubles to 0.15 on 2027-01-01
 input = 0.30
 output = 2.50
 cached_input = 0.03
+
+# Claude (Anthropic), a paid option the person picks (D-102). Source: Anthropic's model table
+# in the claude-api reference, checked 2026-11-10. Cache reads ~0.1x input (Sonnet 5.5: $0.20);
+# cache writes 1.25x input (pricing.py). Haiku 5.5 doubles past 100K-token prompts (our
+# working window is 20K, so the lower price applies).
+[models."claude-haiku-5-5"]
+input = 0.10
+output = 0.50
+cached_input = 0.01
+
+[models."claude-sonnet-5-5"]
+input = 2.00
+output = 10.00
+cached_input = 0.20

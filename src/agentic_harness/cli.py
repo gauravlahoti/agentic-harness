@@ -73,17 +73,19 @@ def run(args: argparse.Namespace) -> int:
     from agentic_harness import config
     from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
     from agentic_harness.limits import Limits
-    from agentic_harness.model import GeminiModel, ModelClient
+    from agentic_harness.model import ModelClient, make_model
     from agentic_harness.workspace import Workspace, WorkspaceError
 
     workspace = Workspace.load(args.workspace)
     settings = config.load_settings()
     try:
-        model: ModelClient = GeminiModel(settings)
+        model: ModelClient = make_model(settings)
     except config.MissingKeyError as error:
         print(error, file=sys.stderr)
         return 2
-    secrets = [settings.api_key.reveal()] if settings.api_key else []  # kept out of traces
+    # Every key the run could touch is kept out of traces.
+    secrets = [k.reveal() for k in (settings.api_key, settings.anthropic_key) if k]
+    claude = settings.model.startswith(config.CLAUDE_PREFIX)
 
     defaults = Limits()
     limits = Limits(
@@ -101,7 +103,8 @@ def run(args: argparse.Namespace) -> int:
             trace_dir=trace_dir,
             secrets=secrets,
             # A helper may name its own model (D-62).
-            model_factory=lambda name: GeminiModel(replace(settings, model=name)),
+            model_factory=lambda name: make_model(replace(settings, model=name)),
+            small_model=config.CLAUDE_SMALL_MODEL if claude else None,  # D-103
             delegation=not args.no_delegation,
             approver=ask_in_terminal,  # a person answers y/N here (D-79)
         )

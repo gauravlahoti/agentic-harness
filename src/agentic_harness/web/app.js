@@ -206,6 +206,9 @@ const MODEL_KEY = "live-model";
 
 // "gemini-3.5-flash-lite" → "Gemini 3.5 Flash-Lite"
 function modelLabel(id) {
+  // claude-sonnet-5-5 → "Claude Sonnet 5.5" (D-102)
+  const claude = id.match(/^claude-([a-z]+)-(\d+)-(\d+)$/);
+  if (claude) return `Claude ${claude[1].charAt(0).toUpperCase() + claude[1].slice(1)} ${claude[2]}.${claude[3]}`;
   const [version, ...words] = id.replace(/^gemini-/, "").split("-");
   const tier = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("-");
   return `Gemini ${version} ${tier}`.trim();
@@ -452,7 +455,8 @@ function setUpModelPicker() {
   for (const id of health.models ?? []) {
     const option = el("option");
     option.value = id;
-    option.append(fromTemplate("tpl-spark"), el("span", null, modelLabel(id)));
+    // A neutral mark for Claude, so the menu shows at a glance which provider answers.
+    option.append(fromTemplate(id.startsWith("claude-") ? "tpl-claude" : "tpl-spark"), el("span", null, modelLabel(id)));
     pick.append(option);
   }
   let saved = null;

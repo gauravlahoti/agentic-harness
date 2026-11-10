@@ -74,6 +74,7 @@ def create_harness(
     off: Off | None = None,
     approver: Approver | None = None,
     memory_dir: Path | None = DEFAULT_MEMORY_DIR,
+    small_model: str | None = None,
 ) -> Harness:
     """A harness for this model, workspace and profile.
 
@@ -107,7 +108,9 @@ def create_harness(
     if workspace.ask_human:
         tools.append(ask_human_tool())  # the model may pause to ask a person (D-89)
     if helpers:
-        models = {a.name: _helper_model(a, model, model_factory, prices) for a in helpers}
+        models = {
+            a.name: _helper_model(a, model, model_factory, prices, small_model) for a in helpers
+        }
 
         def make_child(agent: SubAgent, child_limits: Limits) -> Harness:
             # Only its declared tools that are still on and that its caller may use;
@@ -130,16 +133,18 @@ def create_harness(
     check = None
     if workspace.scope:  # one small call per task, before the loop (D-81)
         check_model = model
-        if workspace.scope.model and workspace.scope.model != model.name and model_factory:
-            prices.for_model(workspace.scope.model)
-            check_model = model_factory(workspace.scope.model)
+        wanted = small_model or workspace.scope.model
+        if wanted and wanted != model.name and model_factory:
+            prices.for_model(wanted)
+            check_model = model_factory(wanted)
         check = scope_check(workspace.scope, check_model, prices)
     summarizer = None
     if workspace.window is not None:  # one small call, only when pruning is not enough (D-93)
         small = model
-        if workspace.summary_model and workspace.summary_model != model.name and model_factory:
-            prices.for_model(workspace.summary_model)
-            small = model_factory(workspace.summary_model)
+        wanted = small_model or workspace.summary_model
+        if wanted and wanted != model.name and model_factory:
+            prices.for_model(wanted)
+            small = model_factory(wanted)
         summarizer = ModelSummarizer(small, prices.cost)
     harness = Harness(
         model,
@@ -191,12 +196,18 @@ def _check_off(workspace: Workspace, profile: str | None, off: Off) -> Off:
 
 
 def _helper_model(
-    agent: SubAgent, parent: ModelClient, factory: ModelFactory | None, prices: Prices
+    agent: SubAgent,
+    parent: ModelClient,
+    factory: ModelFactory | None,
+    prices: Prices,
+    small_model: str | None = None,
 ) -> ModelClient:
-    if not agent.model or agent.model == parent.name or factory is None:
+    # ``small_model`` pins every helper to one model, e.g. Claude Haiku on a Claude run (D-103).
+    wanted = small_model or agent.model
+    if not wanted or wanted == parent.name or factory is None:
         return parent
-    prices.for_model(agent.model)  # a helper's model needs a price too, checked now
-    return factory(agent.model)
+    prices.for_model(wanted)  # a helper's model needs a price too, checked now
+    return factory(wanted)
 
 
 def describe_harness(

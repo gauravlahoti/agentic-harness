@@ -26,7 +26,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 import agentic_harness
 from agentic_harness import __version__
 from agentic_harness.api import DEFAULT_TRACE_DIR, Off, create_harness, describe_harness
-from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
+from agentic_harness.config import (
+    CLAUDE_PREFIX,
+    CLAUDE_SMALL_MODEL,
+    MISSING_ANTHROPIC_KEY,
+    MISSING_KEY_MESSAGE,
+    Settings,
+)
 from agentic_harness.events import Event
 from agentic_harness.limits import Limits
 from agentic_harness.memory import (
@@ -38,7 +44,7 @@ from agentic_harness.memory import (
     make_title,
     note_path,
 )
-from agentic_harness.model import GeminiModel, ModelClient
+from agentic_harness.model import ModelClient, make_model
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
 from agentic_harness.server.checks import run_checks
@@ -109,7 +115,7 @@ def create_app(
     workspace: Workspace | None = None,
     trace_dir: Path = DEFAULT_TRACE_DIR,
     memory_dir: Path | None = None,
-    model_factory: Callable[[Settings], ModelClient] = GeminiModel,
+    model_factory: Callable[[Settings], ModelClient] = make_model,
 ) -> FastAPI:
     """Build the app. ``project_root`` is where the Checks panel runs the tests.
 
@@ -120,7 +126,12 @@ def create_app(
     app.state.checks_running = False
     app.state.run_active = False
     approvals = Approvals()  # tool calls waiting for the person on the page
-    priced_models = load_prices().models()
+    # Claude shows only when its key is in .env: the person pays for it (D-104).
+    priced_models = [
+        m
+        for m in load_prices().models()
+        if not m.startswith(CLAUDE_PREFIX) or settings.has_anthropic_key
+    ]
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 
     @app.middleware("http")
@@ -243,7 +254,7 @@ def create_app(
         # "missing" is not an error: offline work never needs the key (S00-AC12, AC15).
         return {
             "server": "up",
-            "key": "present" if settings.has_key else "missing",
+            "key": "present" if settings.has_key or settings.has_anthropic_key else "missing",
             "version": __version__,
             "model": settings.model,
             "models": priced_models,
@@ -319,13 +330,18 @@ def create_app(
             profile = workspace.check_profile(body.profile)
         except WorkspaceError as error:
             raise HTTPException(400, str(error)) from None
-        if not settings.has_key and settings.backend == "gemini_api":
-            raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
         name = body.model or settings.model
+        claude = name.startswith(CLAUDE_PREFIX)
+        if claude and not settings.has_anthropic_key:
+            raise HTTPException(400, MISSING_ANTHROPIC_KEY)
+        if not claude and not settings.has_key and settings.backend == "gemini_api":
+            raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
         if name not in priced_models:
             raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
         model = model_factory(replace(settings, model=name, thinking=body.effort))
-        secrets = [settings.api_key.reveal()] if settings.api_key else []
+        # Every key the run could touch is scrubbed from its trace.
+        secrets = [k.reveal() for k in (settings.api_key, settings.anthropic_key) if k]
+        small = CLAUDE_SMALL_MODEL if claude else None  # a Claude run's small calls (D-103)
         off = Off(tuple(body.off.tools), tuple(body.off.skills), tuple(body.off.subagents))
         try:
             harness = create_harness(
@@ -342,6 +358,7 @@ def create_app(
                 off=off,
                 approver=approvals.ask,  # the page's ⏸ card answers (D-79)
                 memory_dir=memory_root,
+                small_model=small,
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None
@@ -380,7 +397,8 @@ def create_app(
         title_model = model_factory(
             replace(
                 settings,
-                model=workspace.title_model
+                model=small
+                or workspace.title_model
                 or (workspace.scope.model if workspace.scope and workspace.scope.model else name),
             )
         )

@@ -15,6 +15,7 @@ from importlib.resources import files
 from typing import Any
 
 PER = 1_000_000  # prices are per million tokens
+CACHE_WRITE = 1.25  # Claude's price for writing to its prompt cache, times input
 
 
 class PriceNotFoundError(LookupError):
@@ -54,10 +55,13 @@ class Prices:
 
         tokens_in = count("total_input_tokens") + count("total_tool_use_tokens")
         cached = count("total_cached_tokens")
+        # Claude bills writing to its cache at 1.25x input (Gemini reports no writes: 0).
+        written = count("total_cache_write_tokens")
         tokens_out = count("total_output_tokens") + count("total_thought_tokens")
         return (
-            max(tokens_in - cached, 0) * price.input
+            max(tokens_in - cached - written, 0) * price.input
             + cached * price.cached_input
+            + written * price.input * CACHE_WRITE
             + tokens_out * price.output
         ) / PER
 

@@ -29,7 +29,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 11/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 🟨 | 10/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
-| [S09](spec/stages/S09-production.md) | Production readiness | 📝 | 0/14 | 0/14 | 1 |
+| [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 
 ## Checks
 
@@ -205,11 +205,11 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC7 | Environment shows where tools run, read/write paths, network, what persists, and says "by convention" / "not restricted" where true | 👀 | 📝 |  |
 | AC8 | State & Memory separates run state from long-term memory; Tools shows what a helper gets and doesn't | 👀 | 📝 |  |
 | AC9 | Live: with the main model out of quota, a run finishes on the fallback | 🔑 👀 | 📝 |  |
-| AC10 | Claude Haiku 5.5 and Sonnet 5.5 are in the model menu when `ANTHROPIC_API_KEY` is set; a run on either works through the same loop, tools, gate and approvals | 🧪 👀 | 📝 |  |
-| AC11 | The loop's steps translate to Claude's messages and back; Claude's thinking blocks are kept exactly as received; switching provider mid-conversation drops only the other provider's thinking | 🧪 | 📝 |  |
-| AC12 | The effort menu maps to Claude's `output_config.effort` (Auto sends nothing); each Claude call is priced from `pricing.toml` | 🧪 | 📝 |  |
-| AC13 | On a Claude run, the helper, off-topic check, titles and summaries use Claude Haiku 5.5 | 🧪 | 📝 |  |
-| AC14 | No test and no `make live` run calls Anthropic: the key is used only for runs the person starts on the page or with the CLI | 🧪 | 📝 |  |
+| AC10 | Claude Haiku 5.5 and Sonnet 5.5 are in the model menu when `ANTHROPIC_API_KEY` is set; a run on either works through the same loop, tools, gate and approvals | 🧪 👀 | 🟨 | `test_anthropic_model.py` (a run on Claude goes through the same loop; the menu offers Claude only with its key; a Claude name gets the Claude client) · Chrome: Claude Haiku 5.5 / Sonnet 5.5 in the menu, no run made |
+| AC11 | The loop's steps translate to Claude's messages and back; Claude's thinking blocks are kept exactly as received; switching provider mid-conversation drops only the other provider's thinking | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac11_*` (4): steps ↔ messages, thinking passed back unchanged, each provider's thinking left out for the other |
+| AC12 | The effort menu maps to Claude's `output_config.effort` (Auto sends nothing); each Claude call is priced from `pricing.toml` | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac12_*` (2): effort → `output_config.effort`, Auto sends nothing; cache reads and 1.25× writes priced |
+| AC13 | On a Claude run, the helper, off-topic check, titles and summaries use Claude Haiku 5.5 | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac13_*`: on a Claude run, helper, check, summary and title models are all `claude-haiku-5-5` |
+| AC14 | No test and no `make live` run calls Anthropic: the key is used only for runs the person starts on the page or with the CLI | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac14_*` (2): key read from its own name and shown as `***`; no live test names a Claude model |
 
 ## Product goals
 
@@ -272,3 +272,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | Gap review (your 15 questions): answered from the code; S09 · Production readiness added after S08 (model fallback, checkpoint + Resume, 7-section pane). You chose fallback + Resume, not the environment scan or per-role effort. S09-AC1–AC9 → 📝. Choices D-97–D-100. |
 | 2026-11-10 | At your request (D-101): Memory pane split into Short-term and Long-term; pruning/summarizing moved to Context → Context management; new left-lane **Memory** page lists facts per profile with Forget. 288 offline tests; checked in Chrome (sample facts seeded, then forgotten through the page). |
 | 2026-11-10 | Claude Haiku 5.5 and Sonnet 5.5 added to S09 at your request (D-102–D-104): background calls on a Claude run use Haiku (your pick); never in tests or `make live`. You put `ANTHROPIC_API_KEY` in `.env` (git-ignored; added at your request). S09-AC10–AC14 → 📝. |
+| 2026-11-10 | Claude built early at your request ("implement it asap"): S09-AC10–AC14 → 🟨. 304 offline tests, none calls Anthropic; the menu checked in Chrome without a run. Not done: the server-side refusal fallback for Sonnet 5.5 (needs a beta; untestable without spending your key). The rest of S09 stays after S08. |

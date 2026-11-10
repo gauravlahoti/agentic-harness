@@ -87,7 +87,8 @@ class GeminiModel:
             "store": False,  # we own the history (D-04)
             "automatic_continuation": False,  # no hidden extra calls (D-29)
             "system_instruction": system,
-            "input": list(steps),
+            # Claude's thinking can't be read by Gemini: left out (D-102).
+            "input": [s for s in steps if s.get("provider") != "anthropic"],
         }
         if tools:
             request["tools"] = list(tools)
@@ -125,3 +126,14 @@ def _make_client(settings: Settings) -> Any:
             vertexai=True, project=settings.project, location=settings.location, http_options=http
         )
     return genai.Client(api_key=settings.require_key(), http_options=http)
+
+
+def make_model(settings: Settings) -> ModelClient:
+    """The client for this model name: Claude for ``claude-*``, Gemini otherwise (D-102)."""
+    from agentic_harness.config import CLAUDE_PREFIX
+
+    if settings.model.startswith(CLAUDE_PREFIX):
+        from agentic_harness.anthropic_model import AnthropicModel
+
+        return AnthropicModel(settings)
+    return GeminiModel(settings)

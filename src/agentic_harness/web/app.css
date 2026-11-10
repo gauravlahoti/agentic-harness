@@ -1336,3 +1336,4 @@ body.resizing iframe { pointer-events: none; }
 /* Agent · Memory · Checks on one line, even at the narrowest sidebar. */
 nav[aria-label="Sections"] { display: flex; flex-wrap: nowrap; gap: 2px; }
 nav[aria-label="Sections"] .nav-item { padding: 6px 9px; white-space: nowrap; }
+.claude-glyph { color: #c4683f; }

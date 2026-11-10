@@ -24,6 +24,11 @@ SECRET_ENV_NAMES = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
 MISSING_KEY_MESSAGE = "No Gemini key. Copy .env.example to .env and set GEMINI_API_KEY."
 
 DEFAULT_MODEL = "gemini-3.8-flash"  # D-07; model names live in config only
+# Claude (D-102 to D-104): a paid option the person picks. Its key has its own name.
+ANTHROPIC_KEY_NAME = "ANTHROPIC_API_KEY"
+CLAUDE_PREFIX = "claude-"
+CLAUDE_SMALL_MODEL = "claude-haiku-5-5"  # a Claude run's helper, checks and titles (D-103)
+MISSING_ANTHROPIC_KEY = "No Claude key. Add ANTHROPIC_API_KEY to .env, then restart."
 DEFAULT_ENV_FILE = Path(".env")
 
 
@@ -60,10 +65,21 @@ class Settings:
     location: str = "global"
     # How hard the model thinks: Gemini's ``thinking_level``. None: the model's own default.
     thinking: str | None = None
+    anthropic_key: Secret | None = None  # Claude's key, if the person added one (D-104)
 
     @property
     def has_key(self) -> bool:
         return self.api_key is not None
+
+    @property
+    def has_anthropic_key(self) -> bool:
+        return self.anthropic_key is not None
+
+    def require_anthropic_key(self) -> str:
+        """Return Claude's key for a call the person chose, or explain how to add one."""
+        if self.anthropic_key is None:
+            raise MissingKeyError(MISSING_ANTHROPIC_KEY)
+        return self.anthropic_key.reveal()
 
     def require_key(self) -> str:
         """Return the key for a live call, or explain how to add one."""
@@ -94,4 +110,5 @@ def load_settings(
         model=get("HARNESS_MODEL") or DEFAULT_MODEL,
         project=get("GOOGLE_CLOUD_PROJECT"),
         location=get("GOOGLE_CLOUD_LOCATION") or "global",
+        anthropic_key=Secret(claude) if (claude := get(ANTHROPIC_KEY_NAME)) else None,
     )
