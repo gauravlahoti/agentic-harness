@@ -13,7 +13,7 @@
   <script src="/static/theme.js" defer></script>
 </head>
 <body>
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="org" id="org">
       <img class="org-logo" id="org-logo" alt="" hidden width="40" height="40">
       <p class="org-name" id="org-name">No workspace loaded</p>
@@ -139,6 +139,8 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
     <span class="visually-hidden">Show the harness</span>
   </button>
+  <div class="lane-handle lane-left" id="lane-left" role="separator" aria-orientation="vertical" aria-label="Sidebar width (drag, or use the arrow keys)" aria-controls="sidebar" tabindex="0"></div>
+  <div class="lane-handle lane-right" id="lane-right" role="separator" aria-orientation="vertical" aria-label="Harness pane width (drag, or use the arrow keys)" aria-controls="harness-pane" tabindex="0" hidden></div>
   <aside class="harness-pane" id="harness-pane" aria-labelledby="pane-title" hidden>
     <header class="pane-head">
       <h2 id="pane-title">Harness</h2>

@@ -44,8 +44,11 @@
 body {
   margin: 0;
   min-height: 100vh;
+  /* The two side lanes: widths the person can drag (kept per browser). */
+  --left: 240px;
+  --right: 340px;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: var(--left) 1fr;
   background: var(--bg);
   color: var(--text);
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -840,7 +843,7 @@ details[open] > summary .chev { rotate: 180deg; }
 }
 
 /* ── Harness pane (S04): one section per harness part, colour by part ─────── */
-body:has(> .harness-pane:not([hidden])) { grid-template-columns: 240px 1fr 340px; }
+body:has(> .harness-pane:not([hidden])) { grid-template-columns: var(--left) 1fr var(--right); }
 .harness-pane {
   position: sticky;
   top: 0;
@@ -853,7 +856,7 @@ body:has(> .harness-pane:not([hidden])) { grid-template-columns: 240px 1fr 340px
   font-size: 13.5px;
 }
 .harness-pane[hidden] { display: none; }
-body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display: none; }
+body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle, .lane-right) { display: none; }
 .pane-head {
   position: sticky;
   top: 0;
@@ -1017,12 +1020,12 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 
 /* Narrow screens: the pane slides over the page instead of taking a column. */
 @media (max-width: 1100px) {
-  body:has(> .harness-pane:not([hidden])) { grid-template-columns: 240px 1fr; }
+  body:has(> .harness-pane:not([hidden])) { grid-template-columns: var(--left) 1fr; }
   .harness-pane {
     position: fixed;
     inset: 0 0 0 auto;
     z-index: 10;
-    width: min(360px, 100vw - 32px);
+    width: min(var(--right), 100vw - 32px);
     box-shadow: -8px 0 24px rgb(0 0 0 / 0.18);
   }
 }
@@ -1250,3 +1253,40 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 @media (prefers-reduced-motion: no-preference) {
   .fill-level { transform-origin: left; animation: seg-grow 0.8s cubic-bezier(0.2, 0.9, 0.3, 1) 0.4s both; }
 }
+
+/* ── Lane handles: drag the edge of the sidebar or the Harness pane ─────────── */
+.lane-handle {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 11;
+  width: 9px;
+  margin-left: -4px;
+  cursor: col-resize;
+  touch-action: none;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.lane-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0 4px;
+  background: transparent;
+}
+.lane-handle:hover::after,
+.lane-handle:focus-visible::after,
+body.resizing .lane-handle.active::after { background: var(--accent); }
+.lane-handle:focus-visible { outline: none; }
+.lane-left { left: var(--left); }
+/* right: from the viewport edge, so a page scrollbar doesn't shift it */
+.lane-right { right: var(--right); margin: 0 -4px 0 0; }
+.lane-handle[hidden] { display: none; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing iframe { pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .lane-handle::after { transition: background 0.15s; }
+}
+/* Below these widths the lanes stack or float, so there is nothing to drag. */
+@media (max-width: 720px) { .lane-left { display: none; } }
+@media (max-width: 1100px) { .lane-right { display: none; } }

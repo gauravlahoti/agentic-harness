@@ -1112,6 +1112,7 @@ const offCount = (off) => off.tools.length + off.skills.length + off.subagents.l
 
 function setPaneOpen(open, remember = true) {
   $("harness-pane").hidden = !open;
+  $("lane-right").hidden = !open;
   $("pane-toggle").hidden = open || !health?.workspace;
   $("pane-toggle").setAttribute("aria-expanded", String(open));
   if (remember) {
@@ -1430,3 +1431,69 @@ $("pane-reset").addEventListener("click", resetOff);
 addEventListener("hashchange", showView);
 showView();
 loadHealth();
+
+// ── Lane widths: drag the sidebar's or the Harness pane's edge (keys work too) ──
+// Saved per browser; double-click a handle to go back to the default width.
+const LANES = {
+  left: { handle: "lane-left", prop: "--left", min: 200, max: 440, start: 240 },
+  right: { handle: "lane-right", prop: "--right", min: 280, max: 680, start: 340 },
+};
+
+function setLane(side, px, remember = true) {
+  const lane = LANES[side];
+  const width = Math.round(Math.min(lane.max, Math.max(lane.min, px)));
+  document.body.style.setProperty(lane.prop, `${width}px`);
+  const handle = $(lane.handle);
+  handle.setAttribute("aria-valuemin", lane.min);
+  handle.setAttribute("aria-valuemax", lane.max);
+  handle.setAttribute("aria-valuenow", width);
+  if (remember) {
+    try {
+      localStorage.setItem(`lane:${side}`, String(width));
+    } catch {
+      // Storage blocked: the width holds for this page only.
+    }
+  }
+}
+
+for (const [side, lane] of Object.entries(LANES)) {
+  let saved = null;
+  try {
+    saved = Number(localStorage.getItem(`lane:${side}`)) || null;
+  } catch {
+    // Storage blocked: start from the default.
+  }
+  setLane(side, saved ?? lane.start, false);
+  const handle = $(lane.handle);
+  // The new width from the pointer: the left lane grows rightwards, the right lane leftwards.
+  const widthAt = (x) => (side === "left" ? x : document.documentElement.clientWidth - x);
+  handle.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add("active");
+    document.body.classList.add("resizing");
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (handle.hasPointerCapture(event.pointerId)) setLane(side, widthAt(event.clientX), false);
+  });
+  const stop = (event) => {
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    handle.releasePointerCapture(event.pointerId);
+    handle.classList.remove("active");
+    document.body.classList.remove("resizing");
+    setLane(side, widthAt(event.clientX));
+  };
+  handle.addEventListener("pointerup", stop);
+  handle.addEventListener("pointercancel", stop);
+  handle.addEventListener("dblclick", () => setLane(side, lane.start));
+  handle.addEventListener("keydown", (event) => {
+    const now = Number(handle.getAttribute("aria-valuenow"));
+    const step = event.shiftKey ? 48 : 16;
+    // Arrow keys move the edge the way it points: on the right lane, Left makes it wider.
+    const grow = side === "left" ? 1 : -1;
+    const moves = { ArrowLeft: -step * grow, ArrowRight: step * grow, Home: lane.min - now, End: lane.max - now };
+    if (!(event.key in moves)) return;
+    event.preventDefault();
+    setLane(side, now + moves[event.key]);
+  });
+}
