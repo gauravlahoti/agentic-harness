@@ -37,6 +37,7 @@
     </section>
     <nav aria-label="Sections">
       <a class="nav-item" href="#agent" data-view="agent">Agent</a>
+      <a class="nav-item" href="#memory" data-view="memory">Memory</a>
       <a class="nav-item" href="#checks" data-view="checks">Checks</a>
     </nav>
     <div class="sidebar-foot">
@@ -105,6 +106,14 @@
     </section>
 
     <!-- ── Checks view (S00) ────────────────────────────────────────────── -->
+    <section class="view view-memory" id="view-memory" aria-labelledby="memory-heading" hidden>
+      <header class="page-header">
+        <h1 id="memory-heading">Memory</h1>
+        <p class="memory-intro">Long-term memory: facts the agent chose to keep across conversations, one list per profile. Each new task starts with its profile's facts in the agent's instructions. Forget one and it is gone from the next task on.</p>
+      </header>
+      <div class="memory-grid" id="memory-grid"></div>
+    </section>
+
     <section class="view view-checks" id="view-checks" aria-labelledby="checks-heading" hidden>
       <header class="page-header">
         <h1 id="checks-heading">Checks</h1>

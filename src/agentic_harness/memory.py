@@ -232,6 +232,27 @@ def load_notes(file: Path, budget_tokens: int = NOTES_BUDGET_TOKENS) -> str:
     return "\n".join(reversed(kept))
 
 
+def list_notes(file: Path) -> list[str]:
+    """Every saved fact, oldest first: for the page (the prompt gets ``load_notes``)."""
+    if not file.is_file():
+        return []
+    return [line for line in file.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def forget_note(file: Path, line: str) -> bool:
+    """Remove one saved fact, chosen by the person on the page. False if it isn't there.
+
+    The one place a memory file is rewritten rather than appended to: forgetting on request
+    is the person's control over what the agent keeps (D-101).
+    """
+    lines = list_notes(file)
+    if line not in lines:
+        return False
+    lines.remove(line)
+    file.write_text("".join(f"{kept}\n" for kept in lines), encoding="utf-8")
+    return True
+
+
 def save_note_tool(file: Path) -> Tool:
     """``save_note``: the only way the agent keeps something for next time (D-92)."""
 

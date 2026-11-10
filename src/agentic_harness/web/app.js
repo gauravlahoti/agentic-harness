@@ -29,10 +29,11 @@ async function loadHealth() {
 
 // ── Views: Agent and Checks, chosen by the URL hash ─────────────────────────
 function showView() {
-  const view = location.hash === "#checks" ? "checks" : "agent";
-  for (const name of ["agent", "checks"]) {
+  const view = { "#checks": "checks", "#memory": "memory" }[location.hash] ?? "agent";
+  for (const name of ["agent", "memory", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }
+  if (view === "memory") loadFacts();
   for (const link of document.querySelectorAll(".nav-item")) {
     if (link.dataset.view === view) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -1237,6 +1238,17 @@ function renderPane() {
     files,
     subhead("Skills", "progressive disclosure · loaded when relevant"),
     skills,
+    // Keeping the context small inside one conversation: pruning and summarizing (S07).
+    ...(info.memory.trimming
+      ? [
+          subhead("Context management", "keeps each call small"),
+          facts([
+            ["Window", `${info.memory.trimming.window.toLocaleString()} tokens per call`],
+            ["Past " + Math.round(info.memory.trimming.prune_at * 100) + "%", `prune: old tool results become one-line stubs (the newest ${info.memory.trimming.keep_recent} stay whole)`],
+            ["Past " + Math.round(info.memory.trimming.summarize_at * 100) + "%", "summarize: older tasks are folded into a short summary"],
+          ]),
+        ]
+      : []),
   ]);
 
   // Tools: what the agent can do, with each tool's risk; helpers are tools too.
@@ -1288,29 +1300,23 @@ function renderPane() {
   if (info.subagents.length) toolBody.push(subhead("Sub-agents", "own context · read-only"), helpers);
   const toolsSection = paneSection("tools", "Tools", `${plural(info.tools.length, "tool")}${info.subagents.length ? ` · ${plural(info.subagents.length, "sub-agent")}` : ""}`, toolBody);
 
-  // Memory (S07): what it keeps between tasks. Conversations are the left pane's list.
+  // Memory (S07): short-term is the conversation; long-term is facts kept across them.
   const m = info.memory;
-  const noteList = el("ul", "note-list");
-  noteList.append(...m.notes.map((n) => el("li", null, n.replace(/^- /, ""))));
-  const memory = paneSection("memory", "Memory", `${plural(m.conversations, "conversation")} · ${m.notes_on ? plural(m.notes.length, "note") : "no notes"}`, [
-    subhead("Conversations", "this profile"),
-    el("p", "pane-note", `${plural(m.conversations, "conversation")} saved. Open one from Your work to carry on; the agent remembers it.`),
-    ...(m.trimming
-      ? [
-          subhead("Working window", "forgets on purpose"),
-          facts([
-            ["Window", `${m.trimming.window.toLocaleString()} tokens (far below the model's limit, so trimming shows)`],
-            ["Past " + Math.round(m.trimming.prune_at * 100) + "%", `old tool results become stubs (the last ${m.trimming.keep_recent} stay whole)`],
-            ["Past " + Math.round(m.trimming.summarize_at * 100) + "%", "older tasks are summarized by a small model"],
-          ]),
-        ]
-      : []),
-    subhead("Notes", "kept across tasks"),
+  const who = info.guardrails.profile;
+  const factList = el("ul", "note-list");
+  factList.append(...m.notes.slice(0, 3).map((n) => el("li", null, factText(n))));
+  const seeAll = el("a", "pane-link", m.notes.length > 3 ? `See all ${m.notes.length} facts` : "Open Memory");
+  seeAll.href = "#memory";
+  const memory = paneSection("memory", "Memory", m.notes_on ? `${plural(m.notes.length, "fact")} kept` : "this conversation only", [
+    subhead("Short-term", "this conversation"),
+    el("p", "pane-note", `Each task resends the conversation so far, so the agent remembers it. ${plural(m.conversations, "conversation")} saved for ${who}: open one from Your work to carry on.`),
+    subhead("Long-term", "facts across conversations"),
     !m.notes_on
-      ? el("p", "pane-note", "This agent doesn't keep notes.")
+      ? el("p", "pane-note", "This agent doesn't keep facts between conversations.")
       : m.notes.length
-        ? noteList
-        : el("p", "pane-note", "None yet. The agent saves a note when it learns something worth keeping."),
+        ? factList
+        : el("p", "pane-note", `No facts saved for ${who} yet. The agent saves one when it learns something worth keeping.`),
+    ...(m.notes_on ? [seeAll] : []),
   ]);
 
   // Guardrails (S05): three colour-coded cards, one short line per rule. Details on hover.
@@ -1496,4 +1502,71 @@ for (const [side, lane] of Object.entries(LANES)) {
     event.preventDefault();
     setLane(side, now + moves[event.key]);
   });
+}
+
+// ── Memory view (left lane): long-term facts, per profile, with Forget ─────────
+// "- 2026-11-10 · text" → the text; the date shows apart.
+const factText = (line) => line.replace(/^- \d{4}-\d{2}-\d{2} · /, "").replace(/^- /, "");
+const factDate = (line) => line.match(/^- (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+
+async function loadFacts() {
+  const grid = $("memory-grid");
+  let body;
+  try {
+    const response = await fetch("/api/facts");
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    body = await response.json();
+  } catch (error) {
+    grid.replaceChildren(el("p", "memory-empty", `Couldn't load memory: ${error.message}`));
+    return;
+  }
+  if (!body.on) {
+    grid.replaceChildren(el("p", "memory-empty", "This agent doesn't keep facts between conversations."));
+    return;
+  }
+  grid.replaceChildren(
+    ...body.profiles.map((p) => {
+      const card = el("section", "memory-card");
+      const head = el("header", "memory-card-head");
+      head.append(el("span", "pf-avatar memory-avatar", p.label.charAt(0).toUpperCase()), el("h2", null, p.label), el("span", "memory-count", plural(p.facts.length, "fact")));
+      card.append(head);
+      if (!p.facts.length) {
+        card.append(el("p", "memory-empty", "Nothing saved yet."));
+        return card;
+      }
+      const list = el("ul", "fact-list");
+      // Newest first: what the agent learned most recently.
+      for (const line of [...p.facts].reverse()) {
+        const li = el("li", "fact");
+        const forget = el("button", "fact-forget", "Forget");
+        forget.type = "button";
+        forget.setAttribute("aria-label", `Forget: ${factText(line)}`);
+        forget.addEventListener("click", async () => {
+          // Two clicks, no pop-up: the first asks, the second forgets.
+          if (!forget.classList.contains("sure")) {
+            forget.classList.add("sure");
+            forget.textContent = "Forget?";
+            setTimeout(() => {
+              forget.classList.remove("sure");
+              forget.textContent = "Forget";
+            }, 3000);
+            return;
+          }
+          const response = await fetch("/api/facts/forget", {
+            method: "POST",
+            headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: p.id, line }),
+          });
+          if (response.ok) {
+            loadFacts();
+            if (paneInfo) loadPane();
+          }
+        });
+        li.append(el("span", "fact-text", factText(line)), el("span", "fact-date", factDate(line)), forget);
+        list.append(li);
+      }
+      card.append(list);
+      return card;
+    }),
+  );
 }

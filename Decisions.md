@@ -798,3 +798,10 @@
 - **Because:** real enforcement needs a container this local project doesn't have; a schema conflicts with plain answers (D-82)
 - **Cost:** a workspace's Python could reach the network or the disk; downstream systems can't rely on a shape
 - **Revisit if:** the harness is hosted for others, or a system consumes its answers
+
+### D-101 · Short-term vs long-term memory, and a Memory page to see and forget facts
+✅ Accepted · S07 · your request ("this section is very unclear")
+- **Chose:** the Harness pane's Memory has two parts: **Short-term** (this conversation, resent each task) and **Long-term** (facts kept across conversations). Pruning and summarizing moved to **Context → Context management**: they keep one call small, they are not memory. A **Memory** page in the left lane lists every profile's facts side by side, newest first, each with **Forget** (two clicks)
+- **Instead of:** notes, conversations and the working window mixed in one pane section
+- **Because:** people need to see what the agent keeps about their work, per profile, and be able to remove it
+- **Cost:** forgetting rewrites the facts file (the one memory file that is not append-only); the agent sees the change from its next task

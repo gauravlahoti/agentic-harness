@@ -855,7 +855,7 @@ body:has(> .harness-pane:not([hidden])) { grid-template-columns: var(--left) 1fr
   font-size: 13.5px;
 }
 .harness-pane[hidden] { display: none; }
-body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle, .lane-right) { display: none; }
+body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane-toggle, .lane-right) { display: none; }
 .pane-head {
   position: sticky;
   top: 0;
@@ -1288,3 +1288,51 @@ body.resizing iframe { pointer-events: none; }
 /* Below these widths the lanes stack or float, so there is nothing to drag. */
 @media (max-width: 720px) { .lane-left { display: none; } }
 @media (max-width: 1100px) { .lane-right { display: none; } }
+
+/* ── Memory view: long-term facts per profile (left-lane "Memory") ──────────── */
+.memory-intro { max-width: 62ch; margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.memory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 22px; }
+.memory-card { padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.memory-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.memory-card-head h2 { margin: 0; font-size: 16px; }
+.memory-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #9b5cff));
+}
+.memory-count { margin-left: auto; color: var(--muted); font-size: 12px; }
+.memory-empty { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.fact-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.fact {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.fact:first-child { border-top: 0; }
+.fact-date { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.fact-forget {
+  padding: 1px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fact-forget:hover { border-color: var(--line); color: var(--text); }
+.fact-forget:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fact-forget.sure { background: color-mix(in srgb, var(--fail) 12%, transparent); color: var(--fail); font-weight: 600; }
+.pane-link { display: inline-block; margin: 6px 4px 2px; color: var(--accent); font-size: 12.5px; text-decoration: none; }
+.pane-link:hover { text-decoration: underline; }
+.view-memory .page-header { display: block; }
+/* Agent · Memory · Checks on one line, even at the narrowest sidebar. */
+nav[aria-label="Sections"] { display: flex; flex-wrap: nowrap; gap: 2px; }
+nav[aria-label="Sections"] .nav-item { padding: 6px 9px; white-space: nowrap; }

@@ -29,7 +29,15 @@ from agentic_harness.api import DEFAULT_TRACE_DIR, Off, create_harness, describe
 from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
 from agentic_harness.events import Event
 from agentic_harness.limits import Limits
-from agentic_harness.memory import SessionStore, Turn, fallback_title, make_title
+from agentic_harness.memory import (
+    SessionStore,
+    Turn,
+    fallback_title,
+    forget_note,
+    list_notes,
+    make_title,
+    note_path,
+)
 from agentic_harness.model import GeminiModel, ModelClient
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
@@ -66,6 +74,13 @@ class OffRequest(BaseModel):
 
 
 TITLE_WAIT_SECONDS = 3.0  # how long the end of a first turn waits for its topic title (D-91)
+
+
+class ForgetFact(BaseModel):
+    """The person removes one saved fact from the agent's long-term memory (D-101)."""
+
+    profile: str | None = Field(default=None, max_length=50)
+    line: str = Field(min_length=1, max_length=700)
 
 
 class ApprovalAnswer(BaseModel):
@@ -186,6 +201,33 @@ def create_app(
             sessions.delete(session_id, profile_of(profile))
         except KeyError:
             raise HTTPException(404, "No such conversation.") from None
+        return {"ok": True}
+
+    @app.get("/api/facts")
+    async def facts() -> dict[str, object]:
+        """Long-term memory: the facts the agent saved, for every profile (S07, D-101)."""
+        ws = need_workspace()
+        profiles: list[tuple[str | None, str]] = [(p.id, p.label) for p in ws.profiles]
+        profiles = profiles or [(None, "Everyone")]
+        return {
+            "on": ws.notes,
+            "profiles": [
+                {
+                    "id": pid,
+                    "label": label,
+                    "facts": list_notes(note_path(memory_root, ws.name, pid)) if ws.notes else [],
+                }
+                for pid, label in profiles
+            ],
+        }
+
+    @app.post("/api/facts/forget")
+    async def forget(request: Request, body: ForgetFact) -> dict[str, bool]:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        ws = need_workspace()
+        if not forget_note(note_path(memory_root, ws.name, profile_of(body.profile)), body.line):
+            raise HTTPException(404, "That fact isn't saved.")
         return {"ok": True}
 
     @app.get("/api/workspace/logo")

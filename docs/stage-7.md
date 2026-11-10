@@ -7,7 +7,7 @@
 
 - **Conversations.** Ask a follow-up and the agent remembers the earlier tasks. Each conversation is one file of exact steps in `.agentic-harness/sessions/`, so it survives a restart.
 - **Your work (left pane).** This profile's conversations, newest first, each **titled by its topic** ("ShopCo discount and liability"). Open one to carry on, **New** for a fresh one, **×** then **Delete?** to remove one. The title comes from one tiny Flash-Lite call; if that fails it is the first words of your question.
-- **Notes.** The agent can `save_note` ("The CFO capped ShopCo at 20%"). Notes are per profile, shown in **Harness → Memory**, and are in its prompt from the next task on.
+- **Two kinds of memory.** Short-term: the conversation, resent with each task. Long-term: facts the agent keeps with `save_note` ("The CFO capped ShopCo at 20%"), per profile, in its instructions from the next task on. The left lane's **Memory** page lists every profile's facts, with **Forget**.
 - **Forgetting on purpose**, cheapest first, inside a small working window (20,000 tokens for CloudCo):
   1. a tool result over 10,000 characters keeps its start and end, with a marker;
   2. past 50% of the window, old tool results become one-line stubs (the newest two stay whole);
@@ -55,7 +55,7 @@ you ask a follow-up
 2. Reload. Under the agent's name: a one-line description. Under it, **Your work**.
 3. Ask: "What did ShopCo change in CT-2207?" then, in the same thread: "And which of those need the CFO?" The second answer should use the first. A conversation appears in the left pane with a topic title.
 4. Click **New**, then click the conversation: its tasks come back. Restart the server (`Ctrl-C`, then serve again) and open it again: still there.
-5. **Harness → Memory**: conversations, the working window and its two lines, notes.
+5. **Harness → Context → Context management**: the window and its two lines. **Harness → Memory**: short-term and long-term. Left lane **Memory**: Sales and Engineering facts side by side.
 6. Ask the agent to "remember that the CFO capped ShopCo at 20%". Check **Memory → Notes**; start **New** and ask what the CFO capped.
 7. Run many tool-heavy questions in one conversation until the **Context** bar passes 50%: a "Trimmed context" line appears.
 8. When the quota is back: `make live` runs `test_live_memory.py`.
