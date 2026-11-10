@@ -1069,6 +1069,7 @@ async function runTask(event) {
     send.disabled = false;
     input.focus();
     refreshWork(); // task counts and times
+    if (paneInfo) loadPane(); // a fact the agent just saved shows at once
   }
 }
 
