@@ -39,6 +39,10 @@ tools = ["review_contract", "search_policy"]
 model = "gemini-3.5-flash-lite"  # reading is easy work; most free quota (D-62)
 max_words = 200
 
+# A conversation's topic title comes from one tiny call on this model (D-91).
+[conversations]
+title_model = "gemini-3.5-flash-lite"
+
 # ── Guardrails (S05): read by the harness, never shown to the model ──────────────────
 # Scope: the job. Off-topic tasks are refused before the agent starts (D-81).
 [scope]

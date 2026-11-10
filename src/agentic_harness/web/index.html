@@ -26,6 +26,14 @@
       <label class="visually-hidden" for="profile">Profile</label>
       <select class="profile-pick" id="profile" name="profile" hidden tabindex="-1" aria-hidden="true"></select>
     </div>
+    <section class="work" id="work" aria-labelledby="work-title" hidden>
+      <div class="work-head">
+        <h2 id="work-title">Your work</h2>
+        <button type="button" class="work-new" id="new-task">New</button>
+      </div>
+      <ul class="work-list" id="work-list"></ul>
+      <p class="work-empty" id="work-empty">Your conversations appear here, named by topic.</p>
+    </section>
     <nav aria-label="Sections">
       <a class="nav-item" href="#agent" data-view="agent">Agent</a>
       <a class="nav-item" href="#checks" data-view="checks">Checks</a>

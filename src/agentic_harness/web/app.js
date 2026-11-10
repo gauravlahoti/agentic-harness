@@ -176,6 +176,7 @@ function setUpAgent() {
   $("empty-title").textContent = `What should the ${ws.title} do?`;
   $("empty-hint").textContent = "";
   setUpProfilePicker(ws);
+  refreshWork();
   $("examples").replaceChildren(
     ...(ws.examples ?? []).map((text) => {
       const chip = el("button", "example", text);
@@ -285,15 +286,127 @@ function currentProfile() {
 
 const labelFor = (id) => health?.workspace?.profiles?.find((p) => p.id === id)?.label ?? id;
 
+// ── Your work (S07): this profile's conversations, newest first, named by topic ──
+let currentSession = null; // the conversation the next task continues; null: a new one
+let workItems = [];
+
+const ago = (seconds) => {
+  const s = Math.max(0, Date.now() / 1000 - seconds);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} d ago`;
+};
+const withProfile = () => (currentProfile() ? `?profile=${encodeURIComponent(currentProfile())}` : "");
+
+async function refreshWork() {
+  try {
+    const response = await fetch(`/api/sessions${withProfile()}`);
+    if (!response.ok) return;
+    workItems = (await response.json()).sessions;
+  } catch {
+    return; // the list is a convenience; the page works without it
+  }
+  renderWork();
+}
+
+function renderWork() {
+  $("work").hidden = false;
+  $("work-empty").hidden = workItems.length > 0;
+  const list = $("work-list");
+  list.replaceChildren(
+    ...workItems.map((item) => {
+      const li = el("li", `work-item${item.id === currentSession ? " active" : ""}`);
+      li.dataset.id = item.id;
+      const open = el("button", "work-open");
+      open.type = "button";
+      open.setAttribute("aria-current", item.id === currentSession ? "true" : "false");
+      open.append(el("span", "work-title", item.title), el("span", "work-meta", `${plural(item.turns, "task")} · ${ago(item.updated)}`));
+      open.addEventListener("click", () => openSession(item.id));
+      const del = el("button", "work-delete", "×");
+      del.type = "button";
+      del.setAttribute("aria-label", `Delete ${item.title}`);
+      del.addEventListener("click", () => {
+        // Two clicks, no pop-up: the first asks, the second deletes.
+        if (!del.classList.contains("sure")) {
+          del.classList.add("sure");
+          del.textContent = "Delete?";
+          setTimeout(() => {
+            del.classList.remove("sure");
+            del.textContent = "×";
+          }, 3000);
+          return;
+        }
+        deleteSession(item.id);
+      });
+      li.append(open, del);
+      return li;
+    }),
+  );
+}
+
+function clearThread() {
+  for (const turn of $("thread").querySelectorAll(".turn")) turn.remove();
+}
+
+function newConversation() {
+  currentSession = null;
+  clearThread();
+  $("empty-state").hidden = false;
+  renderWork();
+  $("task").focus();
+}
+
+async function openSession(id) {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(id)}${withProfile()}`);
+  if (!response.ok) return refreshWork();
+  const session = await response.json();
+  currentSession = id;
+  clearThread();
+  $("empty-state").hidden = true;
+  for (const t of session.turns) $("thread").append(pastTurn(t));
+  renderWork();
+  $("thread").lastElementChild?.scrollIntoView({ block: "end" });
+  $("task").focus();
+}
+
+// An earlier task, shown as it was asked and answered. Its steps are in the trace.
+function pastTurn(t) {
+  const turn = el("article", "turn");
+  const you = el("div", "you");
+  you.append(el("p", "bubble", t.task));
+  const agent = el("div", "agent");
+  const reply = el("div", "reply");
+  if (t.answer) renderProse(reply, t.answer);
+  else reply.append(el("p", "run-foot", `Ended: ${t.outcome}`));
+  const meta = el("div", "run-meta");
+  meta.append(el("span", "past-meta", `${money(t.usd)} · ${t.seconds.toFixed(1)} s`));
+  agent.append(reply, meta);
+  turn.append(you, agent);
+  return turn;
+}
+
+async function deleteSession(id) {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(id)}${withProfile()}`, {
+    method: "DELETE",
+    headers: PAGE_HEADER,
+  });
+  if (!response.ok) return refreshWork();
+  if (id === currentSession) newConversation();
+  await refreshWork();
+}
+
 function switchProfile() {
   try {
     localStorage.setItem(profileKey(health.workspace), $("profile").value);
   } catch {
     // Storage blocked: the switch still applies to this page.
   }
-  for (const turn of $("thread").querySelectorAll(".turn")) turn.remove();
+  currentSession = null; // a conversation belongs to one profile
+  clearThread();
   $("empty-state").hidden = false;
   loadPane(); // each profile has its own context, tools and switches
+  refreshWork();
   $("task").focus();
 }
 
@@ -506,6 +619,21 @@ const announce = (text) => {
 // Turn one event from the harness into a change on the page.
 function onEvent(ev, turn) {
   const d = ev.data;
+  if (ev.type === "session_started") {
+    currentSession = d.session_id;
+    if (d.new) {
+      workItems = [{ id: d.session_id, title: d.title, turns: 0, updated: Date.now() / 1000 }, ...workItems];
+      renderWork();
+    }
+    return;
+  }
+  if (ev.type === "session_titled") {
+    const item = workItems.find((i) => i.id === d.session_id);
+    if (item) item.title = d.title;
+    renderWork();
+    document.querySelector(`.work-item[data-id="${d.session_id}"] .work-title`)?.classList.add("retitled");
+    return;
+  }
   // A helper's events carry agent_id (D-63): they go to its own lane, not the main list.
   if (d.agent_id) return onLaneEvent(ev, turn);
   if (ev.type === "run_started") {
@@ -884,7 +1012,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), off: currentOff() }),
+      body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), off: currentOff(), session: currentSession }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -897,6 +1025,7 @@ async function runTask(event) {
   } finally {
     send.disabled = false;
     input.focus();
+    refreshWork(); // task counts and times
   }
 }
 
@@ -1221,6 +1350,7 @@ $("model").addEventListener("change", () => {
     // Storage blocked: the pick still applies to this page, it just isn't remembered.
   }
 });
+$("new-task").addEventListener("click", newConversation);
 $("effort").addEventListener("change", () => {
   try {
     localStorage.setItem(EFFORT_KEY, $("effort").value);

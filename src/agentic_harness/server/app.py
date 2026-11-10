@@ -10,6 +10,7 @@ without our permission (blocks cross-site requests); strict browser headers.
 Does not: bind the network address (the CLI does, always 127.0.0.1), or read secrets.
 """
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
@@ -26,7 +27,9 @@ import agentic_harness
 from agentic_harness import __version__
 from agentic_harness.api import DEFAULT_TRACE_DIR, Off, create_harness, describe_harness
 from agentic_harness.config import MISSING_KEY_MESSAGE, Settings
+from agentic_harness.events import Event
 from agentic_harness.limits import Limits
+from agentic_harness.memory import SessionStore, Turn, fallback_title, make_title
 from agentic_harness.model import GeminiModel, ModelClient
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
@@ -62,6 +65,9 @@ class OffRequest(BaseModel):
     subagents: list[Name] = Field(default_factory=list, max_length=100)
 
 
+TITLE_WAIT_SECONDS = 3.0  # how long the end of a first turn waits for its topic title (D-91)
+
+
 class ApprovalAnswer(BaseModel):
     """A person's click on a ⏸ card: approve or reject one waiting tool call (D-79)."""
 
@@ -77,6 +83,7 @@ class RunRequest(BaseModel):
     model: str | None = Field(default=None, max_length=100)  # must have a price (D-31)
     profile: str | None = Field(default=None, max_length=50)  # must be one of the workspace's
     effort: Literal["low", "medium", "high"] | None = None  # Gemini's thinking_level; None: default
+    session: str | None = Field(default=None, max_length=60)  # continue this conversation
     off: OffRequest = Field(default_factory=OffRequest)
 
 
@@ -86,6 +93,7 @@ def create_app(
     project_root: Path = PROJECT_ROOT,
     workspace: Workspace | None = None,
     trace_dir: Path = DEFAULT_TRACE_DIR,
+    memory_dir: Path | None = None,
     model_factory: Callable[[Settings], ModelClient] = GeminiModel,
 ) -> FastAPI:
     """Build the app. ``project_root`` is where the Checks panel runs the tests.
@@ -121,6 +129,65 @@ def create_app(
     async def favicon() -> FileResponse:
         # Browsers ask for this path on their own; answer instead of logging a 404.
         return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml")
+
+    sessions = SessionStore(
+        memory_dir or project_root / ".agentic-harness", workspace.name if workspace else "_"
+    )
+
+    def need_workspace() -> Workspace:
+        if workspace is None:
+            raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
+        return workspace
+
+    def profile_of(value: str | None) -> str | None:
+        try:
+            return need_workspace().check_profile(value)
+        except WorkspaceError as error:
+            raise HTTPException(400, str(error)) from None
+
+    @app.get("/api/sessions")
+    async def list_sessions(profile: str | None = None) -> dict[str, object]:
+        """The profile's conversations, newest first: the left pane's "Your work" (D-91)."""
+        found = sessions.list(profile_of(profile))
+        return {
+            "sessions": [
+                {"id": s.id, "title": s.title, "turns": s.turns, "updated": s.updated}
+                for s in found
+            ]
+        }
+
+    @app.get("/api/sessions/{session_id}")
+    async def open_session(session_id: str, profile: str | None = None) -> dict[str, object]:
+        try:
+            session = sessions.load(session_id, profile_of(profile))
+        except KeyError:
+            raise HTTPException(404, "No such conversation.") from None
+        return {
+            "id": session.id,
+            "title": session.title or "New conversation",
+            "turns": [
+                {
+                    "task": t.task,
+                    "answer": t.answer,
+                    "outcome": t.outcome,
+                    "usd": t.usd,
+                    "seconds": t.seconds,
+                }
+                for t in session.turns
+            ],
+        }
+
+    @app.delete("/api/sessions/{session_id}")
+    async def delete_session(
+        request: Request, session_id: str, profile: str | None = None
+    ) -> dict[str, bool]:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        try:
+            sessions.delete(session_id, profile_of(profile))
+        except KeyError:
+            raise HTTPException(404, "No such conversation.") from None
+        return {"ok": True}
 
     @app.get("/api/workspace/logo")
     async def workspace_logo() -> FileResponse:
@@ -229,13 +296,75 @@ def create_app(
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None
+        # The conversation: continue the one asked for, or start a new one (S07, D-90).
+        try:
+            session = sessions.load(body.session, profile) if body.session else None
+        except KeyError:
+            raise HTTPException(404, "No such conversation.") from None
+        fresh = session is None
+        if session is None:
+            session = sessions.create(profile)
+            sessions.set_title(session.id, profile, fallback_title(body.task))
+            session.title = fallback_title(body.task)
+        elif session.repaired:
+            sessions.append_steps(session.id, profile, session.repaired)  # settle it on disk
+        history = list(session.steps)
+        session_id = session.id
+
+        def finished(event: Event) -> None:
+            data = event.data
+            if event.type == "run_finished" and not data.get("agent_id"):
+                sessions.finish_turn(
+                    session_id,
+                    profile,
+                    Turn(
+                        body.task,
+                        str(data.get("answer", "")),
+                        str(data.get("outcome", "")),
+                        float(data.get("usd", 0.0)),
+                        float(data.get("seconds", 0.0)),
+                        event.run_id,
+                    ),
+                )
+
+        harness.subscribe(finished)
+        title_model = model_factory(
+            replace(
+                settings,
+                model=workspace.title_model
+                or (workspace.scope.model if workspace.scope and workspace.scope.model else name),
+            )
+        )
         app.state.run_active = True
 
+        def note(type_: str, **data: object) -> str:
+            event = Event(type_, run_id="", seq=0, time=0.0, data=data)
+            return json.dumps(event.to_dict(), ensure_ascii=False) + "\n"
+
         async def lines() -> AsyncIterator[str]:
+            titling = asyncio.create_task(make_title(title_model, body.task)) if fresh else None
             try:
-                async for line in stream_run(harness, body.task):
+                yield note("session_started", session_id=session_id, title=session.title, new=fresh)
+                async for line in stream_run(
+                    harness,
+                    body.task,
+                    history=history,
+                    record=lambda steps: sessions.append_steps(session_id, profile, steps),
+                ):
                     yield line
+                if titling is not None:
+                    try:
+                        title = await asyncio.wait_for(titling, TITLE_WAIT_SECONDS)
+                    except TimeoutError:
+                        title = session.title  # the first words stay
+                    if title and title != session.title:
+                        sessions.set_title(session_id, profile, title)
+                    yield note(
+                        "session_titled", session_id=session_id, title=title or session.title
+                    )
             finally:
+                if titling is not None and not titling.done():
+                    titling.cancel()
                 app.state.run_active = False
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")

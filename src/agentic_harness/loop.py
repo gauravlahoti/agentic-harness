@@ -113,11 +113,31 @@ class Harness:
     def subscribe(self, listener: Listener) -> None:
         self._bus.subscribe(listener)
 
-    async def run(self, task: str) -> RunResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        history: Sequence[Step] = (),
+        record: Callable[[list[Step]], None] | None = None,
+    ) -> RunResult:
+        """Run one task. ``history`` is the conversation so far, resent whole (the harness is
+        stateless: D-04). ``record`` is called with each new step as it happens, so a saved
+        conversation is complete up to the last line (S07, D-90)."""
         run = _Run(self._bus)
         budget = Budget(self.limits)
         declarations = [tool.declaration() for tool in self.visible_tools()]
-        steps: list[Step] = [user_input(task)]
+        steps: list[Step] = [*history, user_input(task)]
+        # A question with no reply is not kept: it would leave a dangling turn in the history.
+        unsaved: list[Step] = [steps[-1]]
+
+        def save(new: list[Step]) -> None:
+            nonlocal unsaved
+            if record is None:
+                return
+            if unsaved:
+                new, unsaved = [*unsaved, *new], []
+            record(new)
+
         run.emit(
             "run_started",
             task=task,
@@ -192,6 +212,7 @@ class Harness:
             usd = self.prices.cost(self.model.name, reply.usage)
             budget.charge(usd)
             steps.extend(reply.steps)  # exactly as received: thought signatures live here
+            save(list(reply.steps))
             calls = reply.tool_calls
             run.emit(
                 "model_replied",
@@ -213,7 +234,9 @@ class Harness:
                 return finish("failed", f"unexpected_status: {reply.status}")
 
             # Run every call in order, then send all results back together.
-            steps.extend([await self._run_tool(call, run, budget) for call in calls])
+            results = [await self._run_tool(call, run, budget) for call in calls]
+            steps.extend(results)
+            save(results)
 
         return finish("stopped", limit)
 

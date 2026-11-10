@@ -218,7 +218,7 @@ def test_s05_effort_is_offered_checked_and_reaches_the_model(tmp_path: Path) -> 
         "/api/run", headers=PAGE_HEADER, json={"task": "Hi", "profile": "sales", "effort": "low"}
     )
     assert built
-    assert built[-1].thinking == "low"
+    assert built[0].thinking == "low"  # the run's own model; a title call carries no effort
 
 
 def test_s05_workspace_logo_and_agent_menu(tmp_path: Path) -> None:

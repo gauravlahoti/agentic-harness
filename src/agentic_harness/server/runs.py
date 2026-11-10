@@ -9,20 +9,27 @@ cancelled; if the harness crashes, the page still gets a final event.
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Sequence
 from typing import Any
 
 from agentic_harness.events import Event
 from agentic_harness.loop import Harness
+from agentic_harness.model import Step
 
 
-async def stream_run(harness: Harness, task: str) -> AsyncIterator[str]:
+async def stream_run(
+    harness: Harness,
+    task: str,
+    *,
+    history: Sequence[Step] = (),
+    record: Callable[[list[Step]], None] | None = None,
+) -> AsyncIterator[str]:
     queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
     harness.subscribe(lambda event: queue.put_nowait(event.to_dict()))
 
     async def drive() -> None:
         try:
-            await harness.run(task)
+            await harness.run(task, history=history, record=record)
         except Exception as error:  # a harness bug must still end the stream
             queue.put_nowait(_crash(error))
 
