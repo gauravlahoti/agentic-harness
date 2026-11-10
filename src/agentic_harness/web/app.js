@@ -1309,7 +1309,7 @@ function renderPane() {
   seeAll.href = "#memory";
   const memory = paneSection("memory", "Memory", m.notes_on ? `${plural(m.notes.length, "fact")} kept` : "this conversation only", [
     subhead("Short-term", "this conversation"),
-    el("p", "pane-note", `Each task resends the conversation so far, so the agent remembers it. ${plural(m.conversations, "conversation")} saved for ${who}: open one from Your work to carry on.`),
+    el("p", "pane-note", "Each task resends the conversation so far, so the agent remembers it. Open one from Your work to carry on."),
     subhead("Long-term", "facts across conversations"),
     !m.notes_on
       ? el("p", "pane-note", "This agent doesn't keep facts between conversations.")
