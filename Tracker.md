@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S03 (tools) built, waiting for your verification · S02 verified · S00 and S01 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 45 built · 12 verified · 107 total
+> **Now:** S03 verified · next: S04 (sub-agent) brief · S02 verified · S00 and S01 built, verification waived for now
+> **Updated:** 2026-11-10 · **Checks:** 45 built · 23 verified · 107 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -9,7 +9,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 0 | Verify S03: "Verify it yourself" in `docs/stage-3.md` | S03 → ✅, then S04 |
+| 0 | Approve the S04 (Sub-agent) brief | S04 → 🟦 |
 | 1 | Verify S01 when convenient: "Verify it yourself" in `docs/stage-1.md` (waived to start S02) | S01 → ✅ |
 | 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
 | 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
@@ -23,7 +23,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
 | [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 7/13 | 0/13 | 2 |
 | [S02](spec/stages/S02-context.md) | Context | ✅ | 12/12 | 12/12 | 1 |
-| [S03](spec/stages/S03-tools.md) | Tools | 🟦 | 11/11 | 0/11 | 1 |
+| [S03](spec/stages/S03-tools.md) | Tools | ✅ | 11/11 | 11/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | 📝 | 0/11 | 0/11 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 📝 | 0/12 | 0/12 | 1 |
@@ -93,17 +93,17 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | `@tool` records name, description, schema and risk, and outputs Gemini's tool format | 🧪 | 🟨 | `test_tool_registry.py::test_s03_ac1_*` (6): name, docstring, risk; schema from hints (str/int/float/bool/Literal/list, `Annotated` descriptions, defaults); `ctx` hidden; Gemini function format; risk required; bad types fail at load |
-| AC2 | Built-in tools work for any workspace | 🧪 | 🟨 | `test_builtin_tools.py::test_s03_ac2_*` (12) + `test_api.py`: `read_file` only inside `readable` (refuses `..`, links out, `.env`, `workspace.toml`, absolute paths); folders list; `write_file` only to `tasks/<run-id>/`; only opted-in built-ins added |
-| AC3 | Workspace tools load from `tools.py`; the harness knows none of them by name | 🧪 | 🟨 | `test_workspace.py` + `test_api.py` + `test_generic_harness.py::test_s03_ac3_*` (5): `@tool` tools load from `tools.py`; unknown built-in and name clash are errors; no workspace tool name appears in `src/` |
-| AC4 | CloudCo lookups return records with IDs | 🧪 | 🟨 | `test_cloudco_tools.py::test_s03_ac4_*` (4): 9 tools with risks; customer `CUS-0042`, deal `DL-3108`, `UP-…`, `INV-…`; unknown records list what exists; contract outline then one clause |
-| AC5 | `compare_to_standard` returns every edit (~60) with clause IDs | 🧪 | 🟨 | `test_cloudco_tools.py::test_s03_ac5_*`: 61 edits, each with a clause ID; 2.1, 3.2, 4.1, 6.1, 9.2 and B.7 among them; output under the 20k cap |
-| AC6 | `search_policy` returns the rule and its section number | 🧪 | 🟨 | `test_cloudco_tools.py::test_s03_ac6_*`: "discount approval CFO" → `standard-terms §2` with its text; no match → empty list |
-| AC7 | Actions write only to the local outbox, never to real email | 🧪 | 🟨 | `test_cloudco_tools.py::test_s03_ac7_*` (2) + `test_tool_registry.py::test_s03_ac7_*`: actions write only under `outbox/`; plain file names only; `tools.py` imports no network module |
-| AC8 | Tool errors go back to the model; the loop never crashes | 🧪 | 🟨 | `test_tool_registry.py::test_s03_ac8_*` (7): bad arguments, exceptions and a missing workspace all come back as error results; async tools; output cut with a visible note; `file_saved` announced |
-| AC9 | CloudCo data is made up and labelled fictional | 📄 | 🟨 | `test_cloudco_tools.py::test_s03_ac9_*` (3): data matches `make_data.py` exactly; every data file says fictional; one hidden line in a ~19,000-word redline |
-| AC10 | Page: tool steps, record IDs in Sources, file cards | 👀 | 🟨 | `test_page_baseline.py::test_s03_ac10_*` · Chrome, both themes: risk tags (read/write; action via synthetic event), one row per argument, Draft and Outbox file cards, console clean · fixed stale `app.js` (D-54) |
-| AC11 | Live: finds all 5 changes that matter, with IDs | 🔑 👀 | 🟨 | `make live` passed on 3.5 Flash-Lite: `test_s03_ac11_finds_all_five_changes_with_ids` · CLI: 2 calls, 13 s, $0.004, all 5 + injection flagged · page: same, with draft card |
+| AC1 | `@tool` records name, description, schema and risk, and outputs Gemini's tool format | 🧪 | ✅ | `test_tool_registry.py::test_s03_ac1_*` (6): name, docstring, risk; schema from hints (str/int/float/bool/Literal/list, `Annotated` descriptions, defaults); `ctx` hidden; Gemini function format; risk required; bad types fail at load |
+| AC2 | Built-in tools work for any workspace | 🧪 | ✅ | `test_builtin_tools.py::test_s03_ac2_*` (12) + `test_api.py`: `read_file` only inside `readable` (refuses `..`, links out, `.env`, `workspace.toml`, absolute paths); folders list; `write_file` only to `tasks/<run-id>/`; only opted-in built-ins added |
+| AC3 | Workspace tools load from `tools.py`; the harness knows none of them by name | 🧪 | ✅ | `test_workspace.py` + `test_api.py` + `test_generic_harness.py::test_s03_ac3_*` (5): `@tool` tools load from `tools.py`; unknown built-in and name clash are errors; no workspace tool name appears in `src/` |
+| AC4 | CloudCo lookups return records with IDs | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac4_*` (4): 9 tools with risks; customer `CUS-0042`, deal `DL-3108`, `UP-…`, `INV-…`; unknown records list what exists; contract outline then one clause |
+| AC5 | `compare_to_standard` returns every edit (~60) with clause IDs | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac5_*`: 61 edits, each with a clause ID; 2.1, 3.2, 4.1, 6.1, 9.2 and B.7 among them; output under the 20k cap |
+| AC6 | `search_policy` returns the rule and its section number | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac6_*`: "discount approval CFO" → `standard-terms §2` with its text; no match → empty list |
+| AC7 | Actions write only to the local outbox, never to real email | 🧪 | ✅ | `test_cloudco_tools.py::test_s03_ac7_*` (2) + `test_tool_registry.py::test_s03_ac7_*`: actions write only under `outbox/`; plain file names only; `tools.py` imports no network module |
+| AC8 | Tool errors go back to the model; the loop never crashes | 🧪 | ✅ | `test_tool_registry.py::test_s03_ac8_*` (7): bad arguments, exceptions and a missing workspace all come back as error results; async tools; output cut with a visible note; `file_saved` announced |
+| AC9 | CloudCo data is made up and labelled fictional | 📄 | ✅ | `test_cloudco_tools.py::test_s03_ac9_*` (3): data matches `make_data.py` exactly; every data file says fictional; one hidden line in a ~19,000-word redline |
+| AC10 | Page: tool steps, record IDs in Sources, file cards | 👀 | ✅ | `test_page_baseline.py::test_s03_ac10_*` · Chrome, both themes: risk tags (read/write; action via synthetic event), one row per argument, Draft and Outbox file cards, console clean · fixed stale `app.js` (D-54) |
+| AC11 | Live: finds all 5 changes that matter, with IDs | 🔑 👀 | ✅ | `make live` passed on 3.5 Flash-Lite: `test_s03_ac11_finds_all_five_changes_with_ids` · CLI: 2 calls, 13 s, $0.004, all 5 + injection flagged · page: same, with draft card |
 
 ### S04 · Sub-agent
 
@@ -219,3 +219,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You verified S02 ("looks good"): S02-AC1–AC12 → ✅. Tagged `stage-2`. |
 | 2026-11-10 | You approved the S03 brief ("go ahead"): S03-AC1–AC11 → 🟦. Choices recorded as D-43–D-53. |
 | 2026-11-10 | S03-AC1–AC11 → 🟨: 168 offline tests pass; `make live` 3/3 on 3.5 Flash-Lite; page checked in Chrome. Found and fixed: stale `app.js` in the browser (D-54). Walkthrough in `docs/stage-3.md`. Waiting for your verification. |
+| 2026-11-10 | You verified S03 ("looks good to me"): S03-AC1–AC11 → ✅. Tagged `stage-3`. |
