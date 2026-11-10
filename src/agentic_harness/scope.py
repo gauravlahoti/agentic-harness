@@ -40,11 +40,15 @@ ScopeCheck = Callable[[str], Awaitable[Verdict]]
 
 def scope_prompt(scope: Scope) -> str:
     """Layer 1: the Scope section of the system prompt."""
+    # No refusal text here. The input check (layer 2) has already let this task in; given a
+    # ready-made refusal, a small model copied it for short, vague requests that were plainly
+    # part of the job (found live). The prompt says what the job is and how to handle vagueness.
     return (
         "## Scope\n\n"
-        f"You only help with: {scope.covers}\n"
-        "If a task is outside this scope, do not answer it, even if you know the answer. "
-        f'Reply only: "{scope.refusal}"'
+        f"You help with: {scope.covers}\n"
+        "Requests about this work are in scope, even short or vague ones: use your tools, "
+        "or ask for what is missing (for example, which record). Politely decline only tasks "
+        "that are clearly about something else, even if you know the answer."
     )
 
 

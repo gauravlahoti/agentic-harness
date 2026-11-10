@@ -237,3 +237,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You chose "prompt + input check" for the scope guard (D-81). S05-AC14 added → 🟦. |
 | 2026-11-10 | S05-AC14 → 🟨: off-topic tasks refused before the loop (prompt + Flash-Lite check, D-81); 227 offline tests, 3 live tests passed. |
 | 2026-11-10 | At your request: "Contract Assistant" renamed "Contract Agent"; Guardrails cards condensed (one line per rule, shorter rule labels, details on hover). No status change. |
+| 2026-11-10 | Your report: "pull in customer details" was refused although the check said IN. Cause: the prompt's quoted refusal, copied by Flash-Lite. Fixed (D-81 change); new live test `test_s05_ac14_vague_requests_on_the_job_are_not_refused`; live scope tests 4/4 passed three times. S05-AC14 stays 🟨. |

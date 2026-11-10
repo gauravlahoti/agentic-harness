@@ -45,3 +45,10 @@ async def test_s05_ac14_off_topic_is_refused_before_the_loop(task: str, tmp_path
 async def test_s05_ac14_real_questions_still_get_answered(tmp_path: Path) -> None:
     result = await run("Can we promise ShopCo 99.99% uptime?", tmp_path)
     assert result.outcome == "completed", result.reason
+
+
+async def test_s05_ac14_vague_requests_on_the_job_are_not_refused(tmp_path: Path) -> None:
+    """Found live: "pull in customer details" passed the check, then the agent refused."""
+    result = await run("pull in customer details", tmp_path)
+    assert result.outcome == "completed", result.reason
+    assert "I can only help with" not in result.answer, result.answer

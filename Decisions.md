@@ -659,3 +659,4 @@
 - **Because:** a prompt is followed, not enforced; an input check is the common "input guardrail" pattern and stops off-topic work before it costs a loop
 - **Cost:** one tiny call per task (~$0.0002, 1–2 s); a borderline request may be refused by mistake
 - **Revisit if:** the check refuses real CloudCo questions in practice
+- **Changed 2026-11-10:** the prompt's Scope section no longer quotes the refusal. Found live: the check passed "pull in customer details", then Flash-Lite copied the quoted refusal. The section now says vague requests about the job are in scope (use tools, or ask for what's missing) and to decline only clearly unrelated tasks. The exact refusal comes from the input check alone.
