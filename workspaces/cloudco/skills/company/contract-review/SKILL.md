@@ -15,7 +15,7 @@ description: Check each change a customer made to a contract against CloudCo's s
    - **OK**: within standard terms, or within what the person you're helping may approve.
    - **Needs a decision**: name who decides (Sales, Finance, Engineering or the CFO) and why.
    - **Never**: say so plainly and propose the best counter-offer CloudCo *can* make.
-3. Answer plainly, one short line per change: what they asked, then OK, who decides, or never with the counter-offer.
+3. Answer plainly, one short line per change, starting with its clause ID (for example 3.2), including the changes that are OK: what they asked, then OK, who decides, or never with the counter-offer.
 4. Cite the policy section next to each line.
 
 ## Standard terms at a glance

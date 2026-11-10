@@ -42,6 +42,15 @@ def test_s05_ac2_tools_outside_the_profile_are_hidden() -> None:
     ]  # no list: all
 
 
+def test_s05_ac2_the_harnesss_own_tools_stay_open_to_every_profile() -> None:
+    """A profile lists workspace tools; load_skill and delegate_task are not hidden by it."""
+    both = [tool("find"), tool("load_skill"), tool("delegate_task")]
+    narrow = gate(("find",))
+    assert [t.name for t in narrow.visible(both)] == ["find", "load_skill", "delegate_task"]
+    assert narrow.check("delegate_task", {}).kind == "allow"
+    assert narrow.check("send", {}).kind == "block"
+
+
 def test_s05_ac2_ac9_and_blocked_if_called_anyway_naming_the_rule() -> None:
     decision = gate(("find",)).check("send", {})
     assert decision.kind == "block"

@@ -34,6 +34,12 @@ FLAG_PATTERNS = (
 )
 
 
+# The harness's own tools: reading a skill and handing a job to a helper. A profile's list
+# is about the workspace's tools; these are how the agent works at all, so they stay open.
+# (Found live in S05: the list hid them, and the agent could no longer read skills or delegate.)
+CORE_TOOLS = ("load_skill", "delegate_task")
+
+
 @dataclass(frozen=True, slots=True)
 class Rule:
     """A "never" rule: blocks a call whose argument crosses a line. Can't be approved."""
@@ -116,7 +122,7 @@ class Gate:
         self._flags = [re.compile(p, re.I | re.S) for p in (*FLAG_PATTERNS, *flag_patterns)]
 
     def allows(self, name: str) -> bool:
-        return self.allowed is None or name in self.allowed
+        return self.allowed is None or name in CORE_TOOLS or name in self.allowed
 
     def visible(self, tools: Sequence[Tool]) -> list[Tool]:
         """① Hide: the model is only told about tools this profile may use."""

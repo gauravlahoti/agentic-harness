@@ -675,3 +675,10 @@
 - **Instead of:** "Decided to use lookup" and "lookup · kind: deal"
 - **Because:** a one-word name and a bare argument list didn't say what was happening
 - **Cost:** the tool name changed in config, tests and docs
+
+### D-84 · The harness's own tools stay open to every profile
+✅ Accepted · S05 · found live (the agent skipped `review_contract`)
+- **Chose:** `load_skill` and `delegate_task` always pass the profile allow-list (`CORE_TOOLS` in `gate.py`); the list is about the workspace's own tools
+- **Instead of:** listing them in every profile in `workspace.toml`
+- **Because:** the S05 allow-list hid them, so no agent could read a skill or hand the contract to its helper. That is why S03-AC11 and S04-AC10 failed
+- **Cost:** a workspace can't switch them off by profile (the pane switches still can)

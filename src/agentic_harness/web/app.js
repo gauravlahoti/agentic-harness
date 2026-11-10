@@ -212,15 +212,15 @@ function modelLabel(id) {
 const profileKey = (ws) => `profile:${ws.name}`;
 
 function setUpProfilePicker(ws) {
-  const pick = $("profile");
+  const pick = $("profile"); // stays as the one source of the value; the cards below drive it
   const box = $("profile-box");
   for (const old of pick.querySelectorAll("option")) old.remove();
+  for (const old of box.querySelectorAll(".profile-switch")) old.remove();
   box.hidden = !ws.profiles?.length;
   if (box.hidden) return;
   for (const profile of ws.profiles) {
-    const option = el("option");
+    const option = el("option", null, profile.label);
     option.value = profile.id;
-    option.append(el("span", "profile-dot"), el("span", null, profile.label));
     pick.append(option);
   }
   let saved = null;
@@ -230,6 +230,33 @@ function setUpProfilePicker(ws) {
     // Storage blocked: start with the first profile.
   }
   pick.value = ws.profiles.some((p) => p.id === saved) ? saved : ws.profiles[0].id;
+
+  // Cards: real radio buttons (arrow keys and screen readers work), a thumb that glides.
+  const group = el("div", "profile-switch");
+  group.setAttribute("role", "radiogroup");
+  group.setAttribute("aria-label", "Whose view the agent works for");
+  group.style.setProperty("--n", ws.profiles.length);
+  ws.profiles.forEach((profile, i) => {
+    const card = el("label", "pf-card");
+    const input = el("input");
+    input.type = "radio";
+    input.name = "profile-card";
+    input.value = profile.id;
+    input.checked = profile.id === pick.value;
+    input.addEventListener("change", () => {
+      pick.value = profile.id;
+      group.style.setProperty("--i", i);
+      pick.dispatchEvent(new Event("change"));
+    });
+    const avatar = el("span", "pf-avatar", profile.label.charAt(0).toUpperCase());
+    const text = el("span", "pf-text");
+    text.append(el("span", "pf-name", profile.label), el("span", "pf-sub", "Working as"));
+    card.append(input, avatar, text, el("span", "pf-live"));
+    group.append(card);
+    if (input.checked) group.style.setProperty("--i", i);
+  });
+  group.prepend(el("span", "pf-thumb"));
+  box.append(group);
 }
 
 function currentProfile() {
@@ -328,13 +355,14 @@ function newTurn(task) {
   activity.setAttribute("aria-label", "What the harness did");
   const reply = el("div", "reply");
   const files = el("div", "files"); // cards for files the tools saved (S03)
-  const foot = el("p", "run-foot");
-  agent.append(head, activity, reply, files, foot);
+  const foot = el("p", "run-foot"); // only for a stop or a failure; empty (hidden) when all went well
+  const meta = el("p", "run-meta"); // calls · tokens · cost · time, once the answer is in
+  agent.append(head, activity, reply, files, foot, meta);
 
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
+  return { activity, reply, files, foot, meta, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
@@ -571,18 +599,16 @@ function onEvent(ev, turn) {
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
     if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
     turn.stats.classList.remove("working");
-    turn.stats.textContent = `${plural(d.model_calls, "call")} · ${turn.tokens} tokens · ${money(d.usd)} · ${d.seconds.toFixed(1)} s`;
+    turn.stats.textContent = ""; // the header was "Working…"; the numbers now sit under the answer
+    const numbers = [plural(d.model_calls, "call"), `${turn.tokens} tokens`, money(d.usd), `${d.seconds.toFixed(1)} s`];
+    turn.meta.replaceChildren(...numbers.map((n) => el("span", "meta-chip", n)));
     if (d.answer) renderProse(turn.reply, d.answer);
     const reason = REASONS[d.reason] ?? d.reason;
-    const foot = {
-      completed: "✓ Run complete",
-      stopped: `■ Stopped: ${reason}`,
-      failed: `✗ Failed: ${reason}`,
-    }[d.outcome];
-    turn.foot.textContent = foot ?? d.outcome;
+    const note = { stopped: `■ Stopped: ${reason}`, failed: `✗ Failed: ${reason}` }[d.outcome] ?? "";
+    turn.foot.textContent = note;
     turn.foot.className = `run-foot ${d.outcome}`;
-    announce(`${foot}. ${turn.stats.textContent}`);
-    turn.foot.scrollIntoView({ block: "nearest" });
+    announce(`${note || "Run complete"}. ${numbers.join(", ")}`);
+    turn.meta.scrollIntoView({ block: "nearest" });
   }
 }
 
