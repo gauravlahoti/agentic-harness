@@ -768,3 +768,33 @@
 - **Instead of:** nothing, or putting it in the menu itself
 - **Because:** a name alone doesn't say what the agent is for
 - **Cost:** none
+
+### D-97 · Fall back to another model on 429 / 503, for the rest of the run
+✅ Accepted · S09 · your gap review
+- **Chose:** `[models] fallback = [...]` in `workspace.toml`. A 429 or 503 moves the run to the next model at once and it stays there; a `model_fell_back` event names both models and the error. Each call is priced by the model that answered
+- **Instead of:** SDK retries (they slept for the server's Retry-After: D-42), or retrying the same model
+- **Because:** on the free tier one busy model ended run after run; Flash-Lite drops (does not reject) Flash's thought signatures, so switching mid-run is safe
+- **Cost:** the rest of the run uses the smaller model; other errors still end the run
+- **Revisit if:** a paid tier makes 429s rare
+
+### D-98 · A checkpoint per step, and Resume
+✅ Accepted · S09 · your gap review
+- **Chose:** each step also appends `{"kind": "checkpoint", "run_id", "steps", "usd", "seconds"}` to the conversation file. A turn with no finish line can be resumed: the loop carries on from the saved steps, with no new message, and the budget starts from the checkpoint. A tool call that never got its result stays "cancelled"
+- **Instead of:** asking the person to type the question again (step count and cost restart, and the half-done work is easy to lose)
+- **Because:** a crash at step 15 of 25 should cost one step, not the run
+- **Cost:** one line per step; the model may repeat a lookup that was cancelled
+
+### D-99 · The Harness pane in seven sections
+✅ Accepted · S09 · your pick
+- **Chose:** Agentic Loop (+ output contract) · Models (new) · Context · Tools (+ hand-off to helpers) · Environment (new) · Guardrails · State & Memory (renamed). Where something is not enforced, the pane says "by convention" or "not restricted"
+- **Instead of:** keeping five longer sections, or nine (one per question group)
+- **Because:** every question a reviewer asks has one home, without a section per question
+- **Cost:** a longer pane; every section starts collapsed
+
+### D-100 · Declared, not built: sandbox, per-role effort, output schema
+✅ Accepted · S09 · your pick
+- **Chose:** the pane shows the truth: workspace tools run in the server's own process, file limits beyond `read_file` and the harness's writes are convention, network is not restricted; effort is per run only; answers have no schema
+- **Instead of:** a static scan of workspace tools, `thinking` per role, a JSON schema for answers
+- **Because:** real enforcement needs a container this local project doesn't have; a schema conflicts with plain answers (D-82)
+- **Cost:** a workspace's Python could reach the network or the disk; downstream systems can't rely on a shape
+- **Revisit if:** the harness is hosted for others, or a system consumes its answers
