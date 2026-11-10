@@ -951,14 +951,14 @@ function renderPane() {
     }),
   );
   const pauseCard = card("pause", "⏸", "Human in the loop", "always asks you first", [
-    g.approvals.length ? hitl : el("p", "pane-note", "Nothing waits for a person"),
+    g.approvals.length ? hitl : el("p", "guard-text", `${g.profile} has no actions that need a person`),
   ]);
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
   // Say so plainly if an action this profile may use would run without a person.
   const asks = new Set(g.approvals.map((a) => a.tool));
   const unguarded = info.tools.filter((t) => t.risk === "action" && g.allowed.includes(t.name) && !asks.has(t.name));
   if (unguarded.length) guardBody.push(el("p", "pane-warn", `${plural(unguarded.length, "action")} run without asking anyone.`));
-  const guard = paneSection("guard", "Guardrails", `${plural(g.never.length, "hard limit")} · ${plural(g.approvals.length, "approval")}`, guardBody);
+  const guard = paneSection("guard", "Guardrails", g.never.length || g.approvals.length ? `${plural(g.never.length, "hard limit")} · ${plural(g.approvals.length, "approval")}` : "read-only", guardBody);
 
   // Agentic loop: the brakes and the model, for the next run.
   const l = info.loop;

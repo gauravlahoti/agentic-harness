@@ -141,7 +141,11 @@ def test_s04_ac11_harness_endpoint_shows_what_a_run_gets(tmp_path: Path) -> None
     assert guard["profile"] == "Engineering"
     assert "send_to_customer" in guard["not_allowed"]  # Engineering can't send (S05)
     assert "annual_value_usd" in guard["hidden_fields"]
-    assert guard["approvals"][0]["tool"] == "send_to_customer"
+    assert guard["approvals"] == []  # it can't send, so nothing to approve
+    assert guard["never"] == []  # the hard limits are on a tool it can't use
+    sales = web.get("/api/harness", params={"profile": "sales"}).json()["guardrails"]
+    assert sales["approvals"][0]["tool"] == "send_to_customer"
+    assert len(sales["never"]) == 4
     assert web.get("/api/harness", params={"profile": "pirates"}).status_code == 400
     assert client(tmp_path, workspace=None).get("/api/harness").status_code == 409
 

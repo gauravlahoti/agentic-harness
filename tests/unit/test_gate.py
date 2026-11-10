@@ -96,3 +96,11 @@ def test_s05_ac13_summary_for_the_pane() -> None:
     assert summary["hidden_fields"] == ["value"]
     assert [r["label"] for r in summary["never"]] == ["Price above 50", "A deal that never ends"]
     assert summary["approvals"] == [{"tool": "send", "because": "chart §3: sending needs a person"}]
+
+
+def test_s05_ac13_a_profile_only_sees_rules_for_tools_it_can_use() -> None:
+    """Engineering can't send, so send's hard limits and approval don't apply to it."""
+    summary = gate(("find", "read_doc")).summary(TOOLS)
+    assert summary["not_allowed"] == ["send"]
+    assert summary["never"] == []
+    assert summary["approvals"] == []

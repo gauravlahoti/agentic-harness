@@ -179,7 +179,16 @@ class Gate:
             "allowed": [t.name for t in tools if self.allows(t.name)],
             "not_allowed": [t.name for t in tools if not self.allows(t.name)],
             "hidden_fields": list(self.hide_fields),
-            "never": [{"id": r.id, "label": r.label, "because": r.because} for r in self.rules],
-            "approvals": [{"tool": a.tool, "because": a.because} for a in self.approvals.values()],
+            # Only rules and approvals for tools this profile can use: the rest don't apply.
+            "never": [
+                {"id": r.id, "label": r.label, "because": r.because}
+                for r in self.rules
+                if self.allows(r.tool)
+            ],
+            "approvals": [
+                {"tool": a.tool, "because": a.because}
+                for a in self.approvals.values()
+                if self.allows(a.tool)
+            ],
             "flags": True,
         }

@@ -981,7 +981,8 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
   overflow-wrap: anywhere;
 }
 .chip-ok { border-color: color-mix(in srgb, var(--pass) 40%, transparent); color: var(--pass); background: color-mix(in srgb, var(--pass) 10%, transparent); }
-.chip-no { border-color: color-mix(in srgb, var(--fail) 40%, transparent); color: var(--fail); text-decoration: line-through; }
+.chip-no { border-color: color-mix(in srgb, var(--fail) 40%, transparent); color: var(--fail); background: color-mix(in srgb, var(--fail) 8%, transparent); }
+.chip-no::before { content: "✕ "; font-weight: 700; }
 .chip-hidden, .chip-locked { border-color: color-mix(in srgb, var(--fail) 25%, transparent); color: var(--text-soft); }
 .chip-hidden::before { content: "◌ "; color: var(--fail); }
 .chip-locked::before { content: "⊘ "; color: var(--fail); }
