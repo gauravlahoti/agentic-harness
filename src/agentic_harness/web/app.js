@@ -654,17 +654,17 @@ function onEvent(ev, turn) {
 function receipt(turn, d) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const cells = [
-    ["Calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
-    ["Tokens", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
-    ["Cost", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
-    ["Time", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
+    ["calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
+    ["tokens", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
+    ["", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
+    ["", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
   ];
   const card = el("div", "receipt");
   const grid = el("div", "receipt-grid");
   for (const [label, value, format, key] of cells) {
     const cell = el("div", `receipt-cell rc-${key}`);
     const number = el("span", "receipt-num", format(reduce ? value : 0));
-    cell.append(number, el("span", "receipt-label", label));
+    cell.append(number, ...(label ? [el("span", "receipt-label", label)] : []));
     grid.append(cell);
     if (!reduce) {
       const start = performance.now();
@@ -680,8 +680,10 @@ function receipt(turn, d) {
   const { input, output, thinking } = turn.split;
   if (input + output + thinking) {
     const bar = el("div", "receipt-bar");
+    const words = `Tokens: ${input.toLocaleString()} read · ${output.toLocaleString()} written · ${thinking.toLocaleString()} thinking`;
     bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", `Tokens: ${input} read, ${output} written, ${thinking} thinking`);
+    bar.setAttribute("aria-label", words);
+    bar.title = words;
     const legend = el("div", "receipt-legend");
     for (const [name, n, cls] of [["Read", input, "in"], ["Written", output, "out"], ["Thinking", thinking, "think"]]) {
       if (!n) continue;
