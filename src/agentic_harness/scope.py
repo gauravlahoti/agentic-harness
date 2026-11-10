@@ -55,8 +55,9 @@ def scope_prompt(scope: Scope) -> str:
 CHECK_PROMPT = (
     "You decide whether a request is inside an assistant's scope. You do not answer it.\n"
     "The assistant only helps with: {covers}\n"
-    "Reply with IN or OUT, a colon, and a reason of a few words. Greetings and questions "
-    "about what the assistant can do are IN."
+    "Reply with IN or OUT, a colon, and a reason of a few words. Greetings, questions "
+    "about what the assistant can do, and the person's preferences about how it should "
+    "answer them (format, length, tone) are IN."
 )
 
 

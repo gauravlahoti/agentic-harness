@@ -82,3 +82,11 @@ async def test_s05_ac14_a_failed_check_lets_the_run_go_on() -> None:
     assert checked.data["in_scope"] is True
     assert "503" in checked.data["error"]
     assert model_called  # the loop started: the prompt layer still applies
+
+
+def test_s05_ac14_a_preference_about_answers_counts_as_in_scope() -> None:
+    """Found live: "I like all my responses in bullets" is not a contract question, but it is
+    how the person wants this agent to answer; the check must let it through."""
+    from agentic_harness.scope import CHECK_PROMPT
+
+    assert "preferences about how it should answer" in CHECK_PROMPT

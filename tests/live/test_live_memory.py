@@ -61,3 +61,14 @@ async def test_s07_ac11_a_real_model_titles_a_conversation(tmp_path: Path) -> No
     assert 3 <= len(title) <= 48
     assert "\n" not in title
     assert not title.endswith(".")
+
+
+async def test_s07_ac4_a_preference_is_kept_and_used_next_time(tmp_path: Path) -> None:
+    """Found live: "I like all my responses in bullets" must be saved, then followed."""
+    first = await harness(tmp_path).run("I like all my responses in bullets.")
+    assert first.outcome == "completed", first.reason
+    notes = (tmp_path / "memory" / "notes" / "cloudco" / "sales.md").read_text()
+    assert "bullet" in notes.lower(), notes
+    second = await harness(tmp_path).run("Who approves a 20% discount, and why?")
+    assert second.outcome == "completed", second.reason
+    assert any(line.lstrip().startswith(("-", "*", "•")) for line in second.answer.splitlines())

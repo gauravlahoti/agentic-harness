@@ -261,9 +261,10 @@ def save_note_tool(file: Path) -> Tool:
         note: Annotated[str, "One short fact worth remembering, in a sentence"],
     ) -> str:
         """Save one short note for yourself that you will see at the start of future tasks.
-        Use it for a decision, a limit someone set, or a fact about the person's work that
-        you could not look up again. Not for the conversation itself (that is kept already),
-        and not for anything you can find with your tools."""
+        Use it for a decision, a limit someone set, a fact about the person's work that you
+        could not look up again, or how the person likes your answers (for example "answers
+        in bullets"); then confirm in one line and follow it from now on. Not for the
+        conversation itself (that is kept already), and not for what your tools can find."""
         text = " ".join(note.split())
         if not text:
             raise ValueError("The note is empty.")

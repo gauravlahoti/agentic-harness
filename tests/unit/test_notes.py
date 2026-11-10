@@ -124,3 +124,8 @@ def test_s07_save_note_is_a_write_tool_the_page_can_describe(name: str, tmp_path
     assert tool.name == name
     assert tool.risk == "write"
     assert len(tool.description) > 40
+
+
+def test_s07_ac4_save_note_covers_the_persons_preferences(tmp_path: Path) -> None:
+    """Long-term memory is also personalization: how the person likes answers."""
+    assert "how the person likes your answers" in save_note_tool(tmp_path / "n.md").description
