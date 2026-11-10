@@ -18,6 +18,9 @@ class Tool:
     description: str
     parameters: dict[str, Any] = field(default_factory=lambda: {"type": "object"})
     function: Callable[..., Any] = field(default=lambda: None, repr=False)
+    # Which harness part acts when this tool runs: "tool" for actions, "context" for
+    # built-ins that only read context (load_skill). The page colours lines by it.
+    part: str = "tool"
 
     def declaration(self) -> dict[str, Any]:
         """What Gemini is shown: its function-tool format."""

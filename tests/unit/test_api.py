@@ -55,3 +55,36 @@ def test_s01_ac12_cli_run_live_without_key_explains(
     code = main(["run", "--workspace", str(HELLO), "Hi"])
     assert code == 2
     assert ".env.example" in capsys.readouterr().err
+
+
+CLOUDCO = ROOT / "workspaces" / "cloudco"
+
+
+def test_s02_ac2_create_harness_builds_the_context(tmp_path: Path) -> None:
+    model = GeminiModel(Settings(model="gemini-3.6-flash"), client=object())
+    agent = create_harness(
+        model, Limits(), Workspace.load(CLOUDCO), profile="finance", trace_dir=None
+    )
+    assert "Finance team" in agent.system
+    assert "load_skill" in agent.tools  # built in, because this profile has skills
+    assert agent.tools["load_skill"].part == "context"
+    assert agent.context["profile"] == "finance"
+    assert agent.context["prompt_id"] == agent.prompt_id
+
+
+def test_s02_ac2_no_skills_means_no_load_skill(tmp_path: Path) -> None:
+    model = GeminiModel(Settings(model="gemini-3.6-flash"), client=object())
+    agent = create_harness(model, Limits(), Workspace.load(HELLO), trace_dir=None)
+    assert "load_skill" not in agent.tools
+
+
+def test_s02_ac3_cli_refuses_an_unknown_profile(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from agentic_harness.config import Secret
+
+    key = Secret("test-value-not-a-real-key")
+    monkeypatch.setattr("agentic_harness.config.load_settings", lambda: Settings(api_key=key))
+    code = main(["run", "--workspace", str(CLOUDCO), "--profile", "pirates", "Hi"])
+    assert code == 2
+    assert "pirates" in capsys.readouterr().err

@@ -1,0 +1,6 @@
+# The smallest workspace: one tool, no memory files, no skills, no profiles.
+# Read by the harness only. Everything here is optional (D-41).
+
+name = "Hello"
+domain_words = ["get_time", "tokyo"]
+examples = ["What time is it in Tokyo?", "What time is it in UTC and in New York?"]

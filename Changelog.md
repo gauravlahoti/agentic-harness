@@ -17,8 +17,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - `scripts/record_gemini_shapes.py` and 9 recorded Gemini replies as test fixtures; `docs/gemini-api-notes.md`.
 - Theme toggle: follows the system by default; a sun/moon switch overrides it with a circular reveal; no flash on reload (D-28).
 - Server hardening: host-name check, a page-only action header, strict browser security headers (D-20).
+- Context (S02): `workspace.toml` (memory files, skill folders, profiles, memory budget, domain words, examples); system prompt built once in a fixed order (base → memory → skill list) with a prompt ID on every call; skills in the open `SKILL.md` format, loaded on demand by the built-in `load_skill`; a size warning for memory files.
+- CloudCo Contract Assistant workspace (all made up): `AGENTS.md` with the answer format, 3 team files, 4 skills, 2 policies, 4 profiles.
+- Page: profile picker in the sidebar; CONTEXT lines for the loaded context and for each skill read; example tasks come from the workspace.
 
 ### Changed
+- SDK retries are off; a failed model call ends the run at once with Gemini's own message ("Gemini 429: … retry in 41m") instead of waiting silently until the time limit (D-42).
+- The domain-free test also checks each workspace's own words from its `workspace.toml` (D-40).
 - Only Gemini answers: Fake mode, `FakeModel` and replay-based loop tests removed (D-32). Coverage gate 75% until the evals (D-33).
 - Base system prompt: answer directly; call a tool only when the task needs it (D-30).
 - Project named `agentic-harness` (package `agentic_harness`).

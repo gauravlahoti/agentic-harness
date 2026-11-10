@@ -18,6 +18,7 @@ write files (listeners such as trace.py do). It only emits events.
 """
 
 import asyncio
+import hashlib
 import inspect
 import json
 import time
@@ -70,8 +71,12 @@ class Harness:
         *,
         prices: Prices,
         system: str = SYSTEM_PROMPT,
+        context: dict[str, Any] | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
+        self.context = context or {}  # what was loaded into the prompt, for the page (S02)
+        # Same text on every call (S02-AC8); each call carries this ID to prove it.
+        self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
         self.tools = {tool.name: tool for tool in tools}
         self._bus = EventBus()
 
@@ -93,6 +98,7 @@ class Harness:
                 "max_usd": self.limits.max_usd,
                 "max_seconds": self.limits.max_seconds,
             },
+            context=self.context,
         )
 
         def finish(outcome: Outcome, reason: str, answer: str = "") -> RunResult:
@@ -119,7 +125,9 @@ class Harness:
 
         while (limit := budget.exceeded()) is None:
             budget.count_step()
-            run.emit("model_called", step=budget.steps, history=len(steps))
+            run.emit(
+                "model_called", step=budget.steps, history=len(steps), prompt_id=self.prompt_id
+            )
             try:
                 # The time limit also covers waiting for the model.
                 async with asyncio.timeout(budget.seconds_left()):
@@ -159,8 +167,9 @@ class Harness:
 
     async def _run_tool(self, call: Step, run: "_Run") -> Step:
         name, arguments = call.get("name", ""), call.get("arguments") or {}
-        run.emit("tool_started", call_id=call.get("id"), name=name, arguments=arguments)
         tool = self.tools.get(name)
+        part = tool.part if tool else "tool"  # load_skill is "context"; actions are "tool"
+        run.emit("tool_started", call_id=call.get("id"), name=name, arguments=arguments, part=part)
         is_error = True
         if tool is None:
             output = f"Unknown tool: {name}"
@@ -174,7 +183,12 @@ class Harness:
             except Exception as error:  # a broken tool is news for the model, not a crash
                 output = f"{type(error).__name__}: {error}"
         run.emit(
-            "tool_finished", call_id=call.get("id"), name=name, output=output, is_error=is_error
+            "tool_finished",
+            call_id=call.get("id"),
+            name=name,
+            output=output,
+            is_error=is_error,
+            part=part,
         )
         result: Step = {
             "type": "function_result",

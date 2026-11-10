@@ -1,0 +1,35 @@
+# CloudCo's Contract Assistant: one workspace on the harness.
+# Read by the harness only; the model never sees this file (spec/02-ui.md, D-12).
+# CloudCo, ShopCo, people and numbers are all fictional.
+
+name = "Contract Assistant"
+owner = "CloudCo"
+
+# Always in the prompt, in this order. {profile} picks the active profile's file.
+memory = ["AGENTS.md", "teams/{profile}.md"]
+
+# One line per skill in the prompt; load_skill reads the rest. Each profile sees its own folder.
+skills = ["skills/company", "skills/{profile}"]
+
+memory_budget_tokens = 2000
+
+# Words that must never appear inside the harness (S02-AC9).
+domain_words = ["cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline", "uptime"]
+
+examples = [
+  "ShopCo wants 25% off and unlimited liability. Can we agree?",
+  "Can we promise ShopCo 99.99% uptime?",
+  "ShopCo asks for Net 60 payment terms. Is that OK?",
+]
+
+[profiles.sales]
+label = "Sales"
+
+[profiles.engineering]
+label = "Engineering"
+
+[profiles.finance]
+label = "Finance"
+
+[profiles.cfo]
+label = "CFO"

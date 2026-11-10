@@ -20,7 +20,7 @@ The first agent is the **CloudCo Contract Assistant**. It reviews a customer's c
 1. Install [uv](https://docs.astral.sh/uv/), then clone this repository.
 2. Run `make setup` to install the locked dependencies, then `make check` to run the offline tests. Both are free and need no key.
 3. For live runs, copy `.env.example` to `.env` and add your [AI Studio](https://aistudio.google.com/apikey) key.
-4. Run `uv run agentic-harness serve --workspace workspaces/hello`, open http://127.0.0.1:8000 and give the agent a task. Pick the Gemini model in the input box.
+4. Run `uv run agentic-harness serve --workspace workspaces/cloudco`, open http://127.0.0.1:8000, pick a team in the sidebar and give the agent a task. Pick the Gemini model in the input box.
 
 **Using a coding agent?** Open the repository in Claude Code, Codex or Antigravity and ask it to set up and check the project. It follows the steps above and the project rules in [CLAUDE.md](CLAUDE.md) (Codex and Antigravity reach them through [AGENTS.md](AGENTS.md)). Add the key to `.env` yourself; agents are told never to read it.
 
@@ -29,7 +29,7 @@ The first agent is the **CloudCo Contract Assistant**. It reviews a customer's c
 | Part | What it handles | CloudCo example | Status |
 |---|---|---|---|
 | Loop | Calls the model, runs the tools it asks for, repeats; stops at step, cost or time limits | A run that hits its $1 budget stops and says why | Available |
-| Context | Standing instructions, team files, and skills loaded on demand | Checks each change against CloudCo's standard terms | Planned |
+| Context | Standing instructions, team files, and skills loaded on demand | Checks each change against CloudCo's standard terms | Available |
 | Actions | Workspace tools, built-in tools, and sub-agents with a clean history | Finds ShopCo's 5 contract changes, with record IDs; a reviewer sub-agent reads the 40 pages | Planned |
 | Guardrails | Tools and fields per profile, protected files, human approvals | Engineering never sees prices; a 25% discount waits for the CFO | Planned |
 | Memory | Saved tasks you can resume, per-profile notes, context trimming | In round 2 it recalls that the CFO approved 20% in round 1 | Planned |

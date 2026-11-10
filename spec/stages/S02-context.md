@@ -55,3 +55,4 @@ Ask (pasting the changes in): *"ShopCo wants 25% off and unlimited liability. OK
 
 - 2026-11-10 · Created (v3).
 - 2026-11-10 · Brief approved with choices D-34–D-41. No Fake recordings (D-32). Each model call carries a prompt ID so S02-AC8 can be checked in the trace.
+- 2026-11-10 · Built: S02-AC1–AC12 → 🟨. Found while verifying live: SDK retries hid a 429; retries now off (D-42). No change to the checks.

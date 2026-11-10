@@ -29,7 +29,10 @@ def events(response_text: str) -> list[dict[str, object]]:
 
 def test_s01_ac13_health_describes_the_workspace(tmp_path: Path) -> None:
     body = client(tmp_path).get("/api/health").json()
-    assert body["workspace"] == {"name": "hello", "tools": ["get_time"]}
+    assert body["workspace"]["name"] == "hello"
+    assert body["workspace"]["title"] == "Hello"
+    assert body["workspace"]["tools"] == ["get_time"]
+    assert body["workspace"]["profiles"] == []
     assert client(tmp_path, workspace=None).get("/api/health").json()["workspace"] is None
 
 
@@ -93,3 +96,30 @@ def test_s01_ac13_unpriced_model_is_refused(tmp_path: Path) -> None:
     assert response.status_code == 400
     assert "pricing.toml" in response.json()["detail"]
     assert built == []
+
+
+CLOUDCO = HELLO.parent / "cloudco"
+
+
+def test_s02_ac12_health_describes_profiles_and_examples(tmp_path: Path) -> None:
+    body = client(tmp_path, workspace=CLOUDCO).get("/api/health").json()["workspace"]
+    assert body["title"] == "Contract Assistant"
+    assert body["owner"] == "CloudCo"
+    assert [p["id"] for p in body["profiles"]] == ["sales", "engineering", "finance", "cfo"]
+    assert body["examples"]
+
+
+def test_s02_ac12_unknown_profile_is_refused(tmp_path: Path) -> None:
+    def factory(settings: Settings) -> ModelClient:
+        raise AssertionError("no model should be built for an unknown profile")
+
+    app = create_app(
+        Settings(api_key=Secret("test-value-not-a-real-key")),
+        project_root=tmp_path,
+        workspace=Workspace.load(CLOUDCO),
+        model_factory=factory,
+    )
+    web = TestClient(app, base_url="http://127.0.0.1")
+    response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "Hi", "profile": "pirates"})
+    assert response.status_code == 400
+    assert "pirates" in response.json()["detail"]

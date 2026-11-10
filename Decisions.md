@@ -237,6 +237,7 @@
 - **Because:** rule 1 (the harness decides) and honest cost and time limits; we saw a 503 "high demand" retried silently for about 5 minutes
 - **Cost:** a busy model fails faster; the run reports `model_error` instead of waiting
 - **Revisit if:** we add our own visible retry step to the loop
+- **Changed 2026-11-10:** retries are now off entirely (D-42)
 
 ### D-30 · The base prompt tells the model to answer directly
 ✅ Accepted · S01 · after your report ("who is the prime minister" called `get_time`)
@@ -333,3 +334,11 @@
 - **Because:** shows how little a workspace needs
 - **Cost:** two code paths
 - **Revisit if:** —
+
+### D-42 · No SDK retries at all; show Gemini's own error sentence
+✅ Accepted · S02 · after your report (runs on 3.6 and 3.8 Flash "Thinking" for 2 minutes)
+- **Chose:** `attempts=1`, so the SDK sends each request once; a failure reaches the loop at once as `model_error: Gemini 429: <Gemini's message>`
+- **Instead of:** `attempts=2` (D-29), one "harmless" retry
+- **Because:** measured: on a 429 the SDK sleeps for the server's `Retry-After` as-is, uncapped. 3.6 Flash's free tier (20 requests a day) said "retry in 41m43s", so every run sat silent until our 120 s limit and ended "hit the time limit", hiding the real reason
+- **Cost:** a one-second blip now fails the run too; you resend or pick another model
+- **Revisit if:** we add our own visible retry step to the loop

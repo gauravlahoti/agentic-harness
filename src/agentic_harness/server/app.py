@@ -30,7 +30,7 @@ from agentic_harness.model import GeminiModel, ModelClient
 from agentic_harness.pricing import load_prices
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
-from agentic_harness.workspace import Workspace
+from agentic_harness.workspace import Workspace, WorkspaceError
 
 WEB_DIR = Path(agentic_harness.__file__).parent / "web"
 PROJECT_ROOT = Path(agentic_harness.__file__).resolve().parents[2]  # src/ layout → repo root
@@ -54,6 +54,7 @@ class RunRequest(BaseModel):
 
     task: str = Field(min_length=1, max_length=4000)
     model: str | None = Field(default=None, max_length=100)  # must have a price (D-31)
+    profile: str | None = Field(default=None, max_length=50)  # must be one of the workspace's
 
 
 def create_app(
@@ -107,7 +108,11 @@ def create_app(
             if workspace is None
             else {
                 "name": workspace.name,
+                "title": workspace.title,
+                "owner": workspace.owner,
                 "tools": [tool.name for tool in workspace.tools],
+                "profiles": [{"id": p.id, "label": p.label} for p in workspace.profiles],
+                "examples": list(workspace.examples),
             },
         }
 
@@ -137,6 +142,10 @@ def create_app(
             raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
         if app.state.run_active:
             raise HTTPException(409, "A run is already going.")
+        try:
+            profile = workspace.check_profile(body.profile)
+        except WorkspaceError as error:
+            raise HTTPException(400, str(error)) from None
         if not settings.has_key and settings.backend == "gemini_api":
             raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
         name = body.model or settings.model
@@ -144,7 +153,9 @@ def create_app(
             raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
         model = model_factory(replace(settings, model=name))
         secrets = [settings.api_key.reveal()] if settings.api_key else []
-        harness = create_harness(model, Limits(), workspace, trace_dir=trace_dir, secrets=secrets)
+        harness = create_harness(
+            model, Limits(), workspace, profile=profile, trace_dir=trace_dir, secrets=secrets
+        )
         app.state.run_active = True
 
         async def lines() -> AsyncIterator[str]:

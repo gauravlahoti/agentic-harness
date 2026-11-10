@@ -69,7 +69,7 @@ body {
   background: var(--surface);
 }
 .brand { font-weight: 650; font-size: 16px; }
-.workspace { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+.workspace { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
 .nav-item {
   padding: 6px 10px;
   border-radius: 8px;
@@ -598,6 +598,30 @@ details[open] > summary .chev { rotate: 180deg; }
   .model-pick option {
     transition: none;
   }
+}
+
+/* Profile menu in the sidebar (D-39): same animated menu as the model picker,
+   opening downward from the top of the sidebar. */
+.profile-box { margin: 2px 0 14px -4px; }
+.profile-pick { color: var(--text); }
+.profile-pick::picker(select) {
+  position-area: block-end span-inline-end;
+  transform-origin: top left;
+  min-width: 190px;
+}
+.profile-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--part-context);
+}
+
+/* CONTEXT lines: what the agent knows (memory files, skills). Blue, per spec/02-ui.md. */
+.part-context .act-text { color: var(--part-context); }
+.part-context .act-tag {
+  color: var(--part-context);
+  border-color: color-mix(in srgb, var(--part-context) 35%, transparent);
 }
 
 .send {

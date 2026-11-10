@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 from agentic_harness.config import MissingKeyError, Secret, Settings
-from agentic_harness.model import GeminiModel, ModelClient, ModelError, ModelReply
+from agentic_harness.model import GeminiModel, ModelClient, ModelError, ModelReply, _make_client
 
 HISTORY = [{"type": "user_input", "content": [{"type": "text", "text": "hi"}]}]
 REPLY = {
@@ -91,6 +91,29 @@ async def test_s01_ac3_api_errors_become_model_errors_without_the_key() -> None:
         await model.create("s", HISTORY, [])
     assert "503 high demand" in str(error.value)
     assert key not in str(error.value)
+
+
+class GeminiStatusError(Exception):
+    """Shaped like the SDK's status errors: a status code and Gemini's JSON body."""
+
+    def __init__(self, status_code: int, body: object) -> None:
+        super().__init__(f"Error code: {status_code} - {body}")
+        self.status_code = status_code
+        self.body = body
+
+
+async def test_s01_ac3_gemini_errors_read_as_gemini_wrote_them() -> None:
+    said = "Rate limit exceeded (limit: 20 requests per day). Please retry in 41m43s."
+    sdk = RecordingSdk(error=GeminiStatusError(429, {"error": {"message": said}}))
+    with pytest.raises(ModelError) as error:
+        await GeminiModel(Settings(), client=sdk).create("s", HISTORY, [])
+    assert str(error.value) == f"Gemini {429}: {said}"
+
+
+def test_s01_ac3_the_sdk_never_retries_on_its_own() -> None:
+    """D-42: a 429 "retry in 41m" made the SDK sleep silently until our time limit."""
+    client = _make_client(Settings(api_key=Secret("test-value-not-a-real-key")))
+    assert client._api_client._http_options.retry_options.attempts == 1
 
 
 def test_s01_ac3_live_model_needs_a_key() -> None:

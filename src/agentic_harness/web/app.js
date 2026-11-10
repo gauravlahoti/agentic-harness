@@ -154,7 +154,6 @@ async function runChecks() {
 }
 
 // ── Agent view (S01): calm chat on top, every harness step one line you can open ──
-const EXAMPLES = ["What time is it in Tokyo?", "What time is it in UTC and in New York?"];
 const REASONS = {
   answered: "answered",
   step_limit: "hit the step limit",
@@ -170,12 +169,14 @@ function setUpAgent() {
     $("send").disabled = true;
     return;
   }
-  agentName = ws.name;
-  $("workspace-name").textContent = `${ws.name} workspace · ${plural(ws.tools.length, "tool")}`;
-  $("empty-title").textContent = `What should the ${ws.name} agent do?`;
+  // Every name and example comes from the workspace: the page knows no agent (D-40).
+  agentName = ws.title;
+  $("workspace-name").textContent = ws.owner ? `${ws.title} · ${ws.owner}` : ws.title;
+  $("empty-title").textContent = `What should the ${ws.title} do?`;
   $("empty-hint").textContent = "";
+  setUpProfilePicker(ws);
   $("examples").replaceChildren(
-    ...EXAMPLES.map((text) => {
+    ...(ws.examples ?? []).map((text) => {
       const chip = el("button", "example", text);
       chip.type = "button";
       chip.addEventListener("click", () => {
@@ -202,6 +203,48 @@ function modelLabel(id) {
   const [version, ...words] = id.replace(/^gemini-/, "").split("-");
   const tier = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("-");
   return `Gemini ${version} ${tier}`.trim();
+}
+
+// Profiles (D-39): whose view the agent works for. Same menu style as the model menu.
+// Switching starts a fresh thread, because each profile gets different context.
+const profileKey = (ws) => `profile:${ws.name}`;
+
+function setUpProfilePicker(ws) {
+  const pick = $("profile");
+  const box = $("profile-box");
+  for (const old of pick.querySelectorAll("option")) old.remove();
+  box.hidden = !ws.profiles?.length;
+  if (box.hidden) return;
+  for (const profile of ws.profiles) {
+    const option = el("option");
+    option.value = profile.id;
+    option.append(el("span", "profile-dot"), el("span", null, profile.label));
+    pick.append(option);
+  }
+  let saved = null;
+  try {
+    saved = localStorage.getItem(profileKey(ws));
+  } catch {
+    // Storage blocked: start with the first profile.
+  }
+  pick.value = ws.profiles.some((p) => p.id === saved) ? saved : ws.profiles[0].id;
+}
+
+function currentProfile() {
+  return $("profile-box").hidden ? null : $("profile").value;
+}
+
+const labelFor = (id) => health?.workspace?.profiles?.find((p) => p.id === id)?.label ?? id;
+
+function switchProfile() {
+  try {
+    localStorage.setItem(profileKey(health.workspace), $("profile").value);
+  } catch {
+    // Storage blocked: the switch still applies to this page.
+  }
+  for (const turn of $("thread").querySelectorAll(".turn")) turn.remove();
+  $("empty-state").hidden = false;
+  $("task").focus();
 }
 
 function setUpModelPicker() {
@@ -361,6 +404,26 @@ function onEvent(ev, turn) {
       ],
       raw: d,
     });
+    const c = d.context ?? {};
+    if (c.files?.length || c.skills?.length) {
+      // What went into the prompt, before the first call (S02): the CONTEXT line.
+      const who = c.profile ? `${labelFor(c.profile)} · ` : "";
+      addActivity(turn, {
+        text:
+          `Loaded context · ${who}${plural(c.files.length, "file")} · ${plural(c.skills.length, "skill")}` +
+          (c.warnings?.length ? " · ⚠ over budget" : ""),
+        part: "context",
+        state: "done",
+        facts: [
+          ...(c.profile ? [["Profile", labelFor(c.profile)]] : []),
+          ...c.files.map((f) => ["File", `${f.path} · ~${f.tokens} tokens`]),
+          ...c.skills.map((s) => ["Skill", `${s.name}: ${s.description}`]),
+          ["Prompt", `~${c.prompt_tokens} tokens · id ${c.prompt_id} (same on every call)`],
+          ...(c.warnings ?? []).map((w) => ["Warning", w]),
+        ],
+        raw: c,
+      });
+    }
   } else if (ev.type === "model_called") {
     turn.model = addActivity(turn, {
       text: `Thinking · call ${d.step}`,
@@ -373,7 +436,7 @@ function onEvent(ev, turn) {
     turn.tokens += used;
     let text = `Model replied: ${d.status}`;
     if (d.tool_calls.length) {
-      // ["get_time", "get_time"] → "get_time ×2"
+      // ["lookup", "lookup"] → "lookup ×2"
       const counts = new Map();
       for (const name of d.tool_calls) counts.set(name, (counts.get(name) ?? 0) + 1);
       const names = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
@@ -394,13 +457,17 @@ function onEvent(ev, turn) {
     });
   } else if (ev.type === "tool_started") {
     const args = argText(d.arguments);
-    const row = addActivity(turn, { text: `Running ${d.name}${args ? ` · ${args}` : ""}`, part: "tool", raw: d });
-    turn.tools.set(d.call_id, { row, args });
+    const part = d.part === "context" ? "context" : "tool";
+    // load_skill is the harness's own context tool: name it for what it does.
+    const label =
+      d.name === "load_skill" ? `Read skill ${d.arguments?.name ?? ""}` : `${d.name}${args ? ` · ${args}` : ""}`;
+    const row = addActivity(turn, { text: `Running ${label}`, part, raw: d });
+    turn.tools.set(d.call_id, { row, args, label });
   } else if (ev.type === "tool_finished") {
     const started = turn.tools.get(d.call_id);
     if (started) {
       setActivity(started.row, {
-        text: `${d.name}${started.args ? ` · ${started.args}` : ""}`,
+        text: started.label,
         state: d.is_error ? "error" : "done",
         facts: [
           ["Arguments", started.args || "none"],
@@ -445,7 +512,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, model: $("model").value }),
+      body: JSON.stringify({ task, model: $("model").value, profile: currentProfile() }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -478,6 +545,7 @@ $("model").addEventListener("change", () => {
     // Storage blocked: the pick still applies to this page, it just isn't remembered.
   }
 });
+$("profile").addEventListener("change", switchProfile);
 addEventListener("hashchange", showView);
 showView();
 loadHealth();

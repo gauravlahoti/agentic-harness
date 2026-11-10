@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     run = commands.add_parser("run", help="run one task in the terminal")
     run.add_argument("task", help="what you want the agent to do")
     run.add_argument("--workspace", type=Path, required=True, help="the agent's folder")
+    run.add_argument("--profile", help="whose view to use (default: the first profile listed)")
     run.add_argument("--trace-dir", type=Path, help="where to save the trace")
     run.add_argument("--max-steps", type=int, help="stop after this many model calls")
     run.add_argument("--max-usd", type=float, help="stop after spending this much")
@@ -67,7 +68,7 @@ def run(args: argparse.Namespace) -> int:
     from agentic_harness.api import DEFAULT_TRACE_DIR, create_harness
     from agentic_harness.limits import Limits
     from agentic_harness.model import GeminiModel, ModelClient
-    from agentic_harness.workspace import Workspace
+    from agentic_harness.workspace import Workspace, WorkspaceError
 
     workspace = Workspace.load(args.workspace)
     settings = config.load_settings()
@@ -85,7 +86,13 @@ def run(args: argparse.Namespace) -> int:
         max_seconds=args.max_seconds or defaults.max_seconds,
     )
     trace_dir = args.trace_dir or DEFAULT_TRACE_DIR
-    harness = create_harness(model, limits, workspace, trace_dir=trace_dir, secrets=secrets)
+    try:
+        harness = create_harness(
+            model, limits, workspace, profile=args.profile, trace_dir=trace_dir, secrets=secrets
+        )
+    except WorkspaceError as error:
+        print(error, file=sys.stderr)
+        return 2
     harness.subscribe(print_event)
     result = asyncio.run(harness.run(args.task))
     print(f"trace: {trace_dir / (result.run_id + '.jsonl')}")
@@ -97,6 +104,16 @@ def print_event(event: Event) -> None:
     d = event.data
     if event.type == "run_started":
         print(f"▶ {d['task']}  [{d['model']}]")
+        context = d.get("context") or {}
+        if context.get("files") or context.get("skills"):
+            files = ", ".join(f"{f['path']} (~{f['tokens']})" for f in context["files"])
+            skills = ", ".join(s["name"] for s in context["skills"]) or "none"
+            who = f"{context['profile']} · " if context.get("profile") else ""
+            print(
+                f"  context: {who}{files} · skills: {skills} · ~{context['prompt_tokens']} tokens"
+            )
+        for warning in context.get("warnings", []):
+            print(f"  ⚠ {warning}")
     elif event.type == "model_called":
         print(f"  → asking the model (call {d['step']})")
     elif event.type == "model_replied":
@@ -104,7 +121,8 @@ def print_event(event: Event) -> None:
         print(f"  ← {d['status']}{wants} · ${d['usd']:.5f}")
     elif event.type == "tool_started":
         args = ", ".join(f"{k}={v!r}" for k, v in d["arguments"].items())
-        print(f"  ⚙ {d['name']}({args})")
+        mark = "📖" if d.get("part") == "context" else "⚙"
+        print(f"  {mark} {d['name']}({args})")
     elif event.type == "tool_finished":
         mark = "✗" if d["is_error"] else "✓"
         print(f"    {mark} {d['output'][:200]}")

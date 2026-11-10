@@ -1,23 +1,43 @@
-"""The harness knows no domain (S00-AC5, extended in S02-AC9).
+"""The harness knows no domain (S00-AC5, S02-AC9).
 
 If a business word shows up in ``src/agentic_harness/``, we built an agent, not a harness.
-Domain-specific code belongs in a workspace under ``workspaces/``.
+Each workspace declares its own words in ``workspace.toml`` (D-40); this test checks every
+text file of the harness (Python, page, data) against all of them.
 """
 
 import re
+import tomllib
 from pathlib import Path
 
-HARNESS_SRC = Path(__file__).resolve().parents[2] / "src" / "agentic_harness"
+ROOT = Path(__file__).resolve().parents[2]
+HARNESS_SRC = ROOT / "src" / "agentic_harness"
+TEXT_FILES = {".py", ".js", ".html", ".css", ".toml", ".md"}
 
-# Words from the first workspace (CloudCo). S02 adds words each workspace declares.
-DOMAIN_WORDS = ["cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline"]
+# Words from the first workspace, kept so the guard works even if its toml changes.
+BASELINE_WORDS = {"cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline"}
 
 
-def test_s00_ac5_harness_source_has_no_domain_words() -> None:
-    pattern = re.compile(r"\b(" + "|".join(DOMAIN_WORDS) + r")\b", re.IGNORECASE)
+def workspace_words() -> dict[str, set[str]]:
+    words = {}
+    for toml in sorted(ROOT.glob("workspaces/*/workspace.toml")):
+        declared = tomllib.loads(toml.read_text()).get("domain_words", [])
+        words[toml.parent.name] = {w.lower() for w in declared}
+    return words
+
+
+def test_s02_ac9_workspaces_declare_their_words() -> None:
+    words = workspace_words()
+    assert words.get("cloudco"), "cloudco must declare its domain words"
+    assert words["cloudco"] >= BASELINE_WORDS
+
+
+def test_s00_ac5_s02_ac9_harness_source_has_no_domain_words() -> None:
+    every_word = BASELINE_WORDS.union(*workspace_words().values())
+    pattern = re.compile(r"\b(" + "|".join(map(re.escape, sorted(every_word))) + r")\b", re.I)
     hits = [
         f"{path.relative_to(HARNESS_SRC)}:{number}: {line.strip()}"
-        for path in HARNESS_SRC.rglob("*.py")
+        for path in HARNESS_SRC.rglob("*")
+        if path.suffix in TEXT_FILES
         for number, line in enumerate(path.read_text().splitlines(), start=1)
         if pattern.search(line)
     ]

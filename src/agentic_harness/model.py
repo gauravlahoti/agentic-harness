@@ -18,7 +18,9 @@ from agentic_harness.config import Settings
 
 Step = dict[str, Any]
 
-MAX_ATTEMPTS = 2  # one retry for a blip; a busy model fails fast instead of waiting minutes
+# No SDK retries (D-42). On a 429 the SDK sleeps for the server's Retry-After, however long
+# ("retry in 41m"), so one quiet retry turned a clear error into a run stuck until its time limit.
+MAX_ATTEMPTS = 1
 
 
 class ModelError(RuntimeError):
@@ -95,7 +97,15 @@ class GeminiModel:
         return ModelReply.from_dict(reply.model_dump(mode="json", exclude_none=True))
 
     def _describe(self, error: Exception) -> str:
-        text = f"{type(error).__name__}: {error}"
+        # Gemini's errors carry a plain sentence ("Rate limit exceeded… retry in 41m");
+        # show that, not the SDK's class name and raw JSON.
+        body = getattr(error, "body", None)
+        said = body.get("error", {}).get("message") if isinstance(body, dict) else None
+        code = getattr(error, "status_code", None)
+        if isinstance(said, str) and said:
+            text = f"Gemini {code}: {said}" if code else f"Gemini: {said}"
+        else:
+            text = f"{type(error).__name__}: {error}"
         if self._secret:
             text = text.replace(self._secret, "***")
         return text[:500]

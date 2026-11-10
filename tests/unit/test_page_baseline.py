@@ -24,6 +24,7 @@ def test_s01_ac13_agent_view_pieces_are_present() -> None:
         'id="tpl-chevron"',  # activity lines open
         'id="theme-toggle"',
         'id="view-checks"',
+        'id="profile"',  # profile menu (S02)
     ):
         assert piece in HTML, f"baseline piece missing from index.html: {piece}"
 
@@ -37,6 +38,7 @@ def test_s01_ac13_styles_keep_the_agreed_look() -> None:
         "prefers-reduced-motion",
         ".act-tag",  # part tags on activity lines
         ".run-foot",
+        ".part-context",  # blue CONTEXT lines (S02)
     ):
         assert rule in CSS, f"baseline style missing from app.css: {rule}"
 

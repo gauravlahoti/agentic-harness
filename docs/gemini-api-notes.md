@@ -53,7 +53,8 @@ Recorded by `scripts/record_gemini_shapes.py` into `tests/fixtures/gemini/` (mod
 ### SDK behaviour to switch off (D-29)
 
 - `automatic_continuation` defaults to `True`: the SDK makes extra billed calls on its own when a reply is cut by the server's per-request limit. We pass `False`.
-- Retries: by default the SDK retries 503s with backoff and no visible sign. We limit attempts and bound each call by the run's time left.
+- Retries: by default the SDK retries 429/5xx with no visible sign, and on a 429 it sleeps for the server's `Retry-After` uncapped (seen: "retry in 41m43s" on the free tier's 20-a-day limit). We set `attempts=1` (D-42) and bound each call by the run's time left.
+- Errors carry `status_code` and `body = {"error": {"message", "code"}}`; we show `Gemini <code>: <message>`.
 
 ### Prices (paid tier, per 1M tokens, checked 2026-11-10)
 
