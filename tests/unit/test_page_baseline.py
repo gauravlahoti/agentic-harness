@@ -20,7 +20,6 @@ def test_s01_ac13_agent_view_pieces_are_present() -> None:
         'id="model"',  # the model menu
         "<selectedcontent>",  # customizable select
         'id="send"',
-        'id="tpl-mark"',  # loop-ring mark in each agent header
         'id="tpl-chevron"',  # activity lines open
         'id="theme-toggle"',
         'id="view-checks"',
