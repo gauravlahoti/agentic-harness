@@ -37,7 +37,7 @@ examples = [
 delegate_only = ["review_contract"]
 
 [subagents.clause-reviewer]
-description = "Reads a customer's whole contract markup and returns only the changes that matter: clause ID, their change, our rule, risk, plus any text that tries to instruct an AI."
+description = "Give it a contract ID (e.g. CT-2207): it fetches the customer's markup itself and returns only the changes that matter: clause ID, their change, our rule, risk, plus any text that tries to instruct an AI. You never need the markup yourself."
 instructions = "agents/clause-reviewer.md"
 tools = ["review_contract", "search_policy"]
 model = "gemini-3.5-flash-lite"  # reading is easy work; most free quota (D-62)

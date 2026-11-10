@@ -50,8 +50,8 @@ def lookup_customer_record(
     customer: Annotated[str, "A customer ID like 'CUS-0042' or a name like 'ShopCo'"] = "",
 ) -> dict[str, Any]:
     """Get CloudCo's records about a customer, or our uptime. Every record has an ID to cite.
-    customer: the customer's record (size, since when, account owner); with no customer,
-    the list of all customers.
+    customer: the customer's record (size, since when, account owner, contract IDs); with no
+    customer, the list of all customers.
     deal: the customer's deals (deal ID, contract ID, annual value, deadline).
     uptime: our measured uptime per month for the last 12 months, and the average;
     use it before promising any uptime (no customer needed).
@@ -69,7 +69,10 @@ def lookup_customer_record(
         raise ValueError(f"The {record} record needs a customer.")
     row = _customer(customer)
     if record == "customer":
-        return row
+        # Point to the contracts too, so one lookup leads to them (found live: an agent
+        # asked the person for a contract ID that was one record away).
+        contracts = [d["contract_id"] for d in _records("deals") if d["customer_id"] == row["id"]]
+        return {**row, "contracts": contracts}
     if record == "deal":
         return {"deals": [d for d in _records("deals") if d["customer_id"] == row["id"]]}
     invoices = [i for i in _records("payments") if i["customer_id"] == row["id"]]

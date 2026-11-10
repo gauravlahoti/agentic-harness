@@ -46,6 +46,7 @@ def test_s03_ac4_four_tools_and_their_risks(tools: dict[str, Tool]) -> None:
 async def test_s03_ac4_lookups_return_records_with_ids(tools: dict[str, Tool]) -> None:
     customer = await call(tools, "lookup_customer_record", record="customer", customer="shopco")
     assert customer["id"] == "CUS-0042"
+    assert customer["contracts"] == ["CT-2207"]  # one lookup leads to the contract (found live)
     deals = (await call(tools, "lookup_customer_record", record="deal", customer="CUS-0042"))[
         "deals"
     ]
