@@ -77,6 +77,7 @@ class GeminiModel:
 
     def __init__(self, settings: Settings, *, client: Any = None) -> None:
         self.name = settings.model
+        self.thinking = settings.thinking  # minimal | low | medium | high, or None (D-85)
         self._secret = settings.api_key.reveal() if settings.api_key else ""
         self._client = client or _make_client(settings)
 
@@ -90,6 +91,8 @@ class GeminiModel:
         }
         if tools:
             request["tools"] = list(tools)
+        if self.thinking:  # Gemini 3.x: thinking_level, never the old thinking_budget
+            request["generation_config"] = {"thinking_level": self.thinking}
         try:
             reply = await self._client.aio.interactions.create(**request)
         except Exception as error:  # every SDK failure becomes one named error for the loop

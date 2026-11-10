@@ -122,6 +122,7 @@ class Harness:
             "run_started",
             task=task,
             model=self.model.name,
+            thinking=getattr(self.model, "thinking", None),
             tools=list(self.tools),
             limits={
                 "max_steps": self.limits.max_steps,

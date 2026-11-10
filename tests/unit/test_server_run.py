@@ -193,3 +193,29 @@ def test_s05_ac12_approval_endpoint_needs_the_page_and_a_waiting_request(tmp_pat
     body = {"call_id": "c1", "approved": True}
     assert web.post("/api/approval", json=body).status_code == 403
     assert web.post("/api/approval", headers=PAGE_HEADER, json=body).status_code == 404
+
+
+def test_s05_effort_is_offered_checked_and_reaches_the_model(tmp_path: Path) -> None:
+    from agentic_harness.model import GeminiModel
+
+    built: list[Settings] = []
+
+    def factory(settings: Settings) -> ModelClient:
+        built.append(settings)
+        return GeminiModel(settings, client=object())  # built, never called
+
+    app = create_app(
+        Settings(api_key=Secret("test-value-not-a-real-key")),
+        project_root=tmp_path,
+        workspace=Workspace.load(CLOUDCO),
+        model_factory=factory,
+    )
+    web = TestClient(app, base_url="http://127.0.0.1")
+    assert web.get("/api/health").json()["efforts"] == ["low", "medium", "high"]
+    bad = web.post("/api/run", headers=PAGE_HEADER, json={"task": "Hi", "effort": "ludicrous"})
+    assert bad.status_code == 422  # only Gemini's own levels
+    web.post(
+        "/api/run", headers=PAGE_HEADER, json={"task": "Hi", "profile": "sales", "effort": "low"}
+    )
+    assert built
+    assert built[-1].thinking == "low"

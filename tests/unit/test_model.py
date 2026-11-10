@@ -134,3 +134,13 @@ def test_s01_ac3_reply_reads_text_and_tool_calls() -> None:
     )
     assert [c["id"] for c in reply.tool_calls] == ["c1", "c2"]
     assert reply.text == ""
+
+
+async def test_s05_effort_is_sent_as_thinking_level_only_when_chosen() -> None:
+    """The page's Low / Medium / High is Gemini's generation_config.thinking_level (D-85)."""
+    sdk = RecordingSdk()
+    await GeminiModel(Settings(thinking="high"), client=sdk).create("s", HISTORY, [])
+    assert sdk.sent[0]["generation_config"] == {"thinking_level": "high"}
+    plain = RecordingSdk()
+    await GeminiModel(Settings(), client=plain).create("s", HISTORY, [])
+    assert "generation_config" not in plain.sent[0]  # not chosen: the model's own default

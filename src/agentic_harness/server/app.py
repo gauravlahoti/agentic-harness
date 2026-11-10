@@ -14,7 +14,7 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -76,6 +76,7 @@ class RunRequest(BaseModel):
     task: str = Field(min_length=1, max_length=4000)
     model: str | None = Field(default=None, max_length=100)  # must have a price (D-31)
     profile: str | None = Field(default=None, max_length=50)  # must be one of the workspace's
+    effort: Literal["low", "medium", "high"] | None = None  # Gemini's thinking_level; None: default
     off: OffRequest = Field(default_factory=OffRequest)
 
 
@@ -130,6 +131,7 @@ def create_app(
             "version": __version__,
             "model": settings.model,
             "models": priced_models,
+            "efforts": ["low", "medium", "high"],
             "workspace": None
             if workspace is None
             else {
@@ -195,7 +197,7 @@ def create_app(
         name = body.model or settings.model
         if name not in priced_models:
             raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
-        model = model_factory(replace(settings, model=name))
+        model = model_factory(replace(settings, model=name, thinking=body.effort))
         secrets = [settings.api_key.reveal()] if settings.api_key else []
         off = Off(tuple(body.off.tools), tuple(body.off.skills), tuple(body.off.subagents))
         try:
@@ -207,7 +209,9 @@ def create_app(
                 trace_dir=trace_dir,
                 secrets=secrets,
                 # A helper may name its own model (D-62); same settings, other name.
-                model_factory=lambda helper: model_factory(replace(settings, model=helper)),
+                model_factory=lambda helper: model_factory(
+                    replace(settings, model=helper, thinking=body.effort)
+                ),
                 off=off,
                 approver=approvals.ask,  # the page's ⏸ card answers (D-79)
             )

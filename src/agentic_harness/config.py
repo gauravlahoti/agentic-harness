@@ -58,6 +58,8 @@ class Settings:
     model: str = DEFAULT_MODEL
     project: str | None = None
     location: str = "global"
+    # How hard the model thinks: Gemini's ``thinking_level``. None: the model's own default.
+    thinking: str | None = None
 
     @property
     def has_key(self) -> bool:

@@ -682,3 +682,10 @@
 - **Instead of:** listing them in every profile in `workspace.toml`
 - **Because:** the S05 allow-list hid them, so no agent could read a skill or hand the contract to its helper. That is why S03-AC11 and S04-AC10 failed
 - **Cost:** a workspace can't switch them off by profile (the pane switches still can)
+
+### D-85 · Effort picker: Gemini's `thinking_level`
+✅ Accepted · S05 (UI) · your request
+- **Chose:** a small menu next to the model picker: Auto (the model's default), Low, Medium, High. It sends `generation_config.thinking_level` on every call of the run, helpers included. The run's "Started" line and the answer card show it
+- **Instead of:** `thinking_budget` (a token count; not recommended on Gemini 3.x, an error on Gemini 4), or also offering `minimal`
+- **Because:** `thinking_level` is the documented control; `minimal` is missing on some models, so a 4th choice could fail with a 400
+- **Cost:** higher effort costs more thinking tokens (billed as output); small models may call more tools at high effort

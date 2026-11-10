@@ -188,11 +188,13 @@ function setUpAgent() {
     }),
   );
   setUpModelPicker();
+  setUpEffortPicker();
   setUpPane();
   // Every run calls a real model, so no key means nothing can run: say so only then.
   const hasKey = health.key === "present";
   $("send").disabled = !hasKey;
   $("model").disabled = !hasKey;
+  $("effort").disabled = !hasKey;
   $("composer-alert").textContent = hasKey ? "" : "No Gemini key: add it to .env and restart.";
 }
 
@@ -277,6 +279,37 @@ function switchProfile() {
   $("task").focus();
 }
 
+// Effort: how hard the model thinks. Gemini calls it thinking_level (D-85). "Auto" sends
+// nothing, so the model uses its own default (medium on most, minimal on Flash-Lite).
+const EFFORT_KEY = "effort";
+const EFFORTS = [
+  ["", "Auto", 0],
+  ["low", "Low", 1],
+  ["medium", "Medium", 2],
+  ["high", "High", 3],
+];
+function setUpEffortPicker() {
+  const pick = $("effort");
+  for (const old of pick.querySelectorAll("option")) old.remove();
+  const offered = new Set(health.efforts ?? []);
+  for (const [value, label, level] of EFFORTS) {
+    if (value && !offered.has(value)) continue;
+    const option = el("option");
+    option.value = value;
+    const glyph = fromTemplate("tpl-bars");
+    glyph.dataset.level = level;
+    option.append(glyph, el("span", null, `Thinking: ${label}`));
+    pick.append(option);
+  }
+  let saved = "";
+  try {
+    saved = localStorage.getItem(EFFORT_KEY) ?? "";
+  } catch {
+    // Storage blocked: start on Auto.
+  }
+  pick.value = [...pick.options].some((o) => o.value === saved) ? saved : "";
+}
+
 function setUpModelPicker() {
   const pick = $("model");
   // Keep the select's own trigger <button>; replace only the options.
@@ -356,13 +389,13 @@ function newTurn(task) {
   const reply = el("div", "reply");
   const files = el("div", "files"); // cards for files the tools saved (S03)
   const foot = el("p", "run-foot"); // only for a stop or a failure; empty (hidden) when all went well
-  const meta = el("p", "run-meta"); // calls · tokens · cost · time, once the answer is in
+  const meta = el("div", "run-meta"); // calls · tokens · cost · time, once the answer is in
   agent.append(head, activity, reply, files, foot, meta);
 
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, files, foot, meta, stats, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
+  return { activity, reply, files, foot, meta, stats, split: { input: 0, output: 0, thinking: 0 }, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
@@ -465,6 +498,7 @@ function onEvent(ev, turn) {
       state: "done",
       facts: [
         ["Model", d.model],
+        ["Thinking", d.thinking ? `${d.thinking} (thinking_level)` : "the model's default"],
         ["Tools", d.tools.join(", ") || "none"],
         ...(switchedOff.length ? [["Switched off", switchedOff.join(", ")]] : []),
         ["Limits", `${d.limits.max_steps} calls · $${d.limits.max_usd} · ${d.limits.max_seconds} s`],
@@ -502,6 +536,9 @@ function onEvent(ev, turn) {
     const u = d.usage ?? {};
     const used = (u.total_input_tokens ?? 0) + (u.total_output_tokens ?? 0) + (u.total_thought_tokens ?? 0);
     turn.tokens += used;
+    turn.split.input += u.total_input_tokens ?? 0;
+    turn.split.output += u.total_output_tokens ?? 0;
+    turn.split.thinking += u.total_thought_tokens ?? 0;
     let text = `Model replied: ${d.status}`;
     if (d.tool_calls.length) {
       // ["search", "search"] → "search ×2"
@@ -601,7 +638,7 @@ function onEvent(ev, turn) {
     turn.stats.classList.remove("working");
     turn.stats.textContent = ""; // the header was "Working…"; the numbers now sit under the answer
     const numbers = [plural(d.model_calls, "call"), `${turn.tokens} tokens`, money(d.usd), `${d.seconds.toFixed(1)} s`];
-    turn.meta.replaceChildren(...numbers.map((n) => el("span", "meta-chip", n)));
+    turn.meta.replaceChildren(receipt(turn, d));
     if (d.answer) renderProse(turn.reply, d.answer);
     const reason = REASONS[d.reason] ?? d.reason;
     const note = { stopped: `■ Stopped: ${reason}`, failed: `✗ Failed: ${reason}` }[d.outcome] ?? "";
@@ -610,6 +647,54 @@ function onEvent(ev, turn) {
     announce(`${note || "Run complete"}. ${numbers.join(", ")}`);
     turn.meta.scrollIntoView({ block: "nearest" });
   }
+}
+
+// The run summary under the final answer: four numbers that count up, and where the
+// tokens went (read from the prompt, written as the answer, or spent thinking).
+function receipt(turn, d) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cells = [
+    ["Calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
+    ["Tokens", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
+    ["Cost", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
+    ["Time", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
+  ];
+  const card = el("div", "receipt");
+  const grid = el("div", "receipt-grid");
+  for (const [label, value, format, key] of cells) {
+    const cell = el("div", `receipt-cell rc-${key}`);
+    const number = el("span", "receipt-num", format(reduce ? value : 0));
+    cell.append(number, el("span", "receipt-label", label));
+    grid.append(cell);
+    if (!reduce) {
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / 900);
+        number.textContent = format(value * (1 - (1 - t) ** 3)); // ease out
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  }
+  card.append(grid);
+  const { input, output, thinking } = turn.split;
+  if (input + output + thinking) {
+    const bar = el("div", "receipt-bar");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", `Tokens: ${input} read, ${output} written, ${thinking} thinking`);
+    const legend = el("div", "receipt-legend");
+    for (const [name, n, cls] of [["Read", input, "in"], ["Written", output, "out"], ["Thinking", thinking, "think"]]) {
+      if (!n) continue;
+      const seg = el("span", `seg seg-${cls}`);
+      seg.style.flexGrow = n;
+      bar.append(seg);
+      const item = el("span", `legend-item lg-${cls}`);
+      item.append(el("i"), `${name} ${n.toLocaleString()}`);
+      legend.append(item);
+    }
+    card.append(bar, legend);
+  }
+  return card;
 }
 
 // A helper's lane (S04): nested under the line that started it, with its own counters.
@@ -726,7 +811,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, model: $("model").value, profile: currentProfile(), off: currentOff() }),
+      body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), off: currentOff() }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) onEvent(ev, turn);
@@ -1061,6 +1146,13 @@ $("model").addEventListener("change", () => {
     localStorage.setItem(MODEL_KEY, $("model").value);
   } catch {
     // Storage blocked: the pick still applies to this page, it just isn't remembered.
+  }
+});
+$("effort").addEventListener("change", () => {
+  try {
+    localStorage.setItem(EFFORT_KEY, $("effort").value);
+  } catch {
+    // Storage blocked: the pick still applies to this page.
   }
 });
 $("profile").addEventListener("change", switchProfile);
