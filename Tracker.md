@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S05 (permissions + human approval) built, waiting for your verification · S04 verified except AC10 · S02 verified · S00 and S01 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 69 built · 30 verified · 112 total
+> **Now:** S05 verified · fixing: off-topic questions get answered · S04 verified except AC10 · S02 verified · S00 and S01 built, verification waived for now
+> **Updated:** 2026-11-10 · **Checks:** 69 built · 43 verified · 112 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -10,7 +10,6 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | | What | Unblocks |
 |---|---|---|
 | 0 | Yes/no: add "name every change with its clause ID" to the contract-review skill | S04-AC10, S03-AC11 |
-| 0c | Verify S05: "Verify it yourself" in `docs/stage-5.md` | S05 → ✅, then S06 re-brief |
 | 1 | Verify S01 when convenient: "Verify it yourself" in `docs/stage-1.md` (waived to start S02) | S01 → ✅ |
 | 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
 | 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
@@ -26,7 +25,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S02](spec/stages/S02-context.md) | Context | ✅ | 12/12 | 12/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 🟨 | 10/11 | 6/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
-| [S05](spec/stages/S05-permissions.md) | Permissions | 🟨 | 13/13 | 0/13 | 1 |
+| [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 13/13 | 13/13 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 📝 | 0/12 | 0/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
@@ -128,19 +127,19 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Profiles come from `workspace.toml`; the model can't read or change them | 🧪 | 🟨 | `test_workspace.py::test_s05_ac1_*` (2): profiles (tools, hidden fields), `[[rules]]`, `[[approvals]]` read from `workspace.toml`; bad rules are clear errors |
-| AC2 | Tools outside the profile are hidden from Gemini and blocked by the gate if called | 🧪 | 🟨 | `test_gate.py` + `test_gate_loop.py::test_s05_ac2_*`: tools outside the profile hidden from Gemini and blocked if called · live: Engineering never offered `send_to_customer` |
-| AC3 | Fields in structured results are masked per profile (Engineering never sees prices or payments) | 🧪 | 🟨 | `test_s05_ac3_*` (3): named fields replaced with `[hidden for <profile>]` · live CLI: Engineering's deal + payments came back hidden, IDs kept |
-| AC4 | Memory files, skills and policies are read-only for everyone, the agent included | 🧪 | 🟨 | `test_cloudco_tools.py::test_s05_ac4_ac5_*`: `AGENTS.md`, policies, skills can't be written (writes only via `ctx`, by plain name) |
-| AC5 | Writes only inside the current task folder | 🧪 | 🟨 | Same test + S03 `ctx` tests: writes only in `tasks/<run-id>/` and `outbox/` |
-| AC6 | "Never" rules always block and can't be approved | 🧪 | 🟨 | `test_s05_ac6_*` (6): CloudCo's 4 never rules block; a never rule is checked before approval, so it can't be approved |
-| AC7 | Instruction-like text in tool results is flagged ⚠ | 🧪 | 🟨 | `test_s05_ac7_*` + `test_gate_loop.py`: instruction-like text flagged; the model gets a "treat as data" note; ⚠ line on the page |
-| AC8 | A sub-agent's rights are always within its caller's | 🧪 | 🟨 | `test_s05_ac8_*`: a helper's tools are its declared ∩ its caller's; same gate |
-| AC9 | Every block names the rule that blocked it | 🧪 | 🟨 | `test_s05_ac2_ac9_*`, `test_s05_ac6_ac9_*`: every block names its rule and policy section |
-| AC10 | Page: ⛔ and ⚠ cards, "This profile can…" panel | 👀 | 🟨 | `test_page_baseline.py::test_s05_*` · Chrome: ⏸ card, Approve/Reject, ✓ Approved line, outbox card; Guardrails cards in both themes |
-| AC11 | Live: the same question as Sales and as Engineering gives 2 different, correct answers | 🔑 👀 | 🟨 | `make live`: `test_s05_ac11_two_profiles_two_answers` passed (Sales sees $480,000; Engineering is told it's hidden) |
-| AC12 | `send_to_customer` waits for a person: approve runs it, reject sends the reason back; the wait doesn't count toward the time limit | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s05_ac12_*` (5): approve runs, reject returns the reason, no approver = no, the wait doesn't use the time limit · Chrome: real Approve click → outbox file, run completed in 6.1 s |
-| AC13 | Harness pane: Guardrails shows Permissions, Never allowed, Human in the loop for the current profile | 👀 | 🟨 | Chrome: Guardrails = green Allowed · red Not allowed (tools, hidden data, locked files, hard limits with § badges) · amber Human in the loop |
+| AC1 | Profiles come from `workspace.toml`; the model can't read or change them | 🧪 | ✅ | `test_workspace.py::test_s05_ac1_*` (2): profiles (tools, hidden fields), `[[rules]]`, `[[approvals]]` read from `workspace.toml`; bad rules are clear errors |
+| AC2 | Tools outside the profile are hidden from Gemini and blocked by the gate if called | 🧪 | ✅ | `test_gate.py` + `test_gate_loop.py::test_s05_ac2_*`: tools outside the profile hidden from Gemini and blocked if called · live: Engineering never offered `send_to_customer` |
+| AC3 | Fields in structured results are masked per profile (Engineering never sees prices or payments) | 🧪 | ✅ | `test_s05_ac3_*` (3): named fields replaced with `[hidden for <profile>]` · live CLI: Engineering's deal + payments came back hidden, IDs kept |
+| AC4 | Memory files, skills and policies are read-only for everyone, the agent included | 🧪 | ✅ | `test_cloudco_tools.py::test_s05_ac4_ac5_*`: `AGENTS.md`, policies, skills can't be written (writes only via `ctx`, by plain name) |
+| AC5 | Writes only inside the current task folder | 🧪 | ✅ | Same test + S03 `ctx` tests: writes only in `tasks/<run-id>/` and `outbox/` |
+| AC6 | "Never" rules always block and can't be approved | 🧪 | ✅ | `test_s05_ac6_*` (6): CloudCo's 4 never rules block; a never rule is checked before approval, so it can't be approved |
+| AC7 | Instruction-like text in tool results is flagged ⚠ | 🧪 | ✅ | `test_s05_ac7_*` + `test_gate_loop.py`: instruction-like text flagged; the model gets a "treat as data" note; ⚠ line on the page |
+| AC8 | A sub-agent's rights are always within its caller's | 🧪 | ✅ | `test_s05_ac8_*`: a helper's tools are its declared ∩ its caller's; same gate |
+| AC9 | Every block names the rule that blocked it | 🧪 | ✅ | `test_s05_ac2_ac9_*`, `test_s05_ac6_ac9_*`: every block names its rule and policy section |
+| AC10 | Page: ⛔ and ⚠ cards, "This profile can…" panel | 👀 | ✅ | `test_page_baseline.py::test_s05_*` · Chrome: ⏸ card, Approve/Reject, ✓ Approved line, outbox card; Guardrails cards in both themes |
+| AC11 | Live: the same question as Sales and as Engineering gives 2 different, correct answers | 🔑 👀 | ✅ | `make live`: `test_s05_ac11_two_profiles_two_answers` passed (Sales sees $480,000; Engineering is told it's hidden) |
+| AC12 | `send_to_customer` waits for a person: approve runs it, reject sends the reason back; the wait doesn't count toward the time limit | 🧪 👀 | ✅ | `test_gate_loop.py::test_s05_ac12_*` (5): approve runs, reject returns the reason, no approver = no, the wait doesn't use the time limit · Chrome: real Approve click → outbox file, run completed in 6.1 s |
+| AC13 | Harness pane: Guardrails shows Permissions, Never allowed, Human in the loop for the current profile | 👀 | ✅ | Chrome: Guardrails = green Allowed · red Not allowed (tools, hidden data, locked files, hard limits with § badges) · amber Human in the loop |
 
 ### S06 · Approvals
 
@@ -233,3 +232,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You verified S04 ("s4 looks ok"): 12 of 13 checks ✅. S04-AC10 open: live answers omit clause IDs. S03 re-proven with four tools: AC4, AC5, AC7, AC10 → 🟨; AC11 → 📝 (same cause). |
 | 2026-11-10 | You approved S05 ("go ahead with the build") with changes: two profiles (D-74), human approval for `send_to_customer` now (D-79), Guardrails pane in three parts. S05-AC1–AC13 → 🟦. Choices D-75–D-80. |
 | 2026-11-10 | S05-AC1–AC13 → 🟨: 220 offline tests; live AC11 passed; Approve tested with a real click. Found and fixed: the input box covered the Approve button. Guardrails pane redesigned as three colour-coded cards at your request. |
+| 2026-11-10 | You verified S05 ("s5 looks good to me"): S05-AC1–AC13 → ✅. Tagged `stage-5`. Your report: an off-topic question ("who is the prime minister of India") was answered; a scope guardrail is needed. |
