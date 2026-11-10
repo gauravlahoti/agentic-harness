@@ -1,8 +1,8 @@
-# CloudCo's Contract Assistant: one workspace on the harness.
+# CloudCo's Contract Agent: one workspace on the harness.
 # Read by the harness only; the model never sees this file (spec/02-ui.md, D-12).
 # CloudCo, ShopCo, people and numbers are all fictional.
 
-name = "Contract Assistant"
+name = "Contract Agent"
 owner = "CloudCo"
 
 # Always in the prompt, in this order. {profile} picks the active profile's file.
@@ -39,7 +39,7 @@ max_words = 200
 # Scope: the job. Off-topic tasks are refused before the agent starts (D-81).
 [scope]
 covers = "CloudCo's customer contracts: what a customer changed, checking terms against CloudCo's policies, customer, deal, uptime and payment records, and replies to customers."
-refusal = "I'm CloudCo's Contract Assistant, so I can only help with customer contracts, terms and replies to customers."
+refusal = "I'm CloudCo's Contract Agent, so I can only help with customer contracts, terms and replies to customers."
 model = "gemini-3.5-flash-lite"  # a tiny yes/no check: the cheapest model
 
 # Permissions: what each profile may use (allow-list) and must not see (D-75, D-76).
@@ -55,7 +55,7 @@ hide_fields = ["annual_value_usd", "amount_usd", "days_late", "average_days_late
 # Never allowed: blocked for everyone, and no one can approve them (D-77).
 [[rules]]
 id = "discount-never"
-label = "A discount above 25%"
+label = "Discount over 25%"
 tool = "send_to_customer"
 arg = "discount_pct"
 above = 25
@@ -63,7 +63,7 @@ because = "standard-terms §2"
 
 [[rules]]
 id = "payment-never"
-label = "Payment terms beyond Net 60"
+label = "Payment beyond Net 60"
 tool = "send_to_customer"
 arg = "payment_days"
 above = 60
@@ -71,7 +71,7 @@ because = "standard-terms §3"
 
 [[rules]]
 id = "uptime-never"
-label = "Uptime above our 99.95% record"
+label = "Uptime over 99.95%"
 tool = "send_to_customer"
 arg = "uptime_pct"
 above = 99.95

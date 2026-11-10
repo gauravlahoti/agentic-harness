@@ -103,7 +103,7 @@ CLOUDCO = HELLO.parent / "cloudco"
 
 def test_s02_ac12_health_describes_profiles_and_examples(tmp_path: Path) -> None:
     body = client(tmp_path, workspace=CLOUDCO).get("/api/health").json()["workspace"]
-    assert body["title"] == "Contract Assistant"
+    assert body["title"] == "Contract Agent"
     assert body["owner"] == "CloudCo"
     assert [p["id"] for p in body["profiles"]] == ["sales", "engineering"]  # D-74
     assert body["examples"]

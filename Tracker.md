@@ -236,3 +236,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You verified S05 ("s5 looks good to me"): S05-AC1–AC13 → ✅. Tagged `stage-5`. Your report: an off-topic question ("who is the prime minister of India") was answered; a scope guardrail is needed. |
 | 2026-11-10 | You chose "prompt + input check" for the scope guard (D-81). S05-AC14 added → 🟦. |
 | 2026-11-10 | S05-AC14 → 🟨: off-topic tasks refused before the loop (prompt + Flash-Lite check, D-81); 227 offline tests, 3 live tests passed. |
+| 2026-11-10 | At your request: "Contract Assistant" renamed "Contract Agent"; Guardrails cards condensed (one line per rule, shorter rule labels, details on hover). No status change. |

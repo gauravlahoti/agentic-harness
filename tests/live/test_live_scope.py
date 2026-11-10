@@ -39,7 +39,7 @@ async def run(task: str, tmp_path: Path):  # type: ignore[no-untyped-def]
 async def test_s05_ac14_off_topic_is_refused_before_the_loop(task: str, tmp_path: Path) -> None:
     result = await run(task, tmp_path)
     assert (result.outcome, result.reason, result.model_calls) == ("stopped", "outside_scope", 0)
-    assert "Contract Assistant" in result.answer
+    assert "Contract Agent" in result.answer
 
 
 async def test_s05_ac14_real_questions_still_get_answered(tmp_path: Path) -> None:

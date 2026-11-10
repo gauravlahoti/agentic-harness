@@ -912,17 +912,26 @@ function renderPane() {
   const m = info.memory.planned;
   const memory = paneSection("memory", "Memory", `${m.stage}`, [el("p", "pane-note", `Not built yet (${m.stage}): ${m.what}.`)]);
 
-  // Guardrails (S05): three colour-coded cards, so allowed vs blocked vs "asks you" reads at a glance.
+  // Guardrails (S05): three colour-coded cards, one short line per rule. Details on hover.
   const g = info.guardrails;
   const chips = (items, kind) => {
     const box = el("div", "chips");
     box.append(...items.map((item) => el("span", `chip chip-${kind}`, item)));
     return box;
   };
-  const group = (label, content) => {
-    const row = el("div", "guard-group");
-    row.append(el("span", "guard-label", label), typeof content === "string" ? el("span", "guard-text", content) : content);
-    return row;
+  const section = (because) => because.match(/§\d+/)?.[0] ?? because;
+  // One rule: its words, an optional § badge on the right, and the full reason on hover.
+  const line = (text, because, hover) => {
+    const li = el("li");
+    li.append(el("span", "limit-label", text));
+    if (because) li.append(el("span", "limit-badge", section(because)));
+    li.title = hover ?? because ?? "";
+    return li;
+  };
+  const list = (items) => {
+    const ul = el("ul", "guard-limits");
+    ul.append(...items);
+    return ul;
   };
   const card = (tone, icon, title, note, body) => {
     const box = el("section", `guard-card tone-${tone}`);
@@ -931,45 +940,23 @@ function renderPane() {
     box.append(head, ...body);
     return box;
   };
-  const section = (because) => because.match(/§\d+/)?.[0] ?? because;
-  const limits = el("ul", "guard-limits");
-  limits.append(
-    ...g.never.map((r) => {
-      const li = el("li");
-      const badge = el("span", "limit-badge", section(r.because));
-      badge.title = r.because; // the full policy name on hover
-      li.append(el("span", "limit-label", r.label), badge);
-      return li;
-    }),
-  );
-  const allowedCard = card("ok", "✓", "Allowed", `for ${g.profile}`, [
-    ...(g.scope ? [group("Topics", g.scope.covers)] : []),
-    group("Tools", chips(g.allowed, "ok")),
-    group("Data", g.hidden_fields.length ? "Everything except the hidden fields" : "All fields"),
-    group("Writes to", chips(g.writes, "path")),
+  const allowedCard = card("ok", "✓", "Allowed", g.profile, [
+    chips(g.allowed, "ok"),
+    el("p", "guard-text", `Writes only to ${g.writes.map((w) => w.split("/")[0] + "/").join(" · ")}`),
   ]);
-  const notAllowedCard = card("no", "✕", "Not allowed", "blocked by the harness", [
-    ...(g.scope ? [group("Off-topic", "Refused before the agent starts, with a polite reply")] : []),
-    ...(g.not_allowed.length ? [group("Tools", chips(g.not_allowed, "no"))] : []),
-    ...(g.hidden_fields.length ? [group("Hidden data", chips(g.hidden_fields, "hidden"))] : []),
-    group("Locked files", chips(g.protected, "locked")),
-    ...(g.never.length ? [group("Hard limits", el("span", "guard-text", "No one can approve these")), limits] : []),
+  const notAllowedCard = card("no", "✕", "Not allowed", "always blocked", [
+    list([
+      ...(g.scope ? [line("Off-topic questions", "", `Only: ${g.scope.covers}`)] : []),
+      ...g.not_allowed.map((t) => line(`Using ${t}`, "", `${g.profile} can't use ${t}`)),
+      ...(g.hidden_fields.length ? [line(`Seeing ${plural(g.hidden_fields.length, "field")}`, "", g.hidden_fields.join("\n"))] : []),
+      ...g.never.map((r) => line(r.label, r.because)),
+      line("Editing its own setup", "", g.protected.join("\n")),
+    ]),
   ]);
-  const hitl = el("ul", "guard-limits guard-hitl");
-  hitl.append(
-    ...g.approvals.map((a) => {
-      const li = el("li");
-      const why = a.because.replace(/^[^:]*:\s*/, "");
-      const badge = el("span", "limit-badge", section(a.because));
-      badge.title = a.because;
-      const chip = el("span", "chips");
-      chip.append(el("span", "chip chip-pause", a.tool));
-      li.append(chip, badge, el("span", "limit-label", why)); // tool + section, then why
-      return li;
-    }),
-  );
-  const pauseCard = card("pause", "⏸", "Human in the loop", "always asks you first", [
-    g.approvals.length ? hitl : el("p", "guard-text", `${g.profile} has no actions that need a person`),
+  const pauseCard = card("pause", "⏸", "Human in the loop", "asks you first", [
+    g.approvals.length
+      ? list(g.approvals.map((a) => line(a.tool, a.because)))
+      : el("p", "guard-text", "Nothing here waits for a person"),
   ]);
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
   // Say so plainly if an action this profile may use would run without a person.

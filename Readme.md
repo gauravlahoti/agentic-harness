@@ -13,7 +13,7 @@ A general agent harness, built from scratch in plain Python on Gemini.
 
 The model only decides what to do next. The harness does everything else: it gives the model the right context, runs its tools, checks what it's allowed to do, asks a human when it matters, and remembers the work. An agent is a **workspace**, a folder of instructions, skills, tools and rules. Swap the folder and you get a different agent, with no harness code changed.
 
-The first agent is the **CloudCo Contract Assistant**. It reviews a customer's changes to a renewal contract for Sales, Engineering and Finance, and never acts without a human's approval.
+The first agent is the **CloudCo Contract Agent**. It reviews a customer's changes to a renewal contract for Sales, Engineering and Finance, and never acts without a human's approval.
 
 ## Start with the code
 

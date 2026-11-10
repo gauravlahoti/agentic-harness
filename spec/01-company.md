@@ -8,7 +8,7 @@
 |---|---|
 | **CloudCo** | A software company. Sells inventory software to retail chains. ~200 people. |
 | **ShopCo** | A retail chain, 120 stores. CloudCo customer since 2023. |
-| **Contract Assistant** | CloudCo's internal AI assistant: the `workspaces/cloudco/` workspace running on our harness |
+| **Contract Agent** | CloudCo's internal AI agent: the `workspaces/cloudco/` workspace running on our harness |
 
 ## Profiles (switch in the UI)
 

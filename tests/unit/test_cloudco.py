@@ -31,7 +31,7 @@ def test_s02_ac10_the_files_are_there(cloudco: Workspace) -> None:
         "policies/approval-chart.md",
     ):
         assert (CLOUDCO / relative).is_file(), relative
-    assert cloudco.title == "Contract Assistant"
+    assert cloudco.title == "Contract Agent"
     assert [p.id for p in cloudco.profiles] == ["sales", "engineering"]  # D-74
 
 
@@ -74,6 +74,6 @@ def test_s02_ac11_instructions_ask_for_the_answer_format(cloudco: Workspace) -> 
 def test_s05_ac14_cloudco_declares_its_scope(cloudco: Workspace) -> None:
     assert cloudco.scope is not None
     assert "contracts" in cloudco.scope.covers
-    assert "Contract Assistant" in cloudco.scope.refusal
+    assert "Contract Agent" in cloudco.scope.refusal
     assert cloudco.scope.model == "gemini-3.5-flash-lite"
     assert "## Scope" in build_context(cloudco, "sales").system

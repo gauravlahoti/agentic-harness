@@ -940,8 +940,8 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 /* ── Guardrails cards: green allowed · red not allowed · amber asks you ─────── */
 .guard-card {
   --tone: var(--pass);
-  margin: 10px 4px 0;
-  padding: 10px 12px 12px;
+  margin: 8px 4px 0;
+  padding: 8px 10px 9px;
   border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--line));
   border-left: 3px solid var(--tone);
   border-radius: 10px;
@@ -949,7 +949,7 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 }
 .guard-card.tone-no { --tone: var(--fail); }
 .guard-card.tone-pause { --tone: var(--part-guard); }
-.guard-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.guard-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .guard-icon {
   display: grid;
   place-items: center;
@@ -964,11 +964,9 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 }
 .guard-title { font-weight: 650; color: var(--text); }
 .guard-note { margin-left: auto; color: var(--muted); font-size: 11.5px; }
-.guard-group { display: grid; gap: 4px; padding: 5px 0; }
-.guard-label { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
-.guard-limits.guard-hitl li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
-.guard-limits.guard-hitl .limit-label { grid-column: 1 / -1; color: var(--text-soft); font-size: 12.5px; }
-.guard-text { font-size: 12.5px; color: var(--text-soft); }
+.tone-pause .limit-label { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: var(--part-guard); }
+.tone-pause .guard-limits li::before { content: "⏸"; color: var(--part-guard); font-size: 10px; }
+.guard-text { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
@@ -983,13 +981,10 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 .chip-ok { border-color: color-mix(in srgb, var(--pass) 40%, transparent); color: var(--pass); background: color-mix(in srgb, var(--pass) 10%, transparent); }
 .chip-no { border-color: color-mix(in srgb, var(--fail) 40%, transparent); color: var(--fail); background: color-mix(in srgb, var(--fail) 8%, transparent); }
 .chip-no::before { content: "✕ "; font-weight: 700; }
-.chip-hidden, .chip-locked { border-color: color-mix(in srgb, var(--fail) 25%, transparent); color: var(--text-soft); }
-.chip-hidden::before { content: "◌ "; color: var(--fail); }
-.chip-locked::before { content: "⊘ "; color: var(--fail); }
 .chip-pause { border-color: color-mix(in srgb, var(--part-guard) 45%, transparent); color: var(--part-guard); background: color-mix(in srgb, var(--part-guard) 10%, transparent); }
 
-.guard-limits { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
-.guard-limits li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.guard-limits { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.guard-limits li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
 .guard-limits .limit-label { flex: 1; min-width: 0; color: var(--text); }
 .tone-no .guard-limits li::before { content: "✕"; color: var(--fail); font-weight: 700; font-size: 11px; }
 .limit-badge {

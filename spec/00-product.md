@@ -1,7 +1,7 @@
 # An agent harness, built from scratch
 
 > **Agent = Model + Harness.** Every agent has a harness. We build a **general harness** (like the engine inside Claude Code) and run agents on it.
-> The **Contract Assistant** is the first agent we run: one workspace on top of the harness, not the harness itself.
+> The **Contract Agent** is the first agent we run: one workspace on top of the harness, not the harness itself.
 
 📝 Draft v3 · 2026-11-10
 
@@ -56,9 +56,9 @@
 **Rule 2: the loop doesn't know who's watching.** It emits events; the page, traces and tests listen.
 **Rule 3: the harness knows no domain.** Everything about CloudCo lives in its workspace.
 
-## The first workspace: Contract Assistant
+## The first workspace: Contract Agent
 
-**CloudCo**, a software company, gives its **Sales, Engineering and Finance** teams a Contract Assistant. When customer **ShopCo** sends back its $480,000 renewal with 5 changes, the assistant checks each one against CloudCo's standard terms and never acts without a human's approval.
+**CloudCo**, a software company, gives its **Sales, Engineering and Finance** teams a Contract Agent. When customer **ShopCo** sends back its $480,000 renewal with 5 changes, the agent checks each one against CloudCo's standard terms and never acts without a human's approval.
 
 Story, people and data: [`01-company.md`](01-company.md).
 
@@ -80,7 +80,7 @@ Story, people and data: [`01-company.md`](01-company.md).
 - **Use a framework** (Deep Agents, ADK, LangChain): it would hide what we're teaching. ADK gets a bonus comparison episode.
 - **Ship a shell tool**: the harness *can* take any tool, but our workspaces don't need one, and that keeps guardrails simple.
 - **Use Gemini's server-side tools or server-side history**: every action passes *our* gate; *we* decide what the model sees.
-- **Give legal advice**: the Contract Assistant flags, explains and drafts. Humans decide. Everything in CloudCo is made up.
+- **Give legal advice**: the Contract Agent flags, explains and drafts. Humans decide. Everything in CloudCo is made up.
 - **Ship a product**: no login, no cloud deploy. The public version is a replay page.
 
 ## How you run it

@@ -1,6 +1,6 @@
 # Agent harness: rules for the AI
 
-A learning project: a **general agent harness** built from scratch in plain Python on Gemini. The first agent on it is CloudCo's **Contract Assistant** (`workspaces/cloudco/`). **The user must understand every line.** Teaching matters as much as working code.
+A learning project: a **general agent harness** built from scratch in plain Python on Gemini. The first agent on it is CloudCo's **Contract Agent** (`workspaces/cloudco/`). **The user must understand every line.** Teaching matters as much as working code.
 
 ## Source of truth
 `Scaffold.md` (baseline) → `spec/00-product.md` → `spec/01-company.md` → `spec/02-ui.md` → `spec/stages/SNN-*.md` → `Tracker.md` → `Decisions.md`.
