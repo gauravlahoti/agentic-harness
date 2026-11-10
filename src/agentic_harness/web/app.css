@@ -283,7 +283,6 @@ progress {
   max-width: 780px;
   margin: 0 auto;
 }
-.brand-mark { width: 15px; height: 15px; vertical-align: -2px; color: var(--accent); margin-right: 2px; }
 .powered { font-weight: 600; }
 
 .thread { flex: 1; display: flex; flex-direction: column; gap: 34px; padding: 8px 0 28px; }
