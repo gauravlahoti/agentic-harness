@@ -672,10 +672,10 @@ function onEvent(ev, turn) {
 function receipt(turn, d) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const cells = [
-    ["calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
-    ["tokens", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
-    ["", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
-    ["", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
+    ["model calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
+    ["tokens in total", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
+    ["cost", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
+    ["elapsed", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
   ];
   const card = el("div", "receipt");
   const grid = el("div", "receipt-grid");
@@ -698,12 +698,12 @@ function receipt(turn, d) {
   const { input, output, thinking } = turn.split;
   if (input + output + thinking) {
     const bar = el("div", "receipt-bar");
-    const words = `Tokens: ${input.toLocaleString()} read · ${output.toLocaleString()} written · ${thinking.toLocaleString()} thinking`;
+    const words = `Tokens: ${input.toLocaleString()} input · ${output.toLocaleString()} output · ${thinking.toLocaleString()} thinking`;
     bar.setAttribute("role", "img");
     bar.setAttribute("aria-label", words);
     bar.title = words;
     const legend = el("div", "receipt-legend");
-    for (const [name, n, cls] of [["Read", input, "in"], ["Written", output, "out"], ["Thinking", thinking, "think"]]) {
+    for (const [name, n, cls] of [["Input", input, "in"], ["Output", output, "out"], ["Thinking", thinking, "think"]]) {
       if (!n) continue;
       const seg = el("span", `seg seg-${cls}`);
       seg.style.flexGrow = n;
