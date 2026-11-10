@@ -65,10 +65,13 @@ def test_s02_ac10_everything_says_it_is_fictional() -> None:
         )
 
 
-def test_s02_ac11_instructions_ask_for_the_answer_format(cloudco: Workspace) -> None:
+def test_s02_ac11_instructions_ask_for_plain_answers_with_sources(cloudco: Workspace) -> None:
+    """Plain prose, no fixed headings (D-82); sources stay, next to each fact."""
     system = build_context(cloudco, "sales").system
+    assert "No fixed headings" in system
+    assert "Put the source right after the fact" in system
     for heading in ("**Summary**", "**Needs a human decision**", "**Sources**"):
-        assert heading in system
+        assert heading not in system
 
 
 def test_s05_ac14_cloudco_declares_its_scope(cloudco: Workspace) -> None:

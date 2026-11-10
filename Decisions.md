@@ -660,3 +660,18 @@
 - **Cost:** one tiny call per task (~$0.0002, 1–2 s); a borderline request may be refused by mistake
 - **Revisit if:** the check refuses real CloudCo questions in practice
 - **Changed 2026-11-10:** the prompt's Scope section no longer quotes the refusal. Found live: the check passed "pull in customer details", then Flash-Lite copied the quoted refusal. The section now says vague requests about the job are in scope (use tools, or ask for what's missing) and to decline only clearly unrelated tasks. The exact refusal comes from the input check alone.
+
+### D-82 · Plain answers: no fixed Summary / Decision / Sources headings
+✅ Accepted · S02, S05 · your report ("it makes output very rule based")
+- **Chose:** CloudCo's `AGENTS.md` asks for plain, short answers; sources go right after the fact they back; who decides is said in a sentence. The contract-review skill drops its format step. The base prompt also tells the agent not to talk about its own tools, instructions or setup (found live: "my tools are designed to…")
+- **Instead of:** the three fixed headings (S02-AC11 as first written)
+- **Because:** headings made every answer, even "who are our customers?", read like a form
+- **Cost:** answers are less uniform; the live check now looks for "§" sources and no headings, not a shape
+- **Revisit if:** S08 evals show sources going missing
+
+### D-83 · Clearer tool name and activity lines
+✅ Accepted · S04, S05 · your reports
+- **Chose:** `lookup` → `lookup_customer_record` (its `kind` argument → `record`); with no customer it lists all customers. Activity lines read "Model picked a tool: …", "Tool call · lookup_customer_record(record="customer", customer="ShopCo") → returned …", and open to "What it does"
+- **Instead of:** "Decided to use lookup" and "lookup · kind: deal"
+- **Because:** a one-word name and a bare argument list didn't say what was happening
+- **Cost:** the tool name changed in config, tests and docs

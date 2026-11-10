@@ -1,6 +1,6 @@
 """CloudCo's own tools: four, on purpose (a simple demo; D-73).
 
-- ``lookup``          read    customer, deal, uptime or payment records, each with an ID
+- ``lookup_customer_record`` read customer, deal, uptime or payment records, each with an ID
 - ``review_contract`` read    every edit vs our standard, with clause IDs; or one clause
 - ``search_policy``   read    the policy rule and its section number
 - ``send_to_customer`` action writes the message to the local outbox, never emails
@@ -45,27 +45,32 @@ def _customer(wanted: str) -> dict[str, Any]:
 
 
 @tool(risk="read")
-def lookup(
-    kind: Literal["customer", "deal", "uptime", "payments"],
+def lookup_customer_record(
+    record: Literal["customer", "deal", "uptime", "payments"],
     customer: Annotated[str, "A customer ID like 'CUS-0042' or a name like 'ShopCo'"] = "",
 ) -> dict[str, Any]:
-    """Look up CloudCo's records. Every record has an ID to cite.
-    customer: the customer's record (size, since when, account owner).
+    """Get CloudCo's records about a customer, or our uptime. Every record has an ID to cite.
+    customer: the customer's record (size, since when, account owner); with no customer,
+    the list of all customers.
     deal: the customer's deals (deal ID, contract ID, annual value, deadline).
     uptime: our measured uptime per month for the last 12 months, and the average;
     use it before promising any uptime (no customer needed).
     payments: the customer's invoices, days late each, and the average; use it before
     agreeing to longer payment terms."""
-    if kind == "uptime":
+    if record == "uptime":
         months = _records("uptime")
         average = round(sum(m["percent"] for m in months) / len(months), 2)
         return {"months": months, "average_percent": average}
     if not customer:
-        raise ValueError(f"lookup {kind} needs a customer.")
+        if record == "customer":  # "who are our customers?" is a fair question (found live)
+            return {
+                "customers": [{"id": c["id"], "name": c["name"]} for c in _records("customers")]
+            }
+        raise ValueError(f"The {record} record needs a customer.")
     row = _customer(customer)
-    if kind == "customer":
+    if record == "customer":
         return row
-    if kind == "deal":
+    if record == "deal":
         return {"deals": [d for d in _records("deals") if d["customer_id"] == row["id"]]}
     invoices = [i for i in _records("payments") if i["customer_id"] == row["id"]]
     average = round(sum(i["days_late"] for i in invoices) / len(invoices), 1) if invoices else 0
@@ -217,4 +222,4 @@ def send_to_customer(
     return {"saved": saved, "status": "saved to the local outbox, not sent"}
 
 
-TOOLS = [lookup, review_contract, search_policy, send_to_customer]
+TOOLS = [lookup_customer_record, review_contract, search_policy, send_to_customer]

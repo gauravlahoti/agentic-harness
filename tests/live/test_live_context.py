@@ -19,7 +19,7 @@ CLOUDCO = Path(__file__).resolve().parents[2] / "workspaces" / "cloudco"
 pytestmark = pytest.mark.live
 
 
-async def test_s02_ac11_answer_follows_cloudco_format(tmp_path: Path) -> None:
+async def test_s02_ac11_answer_is_plain_with_sources(tmp_path: Path) -> None:
     settings = load_settings()
     events: list[Event] = []
     harness = create_harness(
@@ -34,8 +34,9 @@ async def test_s02_ac11_answer_follows_cloudco_format(tmp_path: Path) -> None:
     result = await harness.run("ShopCo wants 25% off and unlimited liability. Can we agree?")
 
     assert result.outcome == "completed", result.reason
-    for heading in ("Summary", "Needs a human decision", "Sources"):
-        assert heading in result.answer
+    for heading in ("**Summary**", "**Needs a human decision**", "**Sources**"):
+        assert heading not in result.answer  # plain prose (D-82)
+    assert "§" in result.answer  # sources stay, next to the facts
     assert "CFO" in result.answer  # 25% sits in the CFO's band (standard-terms §2)
     # S02-AC8: every call carried the same prompt.
     prompt_ids = {e.data["prompt_id"] for e in events if e.type == "model_called"}

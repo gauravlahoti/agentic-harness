@@ -34,7 +34,7 @@ async def call(tools: dict[str, Tool], name: str, ctx: ToolContext | None = None
 def test_s03_ac4_four_tools_and_their_risks(tools: dict[str, Tool]) -> None:
     """Four tools on purpose: a simple demo (D-73)."""
     assert {n: t.risk for n, t in tools.items()} == {
-        "lookup": "read",
+        "lookup_customer_record": "read",
         "review_contract": "read",
         "search_policy": "read",
         "send_to_customer": "action",
@@ -44,25 +44,31 @@ def test_s03_ac4_four_tools_and_their_risks(tools: dict[str, Tool]) -> None:
 
 
 async def test_s03_ac4_lookups_return_records_with_ids(tools: dict[str, Tool]) -> None:
-    customer = await call(tools, "lookup", kind="customer", customer="shopco")
+    customer = await call(tools, "lookup_customer_record", record="customer", customer="shopco")
     assert customer["id"] == "CUS-0042"
-    deals = (await call(tools, "lookup", kind="deal", customer="CUS-0042"))["deals"]
+    deals = (await call(tools, "lookup_customer_record", record="deal", customer="CUS-0042"))[
+        "deals"
+    ]
     assert deals[0]["id"] == "DL-3108"
     assert deals[0]["contract_id"] == "CT-2207"
     assert deals[0]["annual_value_usd"] == 480_000
-    uptime = await call(tools, "lookup", kind="uptime")
+    uptime = await call(tools, "lookup_customer_record", record="uptime")
     assert all(re.fullmatch(r"UP-\d{4}-\d{2}", m["id"]) for m in uptime["months"])
     assert uptime["average_percent"] == 99.95
-    payments = await call(tools, "lookup", kind="payments", customer="ShopCo")
+    payments = await call(tools, "lookup_customer_record", record="payments", customer="ShopCo")
     assert all(i["id"].startswith("INV-") for i in payments["invoices"])
     assert payments["average_days_late"] == 9
+    everyone = await call(tools, "lookup_customer_record", record="customer")
+    assert [c["id"] for c in everyone["customers"]][:1] == ["CUS-0042"]  # no customer: the list
 
 
 async def test_s03_ac4_unknown_records_are_clear_errors(tools: dict[str, Tool]) -> None:
-    result = await call_tool(tools["lookup"], {"kind": "customer", "customer": "Nobody Inc"}, None)
+    result = await call_tool(
+        tools["lookup_customer_record"], {"record": "customer", "customer": "Nobody Inc"}, None
+    )
     assert result.is_error
     assert "CUS-0042" in result.output  # tells the model what does exist
-    missing = await call_tool(tools["lookup"], {"kind": "deal"}, None)
+    missing = await call_tool(tools["lookup_customer_record"], {"record": "deal"}, None)
     assert missing.is_error
     assert "needs a customer" in missing.output
 
@@ -163,7 +169,9 @@ async def test_s05_ac2_ac3_engineering_cannot_send_and_never_sees_prices(
 ) -> None:
     gate = Workspace.load(CLOUDCO).gate("engineering")
     assert gate.check("send_to_customer", {}).rule == "profile-tools"
-    raw = await call_tool(tools["lookup"], {"kind": "deal", "customer": "ShopCo"}, None)
+    raw = await call_tool(
+        tools["lookup_customer_record"], {"record": "deal", "customer": "ShopCo"}, None
+    )
     seen = gate.inspect(raw.output)
     assert "480000" not in seen.output
     assert "[hidden for Engineering]" in seen.output

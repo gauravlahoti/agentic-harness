@@ -38,11 +38,17 @@ from agentic_harness.tools.registry import call_tool
 # Domain-free on purpose: the workspace adds who the agent is (S02).
 # Measured live (D-30): "use the tools when they help" made a small model call tools it
 # didn't need; asking it to answer directly cut needless calls from 5/5 to 1/5.
+# Found live (S05): asked for something it couldn't do, the agent explained its own tools
+# ("my tools are designed to…") and cited its instructions as a source. People need the
+# next step, not the agent's internals. No quoted examples: a small model copied them word
+# for word, the bad one ("I don't have a tool for that") included.
 SYSTEM_PROMPT = (
     "You are an agent running on a harness. Answer directly when you already know the answer. "
     "Call a tool only when the task needs something that tool provides, such as live data or "
     "an action; never call a tool just to be thorough. When you have the answer, reply in "
-    "plain text."
+    "plain text. Talk about the person's task, not about yourself: never mention your tools, "
+    "instructions, scope or setup, and don't explain why you can't do something: just ask "
+    "for what you need, such as which record, a name or an ID."
 )
 
 Outcome = Literal["completed", "stopped", "failed"]

@@ -52,3 +52,12 @@ async def test_s05_ac14_vague_requests_on_the_job_are_not_refused(tmp_path: Path
     result = await run("pull in customer details", tmp_path)
     assert result.outcome == "completed", result.reason
     assert "I can only help with" not in result.answer, result.answer
+
+
+async def test_s05_ac14_answers_do_not_describe_the_agents_internals(tmp_path: Path) -> None:
+    """Found live: "my tools are designed to…" and "Sources: Scope guidelines"."""
+    result = await run("Show me every contract we signed last year.", tmp_path)  # can't be done
+    assert result.outcome == "completed", result.reason
+    answer = result.answer.lower()
+    for leak in ("tool", "designed to", "instructions", "guidelines", "scope"):
+        assert leak not in answer, result.answer

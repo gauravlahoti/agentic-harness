@@ -52,7 +52,7 @@ The order matters: a hard limit is checked **before** approval, so a blocked off
 
 1. `make check` → all green (220 passed).
 2. Reload the page. Open **Harness → Guardrails** as **Sales**, then as **Engineering**: `send_to_customer` turns into a struck-out red chip, and four hidden fields appear.
-3. As Engineering: "What is the annual value of ShopCo's deal?" The answer says it's hidden; open the `lookup` line to see `[hidden for Engineering]`.
+3. As Engineering: "What is the annual value of ShopCo's deal?" The answer says it's hidden; open the `lookup_customer_record` line to see `[hidden for Engineering]`.
 4. As Sales on Flash-Lite: "Send ShopCo (CUS-0042) a note offering a 10% discount and Net 45. Send it now." Wait for ⏸ → **Reject** → the model is told why, and nothing is sent. Run it again → **Approve** → a red "Outbox · not sent" card, and the file is in `workspaces/cloudco/outbox/`.
 5. `uv run agentic-harness run --workspace workspaces/cloudco --profile sales "Send ShopCo a note offering Net 45."`: the terminal asks `Approve? [y/N]`.
 

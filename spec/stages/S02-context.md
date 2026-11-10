@@ -29,7 +29,7 @@
 | S02-AC8 | The prompt is identical on every call in a session | 🧪 |
 | S02-AC9 | The domain-free test (from S00) also checks each workspace's own words, declared in its `workspace.toml` | 🧪 |
 | S02-AC10 | CloudCo files written: `AGENTS.md`, 3 team files, 4 skills, 2 policies | 📄 |
-| S02-AC11 | Answers follow: Summary → Needs a human decision → Sources | 🔑 👀 |
+| S02-AC11 | Answers are plain prose with sources next to the facts (was: fixed headings, D-82) | 🔑 👀 |
 | S02-AC12 | Page: profile switcher, Context tags, the skill listed in Sources | 👀 |
 
 ## Key choices
@@ -54,5 +54,6 @@ Ask (pasting the changes in): *"ShopCo wants 25% off and unlimited liability. OK
 ## Changes
 
 - 2026-11-10 · Created (v3).
+- 2026-11-10 · AC11 reworded at your request: plain answers, no fixed headings (D-82).
 - 2026-11-10 · Brief approved with choices D-34–D-41. No Fake recordings (D-32). Each model call carries a prompt ID so S02-AC8 can be checked in the trace.
 - 2026-11-10 · Built: S02-AC1–AC12 → 🟨. Found while verifying live: SDK retries hid a 429; retries now off (D-42). No change to the checks.

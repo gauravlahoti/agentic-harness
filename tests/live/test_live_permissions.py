@@ -43,4 +43,5 @@ async def test_s05_ac11_two_profiles_two_answers(tmp_path: Path) -> None:
     assert "480,000" in sales or "480000" in sales, sales
     assert "480,000" not in engineering
     assert "480000" not in engineering
-    assert "hidden" in engineering.lower() or "not available" in engineering.lower(), engineering
+    told = ("hidden", "not available", "access", "cannot see", "can't see")  # "not for you"
+    assert any(word in engineering.lower() for word in told), engineering

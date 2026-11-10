@@ -283,14 +283,34 @@ const argText = (args) =>
   Object.entries(args ?? {})
     .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
     .join(", ");
-// The line shows each argument briefly; the full text is in the opened facts.
-const argBrief = (args) =>
-  Object.entries(args ?? {})
+// A tool call as code: find(kind="order", id="A-7"). Long values cut short.
+const callBrief = (name, args) =>
+  `${name}(${Object.entries(args ?? {})
     .map(([k, v]) => {
       const text = (typeof v === "string" ? v : JSON.stringify(v)).replace(/\s+/g, " ");
-      return `${k}: ${text.length > 48 ? `${text.slice(0, 48)}…` : text}`;
+      const cut = text.length > 32 ? `${text.slice(0, 32)}…` : text;
+      return typeof v === "string" ? `${k}="${cut}"` : `${k}=${cut}`;
     })
-    .join(", ");
+    .join(", ")})`;
+// What came back, in a few words: the error's first line, or the first fields of the result.
+function resultBrief(output, isError) {
+  const cut = (text, n = 60) => (text.length > n ? `${text.slice(0, n)}…` : text);
+  if (isError) return `error: ${cut(output.split("\n")[0].replace(/^\w+Error:\s*/, ""))}`;
+  let data;
+  try {
+    data = JSON.parse(output.startsWith("[Harness") ? output.slice(output.indexOf("\n") + 1) : output);
+  } catch {
+    return `returned "${cut(output.replace(/\s+/g, " "), 48)}"`;
+  }
+  if (Array.isArray(data)) return `returned ${plural(data.length, "item")}`;
+  if (data && typeof data === "object") {
+    const keys = Object.keys(data);
+    return `returned ${keys.slice(0, 3).join(", ")}${keys.length > 3 ? "…" : ""}`;
+  }
+  return `returned ${cut(String(data), 48)}`;
+}
+// The tool's own description, first line: what it does, in its author's words.
+const toolDoes = (name) => paneInfo?.tools.find((t) => t.name === name)?.description.split("\n")[0];
 const shorten = (key, value) =>
   typeof value === "string" && value.length > 160 ? `${value.slice(0, 160)}… (${value.length} chars)` : value;
 
@@ -446,7 +466,7 @@ function onEvent(ev, turn) {
     }
   } else if (ev.type === "model_called") {
     turn.model = addActivity(turn, {
-      text: `Thinking · call ${d.step}`,
+      text: `Model is thinking · call ${d.step}`,
       facts: [["Sends", `the whole history: ${plural(d.history, "step")} (store=false)`]],
       raw: d,
     });
@@ -460,9 +480,9 @@ function onEvent(ev, turn) {
       const counts = new Map();
       for (const name of d.tool_calls) counts.set(name, (counts.get(name) ?? 0) + 1);
       const names = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name));
-      text = `Decided to use ${names.join(", ")}`;
+      text = `Model picked ${names.length > 1 ? `${names.length} tools` : "a tool"}: ${names.join(", ")}`;
     } else if (d.status === "completed") {
-      text = "Wrote the answer";
+      text = "Model wrote the answer";
     }
     setActivity(turn.model, {
       text,
@@ -477,24 +497,28 @@ function onEvent(ev, turn) {
     });
   } else if (ev.type === "tool_started") {
     const args = argText(d.arguments);
-    const brief = argBrief(d.arguments);
     const part = d.part === "context" ? "context" : "tool";
     // load_skill is the harness's own context tool: name it for what it does.
-    let label = `${d.name}${brief ? ` · ${brief}` : ""}`;
+    let label = `Tool call · ${callBrief(d.name, d.arguments)}`;
     if (d.name === "load_skill") label = `Read skill ${d.arguments?.name ?? ""}`;
     if (d.name === "delegate_task") label = `Handed the job to ${d.arguments?.agent ?? "a helper"}`;
     const risk = part === "tool" ? d.risk : undefined;
-    const row = addActivity(turn, { text: `Running ${label}`, part, risk, raw: d });
-    turn.tools.set(d.call_id, { row, args, label, arguments: d.arguments ?? {} });
+    const row = addActivity(turn, { text: label, part, risk, raw: d });
+    turn.tools.set(d.call_id, { row, args, label, name: d.name, arguments: d.arguments ?? {} });
     if (d.name === "delegate_task") turn.delegateRow = row; // its helper's lane goes under it
   } else if (ev.type === "tool_finished") {
     const started = turn.tools.get(d.call_id);
     if (started) {
       const blocked = d.blocked;
       setActivity(started.row, {
-        text: blocked ? `⛔ Blocked · ${started.label} · ${blocked.label} (${blocked.because})` : started.label,
+        text: blocked
+          ? `⛔ Blocked · ${started.label} · ${blocked.label} (${blocked.because})`
+          : started.name === "load_skill" || started.name === "delegate_task"
+            ? started.label
+            : `${started.label} → ${resultBrief(d.output ?? "", d.is_error)}`,
         state: d.is_error ? "error" : "done",
         facts: [
+          ...(toolDoes(started.name) ? [["What it does", toolDoes(started.name)]] : []),
           // One row per argument, so a long draft doesn't swallow the others.
           ...(started.args
             ? Object.entries(started.arguments).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])
