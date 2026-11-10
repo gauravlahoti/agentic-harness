@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S05 verified (incl. scope guard) · S04 verified except AC10 · S02 verified · S00 and S01 built, verification waived for now · next: S06 brief, and the open `review_contract` live failures (S03-AC11, S04-AC10)
+> **Now:** S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -26,7 +26,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S03](spec/stages/S03-tools.md) | Tools | 🟨 | 10/11 | 6/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 14/14 | 14/14 | 1 |
-| [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 0/12 | 1 |
+| [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 11/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 
@@ -146,17 +146,17 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Approval rules come from `workspace.toml`: several per tool, each with an approver role and an optional condition; CloudCo's match the approval chart (§1, §3) | 🧪 | 🟨 | `test_gate.py::test_s06_ac1_*` + `test_workspace.py::test_s06_ac1_*` (2) + `test_cloudco_tools.py::test_s06_ac1_cloudco_approvals_match_the_chart`: roles, conditions, order; CloudCo's five rules match chart §1 and §3 |
-| AC2 | A matching action pauses the loop until a person decides, once for each approval it needs | 🧪 | 🟨 | `test_gate_loop.py::test_s06_ac2_ac7_ac10_*`: the boss, then Sales, each asked in turn; the run waits |
-| AC3 | The card shows the action's values, the reason, the rule and the approver role, and counts down to the timeout | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s06_ac3_*` (the request carries `timeout_s`, role, step) · Chrome: card shows role, "1 of 2", rule, values, countdown, reason box |
-| AC4 | Approve → it runs; the result goes back to the model | 🧪 | 🟨 | `test_gate_loop.py::test_s05_ac12_approved_actions_run` and the two-approval test: both approved → the tool runs |
-| AC5 | Reject → the reason goes back to the model, it adapts, and approvals still to come are not asked | 🧪 | 🟨 | `test_gate_loop.py::test_s06_ac5_*`: the boss rejects, Sales is never asked, the model reads who and why |
-| AC6 | No answer in time → treated as Reject | 🧪 | 🟨 | `test_gate_loop.py::test_s06_ac6_*`: a time-out (patched to 0.05 s) is a no |
-| AC7 | Each card names who must decide ("Approve as CFO") and the answer is recorded with that role. A demo of the mechanism, not a login (D-87) | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s06_ac2_ac7_ac10_*` (request names the role; decision records it) · Chrome: "Approve as CFO", "Demo: you are acting as CFO" |
-| AC8 | Sending anything to a customer always needs the Sales approval, on top of any other | 🧪 | 🟨 | `test_cloudco_tools.py::test_s06_ac1_*`: every send ends with Sales, up to and including a 20% discount + Net 60 |
-| AC9 | `ask_human` lets the model pause to ask a question; the answer goes back to it | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s06_ac9_*` (2): the answer returns to the model; no answer is not a crash · Chrome: question card · live test written (`test_live_approvals.py`), not run: quota |
-| AC10 | The outbox file records who approved (role), when, and which rule asked | 🧪 | 🟨 | `test_cloudco_tools.py::test_s06_ac10_*` + loop test: the outbox file lists role, time and rule |
-| AC11 | Page: "Waiting for CFO", the card after the answer, and "Nothing ran" after a rejection | 👀 | 🟨 | Chrome (synthetic events): "Waiting for CFO · 1 of 2", "✓ Approved as …", "✗ Rejected as CFO" + "Nothing ran. The agent has been told why." |
+| AC1 | Approval rules come from `workspace.toml`: several per tool, each with an approver role and an optional condition; CloudCo's match the approval chart (§1, §3) | 🧪 | ✅ | `test_gate.py::test_s06_ac1_*` + `test_workspace.py::test_s06_ac1_*` (2) + `test_cloudco_tools.py::test_s06_ac1_cloudco_approvals_match_the_chart`: roles, conditions, order; CloudCo's five rules match chart §1 and §3 |
+| AC2 | A matching action pauses the loop until a person decides, once for each approval it needs | 🧪 | ✅ | `test_gate_loop.py::test_s06_ac2_ac7_ac10_*`: the boss, then Sales, each asked in turn; the run waits |
+| AC3 | The card shows the action's values, the reason, the rule and the approver role, and counts down to the timeout | 🧪 👀 | ✅ | `test_gate_loop.py::test_s06_ac3_*` (the request carries `timeout_s`, role, step) · Chrome: card shows role, "1 of 2", rule, values, countdown, reason box |
+| AC4 | Approve → it runs; the result goes back to the model | 🧪 | ✅ | `test_gate_loop.py::test_s05_ac12_approved_actions_run` and the two-approval test: both approved → the tool runs |
+| AC5 | Reject → the reason goes back to the model, it adapts, and approvals still to come are not asked | 🧪 | ✅ | `test_gate_loop.py::test_s06_ac5_*`: the boss rejects, Sales is never asked, the model reads who and why |
+| AC6 | No answer in time → treated as Reject | 🧪 | ✅ | `test_gate_loop.py::test_s06_ac6_*`: a time-out (patched to 0.05 s) is a no |
+| AC7 | Each card names who must decide ("Approve as CFO") and the answer is recorded with that role. A demo of the mechanism, not a login (D-87) | 🧪 👀 | ✅ | `test_gate_loop.py::test_s06_ac2_ac7_ac10_*` (request names the role; decision records it) · Chrome: "Approve as CFO", "Demo: you are acting as CFO" |
+| AC8 | Sending anything to a customer always needs the Sales approval, on top of any other | 🧪 | ✅ | `test_cloudco_tools.py::test_s06_ac1_*`: every send ends with Sales, up to and including a 20% discount + Net 60 |
+| AC9 | `ask_human` lets the model pause to ask a question; the answer goes back to it | 🧪 👀 | ✅ | `test_gate_loop.py::test_s06_ac9_*` (2): the answer returns to the model; no answer is not a crash · Chrome: question card · live test written (`test_live_approvals.py`), not run: quota |
+| AC10 | The outbox file records who approved (role), when, and which rule asked | 🧪 | ✅ | `test_cloudco_tools.py::test_s06_ac10_*` + loop test: the outbox file lists role, time and rule |
+| AC11 | Page: "Waiting for CFO", the card after the answer, and "Nothing ran" after a rejection | 👀 | ✅ | Chrome (synthetic events): "Waiting for CFO · 1 of 2", "✓ Approved as …", "✗ Rejected as CFO" + "Nothing ran. The agent has been told why." |
 | AC12 | Live: 25% discount → CFO rejects ("max 20%") → the agent proposes 20% → CFO approves → Sales approves the send | 🔑 👀 | 🟦 |  |
 
 ### S07 · Memory
@@ -245,3 +245,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | At your request: CloudCo logo (made up) and an agent menu at the top of the sidebar, loop mark moved to the Harness pane, "agentic-harness" now a footer line (D-86); run summary is a visible pill again. 232 offline tests; checked in Chrome. |
 | 2026-11-10 | S06 re-briefed; you approved option A (role-play approver, D-87). S06-AC1–AC12 → 🟦. Choices D-87–D-89. |
 | 2026-11-10 | S06-AC1–AC11 → 🟨: 243 offline tests; approval cards, the question card and the rejection path checked in Chrome with synthetic events. AC12 (and the live half of AC9) stays 🟦: the Gemini free-tier quota is spent (retry in ~15 h); `tests/live/test_live_approvals.py` is written. Walkthrough in `docs/stage-6.md`. |
+| 2026-11-10 | You verified S06 ("looks good"): S06-AC1–AC11 → ✅. AC12 stays open until the live run (quota). Moving to S07. |
