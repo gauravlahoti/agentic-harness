@@ -1,9 +1,9 @@
 """Workspaces: the folder that turns the harness into one particular agent (S02-AC1, AC3, AC6).
 
 Harness part: loading. A workspace may have a ``workspace.toml`` (read by the
-harness, never shown to the model) naming its memory files, skill folders,
-tools file and profiles. ``{profile}`` in a path picks the active profile's
-file or folder (D-39). Without ``workspace.toml`` a folder still loads, with
+harness, never shown to the model) naming its memory files, skill folders, tools
+file, built-in tools, readable folders and profiles. ``{profile}`` in a path picks the
+active profile's file or folder (D-39). Without ``workspace.toml`` a folder still loads, with
 just its ``tools.py`` (D-41).
 
 Does not: know any workspace by name, or build the prompt (context.py does).
@@ -17,6 +17,7 @@ from typing import Any
 
 from agentic_harness.skills import Skill, find_skills
 from agentic_harness.tools import Tool
+from agentic_harness.tools.builtin import BUILTINS
 
 PROFILE = "{profile}"
 DEFAULT_BUDGET = 2000  # tokens per memory file (D-38)
@@ -51,6 +52,8 @@ class Workspace:
     memory_budget_tokens: int = DEFAULT_BUDGET
     domain_words: tuple[str, ...] = ()
     examples: tuple[str, ...] = ()
+    builtins: tuple[str, ...] = ()  # built-in tools it asks for (D-45)
+    readable: tuple[str, ...] = ()  # folders read_file may open (D-46)
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -61,6 +64,12 @@ class Workspace:
         profiles = config.get("profiles", {})
         if not isinstance(profiles, dict):
             raise WorkspaceError("workspace.toml: [profiles] must be a table of profiles.")
+        builtins = _texts(config, "builtins")
+        if unknown := [name for name in builtins if name not in BUILTINS]:
+            known = ", ".join(BUILTINS)
+            raise WorkspaceError(
+                f"workspace.toml: unknown built-in {unknown[0]!r} (there are: {known})."
+            )
         return cls(
             path=path,
             name=path.name,
@@ -76,6 +85,8 @@ class Workspace:
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
             examples=_texts(config, "examples"),
+            builtins=builtins,
+            readable=_texts(config, "readable"),
         )
 
     def check_profile(self, profile: str | None) -> str | None:

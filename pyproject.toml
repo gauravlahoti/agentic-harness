@@ -59,6 +59,8 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S603", "S607", "D100", "D104"]  # asserts and git calls are fine in tests
+# A data recipe: its sentences are data, and its seeded random is for repeatability, not secrets.
+"workspaces/*/make_data.py" = ["E501", "S311"]
 
 # ── Types ────────────────────────────────────────────────────────────────────
 [tool.mypy]

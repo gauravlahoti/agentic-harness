@@ -52,3 +52,5 @@ Each tool declares a **risk**: `read`, `write` or `action`. Permissions (S5) and
 ## Changes
 
 - 2026-11-10 · Created (v3).
+- 2026-11-10 · Brief approved with choices D-43–D-53. Files are written only through the harness's `ctx` and shown via a `file_saved` event.
+- 2026-11-10 · Built: S03-AC1–AC11 → 🟨. Found while checking the page: the browser ran an old `app.js`; the server now sends `Cache-Control: no-cache` (D-54). No change to the checks.

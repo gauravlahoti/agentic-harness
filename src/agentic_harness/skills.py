@@ -106,6 +106,7 @@ def load_skill_tool(skills: Sequence[Skill]) -> Tool:
     return Tool(
         name="load_skill",
         description="Read the full steps of one of your skills before doing that task.",
+        risk="read",
         parameters={
             "type": "object",
             "properties": {

@@ -16,8 +16,9 @@ from agentic_harness.loop import Harness
 from agentic_harness.model import ModelClient
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.skills import load_skill_tool
+from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
-from agentic_harness.workspace import Workspace
+from agentic_harness.workspace import Workspace, WorkspaceError
 
 DEFAULT_TRACE_DIR = Path(".agentic-harness") / "traces"  # git-ignored
 
@@ -40,11 +41,22 @@ def create_harness(
     prices = prices or load_prices()
     prices.for_model(model.name)  # no price → fail now, not after the first call (D-25)
     context = build_context(workspace, workspace.check_profile(profile))
-    tools = list(workspace.tools)
+    # The workspace's own tools, then the built-ins it asked for (D-45), then load_skill.
+    tools = [*workspace.tools, *builtin_tools(workspace.builtins)]
     if context.skills:
         tools.append(load_skill_tool(context.skills))  # built in: reads a skill on demand
+    names = [t.name for t in tools]
+    if clash := sorted({n for n in names if names.count(n) > 1}):
+        raise WorkspaceError(f"Two tools are named {clash[0]!r}; tool names must be unique.")
     harness = Harness(
-        model, limits, tools, prices=prices, system=context.system, context=context.summary()
+        model,
+        limits,
+        tools,
+        prices=prices,
+        system=context.system,
+        context=context.summary(),
+        root=workspace.path,  # where tools may read (readable) and write (tasks/, outbox/)
+        readable=workspace.readable,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))

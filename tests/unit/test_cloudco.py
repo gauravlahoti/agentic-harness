@@ -57,8 +57,13 @@ def test_s02_ac10_every_profile_fits_the_memory_budget(cloudco: Workspace) -> No
         assert build_context(cloudco, profile.id).warnings == ()
 
 
+RUN_OUTPUT = {"tasks", "outbox"}  # written by the agent at run time, git-ignored (D-47)
+
+
 def test_s02_ac10_everything_says_it_is_fictional() -> None:
     for file in CLOUDCO.rglob("*.md"):
+        if RUN_OUTPUT & set(file.relative_to(CLOUDCO).parts):
+            continue
         assert "ictional" in file.read_text(), (
             f"{file.relative_to(CLOUDCO)} must say it's fictional"
         )

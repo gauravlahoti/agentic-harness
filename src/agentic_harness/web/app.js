@@ -280,6 +280,14 @@ const argText = (args) =>
   Object.entries(args ?? {})
     .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
     .join(", ");
+// The line shows each argument briefly; the full text is in the opened facts.
+const argBrief = (args) =>
+  Object.entries(args ?? {})
+    .map(([k, v]) => {
+      const text = (typeof v === "string" ? v : JSON.stringify(v)).replace(/\s+/g, " ");
+      return `${k}: ${text.length > 48 ? `${text.slice(0, 48)}…` : text}`;
+    })
+    .join(", ");
 const shorten = (key, value) =>
   typeof value === "string" && value.length > 160 ? `${value.slice(0, 160)}… (${value.length} chars)` : value;
 
@@ -296,24 +304,28 @@ function newTurn(task) {
   const activity = el("ol", "activity");
   activity.setAttribute("aria-label", "What the harness did");
   const reply = el("div", "reply");
+  const files = el("div", "files"); // cards for files the tools saved (S03)
   const foot = el("p", "run-foot");
-  agent.append(head, activity, reply, foot);
+  agent.append(head, activity, reply, files, foot);
 
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, foot, stats, model: null, tools: new Map(), tokens: 0 };
+  return { activity, reply, files, foot, stats, model: null, tools: new Map(), tokens: 0 };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
-function addActivity(turn, { text, part = "loop", state = "working", facts, raw }) {
+function addActivity(turn, { text, part = "loop", risk, state = "working", facts, raw }) {
   const li = el("li", `act part-${part} new`);
   const details = el("details");
   const summary = el("summary");
   const dot = el("span", "dot");
   dot.setAttribute("aria-hidden", "true");
   const label = el("span", "act-text", text);
-  summary.append(dot, label, el("span", "act-tag", part.toUpperCase()), fromTemplate("tpl-chevron"));
+  summary.append(dot, label, el("span", "act-tag", part.toUpperCase()));
+  // How much power the tool has: read, write or action (S03). Guardrails will key off it.
+  if (risk) summary.append(el("span", `act-risk risk-${risk}`, risk));
+  summary.append(fromTemplate("tpl-chevron"));
   const factList = el("dl", "facts");
   const rawBox = el("details", "raw");
   const pre = el("pre");
@@ -457,12 +469,14 @@ function onEvent(ev, turn) {
     });
   } else if (ev.type === "tool_started") {
     const args = argText(d.arguments);
+    const brief = argBrief(d.arguments);
     const part = d.part === "context" ? "context" : "tool";
     // load_skill is the harness's own context tool: name it for what it does.
     const label =
-      d.name === "load_skill" ? `Read skill ${d.arguments?.name ?? ""}` : `${d.name}${args ? ` · ${args}` : ""}`;
-    const row = addActivity(turn, { text: `Running ${label}`, part, raw: d });
-    turn.tools.set(d.call_id, { row, args, label });
+      d.name === "load_skill" ? `Read skill ${d.arguments?.name ?? ""}` : `${d.name}${brief ? ` · ${brief}` : ""}`;
+    const risk = part === "tool" ? d.risk : undefined;
+    const row = addActivity(turn, { text: `Running ${label}`, part, risk, raw: d });
+    turn.tools.set(d.call_id, { row, args, label, arguments: d.arguments ?? {} });
   } else if (ev.type === "tool_finished") {
     const started = turn.tools.get(d.call_id);
     if (started) {
@@ -470,7 +484,11 @@ function onEvent(ev, turn) {
         text: started.label,
         state: d.is_error ? "error" : "done",
         facts: [
-          ["Arguments", started.args || "none"],
+          // One row per argument, so a long draft doesn't swallow the others.
+          ...(started.args
+            ? Object.entries(started.arguments).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])
+            : [["Arguments", "none"]]),
+          ...(d.risk ? [["Risk", d.risk]] : []),
           ["Output", d.output],
           ["Call ID", d.call_id ?? "–"],
           ["Sent back as", d.is_error ? "an error the model can read" : "a result"],
@@ -478,6 +496,8 @@ function onEvent(ev, turn) {
         raw: d,
       });
     }
+  } else if (ev.type === "file_saved") {
+    turn.files.append(fileCard(d));
   } else if (ev.type === "run_finished") {
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
     if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
@@ -495,6 +515,19 @@ function onEvent(ev, turn) {
     announce(`${foot}. ${turn.stats.textContent}`);
     turn.foot.scrollIntoView({ block: "nearest" });
   }
+}
+
+// A file a tool saved: name and place on the card, the text when opened (D-53).
+function fileCard(d) {
+  const card = el("details", `file-card folder-${d.folder}`);
+  const summary = el("summary");
+  const where = d.folder === "outbox" ? "Outbox · not sent" : "Draft";
+  const name = el("span", "file-name", d.path.split("/").pop());
+  summary.append(fromTemplate("tpl-file"), name, el("span", "file-where", `${where} · ${d.path}`), fromTemplate("tpl-chevron"));
+  const body = el("div", "file-body");
+  renderProse(body, d.text);
+  card.append(summary, body);
+  return card;
 }
 
 async function runTask(event) {

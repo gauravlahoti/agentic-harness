@@ -121,3 +121,37 @@ def test_s02_ac6_each_profile_sees_only_its_skill_folders(tmp_path: Path) -> Non
 def test_s02_ac6_skill_paths_are_relative_for_sources(tmp_path: Path) -> None:
     ws = Workspace.load(make(tmp_path))
     assert ws.skills("alpha")[1].source == "skills/alpha/alpha-skill/SKILL.md"
+
+
+def test_s03_ac3_builtins_and_readable_folders(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text(
+        'builtins = ["read_file", "write_file"]\nreadable = ["docs", "data/sub"]\n'
+    )
+    ws = Workspace.load(tmp_path)
+    assert ws.builtins == ("read_file", "write_file")
+    assert ws.readable == ("docs", "data/sub")
+
+
+def test_s03_ac3_unknown_builtin_is_a_clear_error(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text('builtins = ["run_shell"]\n')
+    with pytest.raises(WorkspaceError, match="run_shell"):
+        Workspace.load(tmp_path)
+
+
+def test_s03_ac3_tools_load_from_tools_py_with_the_decorator(tmp_path: Path) -> None:
+    (tmp_path / "tools.py").write_text(
+        textwrap.dedent(
+            '''
+            from agentic_harness.tools.registry import tool
+
+            @tool(risk="read")
+            def find_widget(widget_id: str) -> dict[str, str]:
+                """Find one widget by ID."""
+                return {"id": widget_id}
+
+            TOOLS = [find_widget]
+            '''
+        )
+    )
+    ws = Workspace.load(tmp_path)
+    assert [(t.name, t.risk) for t in ws.tools] == [("find_widget", "read")]

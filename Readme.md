@@ -30,7 +30,7 @@ The first agent is the **CloudCo Contract Assistant**. It reviews a customer's c
 |---|---|---|---|
 | Loop | Calls the model, runs the tools it asks for, repeats; stops at step, cost or time limits | A run that hits its $1 budget stops and says why | Available |
 | Context | Standing instructions, team files, and skills loaded on demand | Checks each change against CloudCo's standard terms | Available |
-| Actions | Workspace tools, built-in tools, and sub-agents with a clean history | Finds ShopCo's 5 contract changes, with record IDs; a reviewer sub-agent reads the 40 pages | Planned |
+| Actions | Workspace tools, built-in tools, and sub-agents with a clean history | Finds ShopCo's 5 contract changes, with record IDs; a reviewer sub-agent reads the 40 pages | Tools available · sub-agents planned |
 | Guardrails | Tools and fields per profile, protected files, human approvals | Engineering never sees prices; a 25% discount waits for the CFO | Planned |
 | Memory | Saved tasks you can resume, per-profile notes, context trimming | In round 2 it recalls that the CFO approved 20% in round 1 | Planned |
 

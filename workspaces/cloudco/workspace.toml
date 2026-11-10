@@ -13,6 +13,11 @@ skills = ["skills/company", "skills/{profile}"]
 
 memory_budget_tokens = 2000
 
+# CloudCo's own tools live in tools.py. Built-ins it wants from the harness (D-45),
+# and the only folders read_file may open (D-46).
+builtins = ["read_file", "write_file"]
+readable = ["policies", "data/contracts"]
+
 # Words that must never appear inside the harness (S02-AC9).
 domain_words = ["cloudco", "shopco", "contract", "discount", "liability", "renewal", "redline", "uptime"]
 

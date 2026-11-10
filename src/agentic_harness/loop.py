@@ -19,19 +19,19 @@ write files (listeners such as trace.py do). It only emits events.
 
 import asyncio
 import hashlib
-import inspect
-import json
 import time
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 from agentic_harness.events import Event, EventBus, Listener
 from agentic_harness.limits import Budget, Limits
 from agentic_harness.model import ModelClient, ModelError, Step
 from agentic_harness.pricing import Prices
-from agentic_harness.tools import Tool
+from agentic_harness.tools import Tool, ToolContext
+from agentic_harness.tools.registry import call_tool
 
 # Domain-free on purpose: the workspace adds who the agent is (S02).
 # Measured live (D-30): "use the tools when they help" made a small model call tools it
@@ -72,8 +72,11 @@ class Harness:
         prices: Prices,
         system: str = SYSTEM_PROMPT,
         context: dict[str, Any] | None = None,
+        root: Path | None = None,
+        readable: Sequence[str] = (),
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
+        self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -167,38 +170,39 @@ class Harness:
 
     async def _run_tool(self, call: Step, run: "_Run") -> Step:
         name, arguments = call.get("name", ""), call.get("arguments") or {}
+        call_id = call.get("id")
         tool = self.tools.get(name)
-        part = tool.part if tool else "tool"  # load_skill is "context"; actions are "tool"
-        run.emit("tool_started", call_id=call.get("id"), name=name, arguments=arguments, part=part)
-        is_error = True
+        part, risk = (tool.part, tool.risk) if tool else ("tool", "")
+        run.emit(
+            "tool_started", call_id=call_id, name=name, arguments=arguments, part=part, risk=risk
+        )
         if tool is None:
-            output = f"Unknown tool: {name}"
+            output, is_error = f"Unknown tool: {name}", True
         else:
-            try:
-                value = tool.function(**arguments)
-                if inspect.isawaitable(value):
-                    value = await value
-                output = value if isinstance(value, str) else json.dumps(value, default=str)
-                is_error = False
-            except Exception as error:  # a broken tool is news for the model, not a crash
-                output = f"{type(error).__name__}: {error}"
+            # A fresh context per call: it knows the call, so a saved file can be tied to it.
+            ctx = None
+            if self.root is not None:
+                ctx = ToolContext(run.id, self.root, self.readable, run.emit, call_id or "")
+            result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
+            output, is_error = result.output, result.is_error
         run.emit(
             "tool_finished",
-            call_id=call.get("id"),
+            call_id=call_id,
             name=name,
             output=output,
             is_error=is_error,
             part=part,
+            risk=risk,
         )
-        result: Step = {
+        result_step: Step = {
             "type": "function_result",
             "name": name,
-            "call_id": call.get("id"),
+            "call_id": call_id,
             "result": [{"type": "text", "text": output}],
         }
         if is_error:
-            result["is_error"] = True
-        return result
+            result_step["is_error"] = True
+        return result_step
 
 
 class _Run:

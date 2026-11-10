@@ -1,0 +1,25 @@
+{
+  "_note": "Fictional data for a demo. CloudCo, ShopCo, people and numbers are made up.",
+  "records": [
+    {
+      "id": "DL-3108",
+      "customer_id": "CUS-0042",
+      "contract_id": "CT-2207",
+      "type": "Renewal",
+      "annual_value_usd": 480000,
+      "stage": "Negotiation",
+      "close_by": "2026-12-29",
+      "note": "ShopCo returned a marked-up contract."
+    },
+    {
+      "id": "DL-2954",
+      "customer_id": "CUS-0017",
+      "contract_id": "CT-1980",
+      "type": "Renewal",
+      "annual_value_usd": 150000,
+      "stage": "Signed",
+      "close_by": "2026-06-30",
+      "note": ""
+    }
+  ]
+}

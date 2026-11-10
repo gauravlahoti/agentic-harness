@@ -342,3 +342,99 @@
 - **Because:** measured: on a 429 the SDK sleeps for the server's `Retry-After` as-is, uncapped. 3.6 Flash's free tier (20 requests a day) said "retry in 41m43s", so every run sat silent until our 120 s limit and ended "hit the time limit", hiding the real reason
 - **Cost:** a one-second blip now fails the run too; you resend or pick another model
 - **Revisit if:** we add our own visible retry step to the loop
+
+### D-43 · `@tool` builds the declaration from the function
+✅ Accepted · S03 · brief choice 1
+- **Chose:** a decorator reads type hints (`str`, `int`, `float`, `bool`, `Literal[...]` → enum, `list[...]`), `Annotated[T, "…"]` for parameter descriptions, and the docstring for the tool description
+- **Instead of:** hand-written JSON schemas · Pydantic models
+- **Because:** one source of truth; the schema can't drift from the code
+- **Cost:** only simple types; anything else is a clear error when the workspace loads
+- **Revisit if:** a tool truly needs nested objects
+
+### D-44 · Every tool declares its risk
+✅ Accepted · S03 · brief choice 2
+- **Chose:** `risk` is required: `read`, `write` or `action`
+- **Instead of:** optional with a default of `read`
+- **Because:** guardrails (S05, S06) gate on it without knowing any tool; forgetting it must not mean "safe"
+- **Cost:** one word per tool
+- **Revisit if:** —
+
+### D-45 · Built-in tools are opt-in per workspace
+✅ Accepted · S03 · brief choice 3
+- **Chose:** `builtins = ["read_file", "write_file"]` in `workspace.toml`; `load_skill` stays automatic when there are skills
+- **Instead of:** every built-in for every workspace
+- **Because:** every extra tool tempts the model (D-30); `hello` needs no files
+- **Cost:** one config line
+- **Revisit if:** —
+
+### D-46 · `read_file` reaches only folders the workspace lists
+✅ Accepted · S03 · brief choice 4
+- **Chose:** `readable = [...]` in `workspace.toml`; paths resolved, escapes refused; `.env` and `workspace.toml` never readable
+- **Instead of:** the whole workspace folder
+- **Because:** `workspace.toml` stays hidden from the model; an allow-list is easy to reason about
+- **Cost:** folders listed by hand
+- **Revisit if:** —
+
+### D-47 · Writes go to `tasks/<run-id>/`; actions to `outbox/`
+✅ Accepted · S03 · brief choice 5
+- **Chose:** a folder per run for drafts, one `outbox/` for actions; both git-ignored
+- **Instead of:** one shared folder
+- **Because:** a run's drafts stay together; nothing leaks into the repo; never real email
+- **Cost:** drafts aren't shared across runs until S07
+- **Revisit if:** S07 (memory)
+
+### D-48 · The harness hands tools a `ctx`; all writes go through it
+✅ Accepted · S03 · brief choice 6
+- **Chose:** a function that declares a `ctx` parameter gets a `ToolContext` (run id, folders, `save_task_file`, `save_outbox_file`); `ctx` never appears in the schema
+- **Instead of:** globals
+- **Because:** tools stay plain, testable functions; the model can't see or set `ctx`; one place writes files, so S05/S06 can gate it and the page can show it (D-53)
+- **Cost:** one bit of "magic", explained in the docstring
+- **Revisit if:** —
+
+### D-49 · Arguments are checked before a tool runs
+✅ Accepted · S03 · brief choice 7
+- **Chose:** our own check of required fields, types and enums; problems go back to the model as an error result
+- **Instead of:** letting Python raise · the `jsonschema` library
+- **Because:** the model reads "timezone is required" and fixes itself; no new dependency
+- **Cost:** covers only the types `@tool` generates (D-43)
+- **Revisit if:** D-43 grows nested types
+
+### D-50 · Tool output is capped at 20,000 characters
+✅ Accepted · S03 · brief choice 8
+- **Chose:** a cut with a visible note: "[cut: N more characters; ask for a smaller part]"; tools are designed to return parts (a contract section, not the whole contract)
+- **Instead of:** no limit
+- **Because:** protects context and cost; the cut is named, never silent
+- **Cost:** the model may need a second call
+- **Revisit if:** S07 adds context trimming
+
+### D-51 · Differences are found in code; the model judges them
+✅ Accepted · S03 · brief choice 9
+- **Chose:** `compare_to_standard` diffs two contract versions clause by clause (word level) and returns every edit with its clause ID
+- **Instead of:** the model reading both contracts
+- **Because:** deterministic, cheap, and every edit is citable; judgement stays with the model and the skill
+- **Cost:** contracts must be split into numbered clauses
+- **Revisit if:** —
+
+### D-52 · CloudCo's data comes from a committed generator
+✅ Accepted · S03 · brief choice 10
+- **Chose:** `workspaces/cloudco/make_data.py` writes the JSON records and both contract versions deterministically; its output is committed
+- **Instead of:** hand-writing ~60 edits across a long contract
+- **Because:** consistent and reviewable; the script is the recipe
+- **Cost:** one script to maintain
+- **Revisit if:** —
+
+### D-53 · File cards come from a `file_saved` event
+✅ Accepted · S03 · brief choice 11
+- **Chose:** `ctx.save_*` writes the file and emits `file_saved` (path, text); the page shows a card that opens to the text; tool results carry only the path
+- **Instead of:** a new endpoint that serves files · the text inside the tool result
+- **Because:** no new server surface; the trace holds it; the model doesn't pay tokens for its own draft twice
+- **Cost:** a file changed outside the run won't refresh (not needed in S03)
+- **Revisit if:** files become editable on the page
+
+### D-54 · The server tells the browser to re-check page files
+✅ Accepted · S03 · found while checking the page
+- **Chose:** `Cache-Control: no-cache` on every response: the browser asks each time, and gets a cheap 304 when nothing changed
+- **Instead of:** no header (the browser guesses a freshness time) · version numbers in file names (a build step)
+- **Because:** seen: after an update Chrome kept running the old `app.js`, so risk tags and file cards were missing
+- **Cost:** one tiny request per file per load, on localhost
+- **Revisit if:** the page is ever served from somewhere other than this local server

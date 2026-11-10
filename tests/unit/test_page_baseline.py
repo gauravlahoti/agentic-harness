@@ -54,3 +54,10 @@ def test_s01_ac13_no_fake_mode_and_no_helper_phrases() -> None:
 def test_s01_ac13_text_is_never_inserted_as_html() -> None:
     for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"):
         assert sink not in JS, f"{sink} lets model text inject HTML"
+
+
+def test_s03_ac10_tool_lines_show_risk_and_saved_files() -> None:
+    assert '"file_saved"' in JS  # a card for every file a tool saved
+    assert "d.risk" in JS  # the risk tag on tool lines
+    for rule in (".file-card", ".act-risk", ".risk-action"):
+        assert rule in CSS, f"S03 style missing from app.css: {rule}"

@@ -82,6 +82,9 @@ def create_app(
     ) -> Response:
         response = await call_next(request)
         response.headers.update(SECURITY_HEADERS)
+        # Re-check page files on every load (a cheap 304 when unchanged); without it the
+        # browser guesses a freshness time and runs an old app.js after an update.
+        response.headers["Cache-Control"] = "no-cache"
         return response
 
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")

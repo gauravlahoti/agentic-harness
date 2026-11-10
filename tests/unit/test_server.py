@@ -37,6 +37,13 @@ def test_s00_ac13_serves_page_assets(tmp_path: Path) -> None:
     assert web.get("/static/theme.js").status_code == 200
 
 
+def test_s00_ac13_page_files_are_always_rechecked(tmp_path: Path) -> None:
+    """Found in S03: without this, Chrome kept running an old app.js after an update."""
+    web = client(tmp_path)
+    for path in ("/", "/static/app.js", "/static/app.css"):
+        assert web.get(path).headers["cache-control"] == "no-cache", path
+
+
 def test_s00_ac13_saved_theme_applies_before_first_paint(tmp_path: Path) -> None:
     # The theme script must be a plain (not deferred) script right after the color-scheme
     # meta, and before the stylesheet; otherwise the page flashes the wrong theme first.

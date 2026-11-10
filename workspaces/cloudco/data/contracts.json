@@ -1,0 +1,12 @@
+{
+  "_note": "Fictional data for a demo. CloudCo, ShopCo, people and numbers are made up.",
+  "records": [
+    {
+      "id": "CT-2207",
+      "customer_id": "CUS-0042",
+      "title": "Software Services Agreement",
+      "standard_file": "contracts/CT-2207-standard.md",
+      "customer_file": "contracts/CT-2207-shopco-redline.md"
+    }
+  ]
+}

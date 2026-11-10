@@ -88,3 +88,24 @@ def test_s02_ac3_cli_refuses_an_unknown_profile(
     code = main(["run", "--workspace", str(CLOUDCO), "--profile", "pirates", "Hi"])
     assert code == 2
     assert "pirates" in capsys.readouterr().err
+
+
+def test_s03_ac2_create_harness_adds_only_the_builtins_asked_for(tmp_path: Path) -> None:
+    model = GeminiModel(Settings(model="gemini-3.5-flash-lite"), client=object())
+    plain = create_harness(model, Limits(), Workspace.load(tmp_path), trace_dir=None)
+    assert list(plain.tools) == []
+    (tmp_path / "workspace.toml").write_text('builtins = ["write_file"]\n')
+    harness = create_harness(model, Limits(), Workspace.load(tmp_path), trace_dir=None)
+    assert list(harness.tools) == ["write_file"]
+
+
+def test_s03_ac3_a_workspace_tool_may_not_shadow_a_builtin(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text('builtins = ["read_file"]\n')
+    (tmp_path / "tools.py").write_text(
+        "from agentic_harness.tools.registry import tool\n\n"
+        '@tool(risk="read")\ndef read_file(path: str) -> str:\n    """Mine."""\n    return path\n\n'
+        "TOOLS = [read_file]\n"
+    )
+    model = GeminiModel(Settings(model="gemini-3.5-flash-lite"), client=object())
+    with pytest.raises(WorkspaceError, match="read_file"):
+        create_harness(model, Limits(), Workspace.load(tmp_path), trace_dir=None)

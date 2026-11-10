@@ -42,3 +42,23 @@ def test_s00_ac5_s02_ac9_harness_source_has_no_domain_words() -> None:
         if pattern.search(line)
     ]
     assert hits == [], "Domain words inside the harness:\n" + "\n".join(hits)
+
+
+def test_s03_ac3_harness_names_no_workspace_tool() -> None:
+    """The harness may run ``get_contract`` but must never mention it (spec rule 1)."""
+    names = set()
+    for tools_file in ROOT.glob("workspaces/*/tools.py"):
+        names |= set(
+            re.findall(r"^(?:async )?def ([a-z][a-z0-9_]*)\(", tools_file.read_text(), re.M)
+        )
+    names -= {"main"}
+    assert names, "expected workspace tools to check against"
+    pattern = re.compile(r"\b(" + "|".join(sorted(names)) + r")\b")
+    hits = [
+        f"{path.relative_to(HARNESS_SRC)}:{number}: {line.strip()}"
+        for path in HARNESS_SRC.rglob("*")
+        if path.suffix in TEXT_FILES
+        for number, line in enumerate(path.read_text().splitlines(), start=1)
+        if pattern.search(line)
+    ]
+    assert hits == [], "Workspace tool names inside the harness:\n" + "\n".join(hits)

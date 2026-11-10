@@ -1,0 +1,65 @@
+{
+  "_note": "Fictional data for a demo. CloudCo, ShopCo, people and numbers are made up.",
+  "records": [
+    {
+      "id": "UP-2025-11",
+      "month": "2025-11",
+      "percent": 99.97
+    },
+    {
+      "id": "UP-2025-12",
+      "month": "2025-12",
+      "percent": 99.93
+    },
+    {
+      "id": "UP-2026-01",
+      "month": "2026-01",
+      "percent": 99.96
+    },
+    {
+      "id": "UP-2026-02",
+      "month": "2026-02",
+      "percent": 99.95
+    },
+    {
+      "id": "UP-2026-03",
+      "month": "2026-03",
+      "percent": 99.94
+    },
+    {
+      "id": "UP-2026-04",
+      "month": "2026-04",
+      "percent": 99.98
+    },
+    {
+      "id": "UP-2026-05",
+      "month": "2026-05",
+      "percent": 99.92
+    },
+    {
+      "id": "UP-2026-06",
+      "month": "2026-06",
+      "percent": 99.96
+    },
+    {
+      "id": "UP-2026-07",
+      "month": "2026-07",
+      "percent": 99.95
+    },
+    {
+      "id": "UP-2026-08",
+      "month": "2026-08",
+      "percent": 99.97
+    },
+    {
+      "id": "UP-2026-09",
+      "month": "2026-09",
+      "percent": 99.93
+    },
+    {
+      "id": "UP-2026-10",
+      "month": "2026-10",
+      "percent": 99.94
+    }
+  ]
+}

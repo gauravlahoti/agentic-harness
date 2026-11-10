@@ -20,8 +20,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Context (S02): `workspace.toml` (memory files, skill folders, profiles, memory budget, domain words, examples); system prompt built once in a fixed order (base → memory → skill list) with a prompt ID on every call; skills in the open `SKILL.md` format, loaded on demand by the built-in `load_skill`; a size warning for memory files.
 - CloudCo Contract Assistant workspace (all made up): `AGENTS.md` with the answer format, 3 team files, 4 skills, 2 policies, 4 profiles.
 - Page: profile picker in the sidebar; CONTEXT lines for the loaded context and for each skill read; example tasks come from the workspace.
+- Tools (S03): `@tool` builds Gemini's declaration from type hints and the docstring, with a required risk (read · write · action); arguments checked before a tool runs; errors go back to the model; output capped at 20,000 characters with a visible note; tools get a `ctx` and write files only through it (`tasks/<run-id>/`, `outbox/`).
+- Built-in tools a workspace can opt into: `read_file` (listed folders only; never `.env` or `workspace.toml`) and `write_file` (this run's folder).
+- CloudCo tools: `get_customer`, `get_deal`, `get_contract`, `compare_to_standard` (61 edits, each with its clause ID), `search_policy`, `get_uptime`, `get_payment_history`; actions `accept_change` and `send_to_customer` write only to the local outbox. Made-up data from a committed generator (`make_data.py`).
+- Page: a risk tag on every tool line; a file card for every saved draft or outbox message.
 
 ### Changed
+- The server sends `Cache-Control: no-cache`, so the browser never runs an old page script after an update (D-54).
+- `hello`'s `get_time` uses `@tool`.
 - SDK retries are off; a failed model call ends the run at once with Gemini's own message ("Gemini 429: … retry in 41m") instead of waiting silently until the time limit (D-42).
 - The domain-free test also checks each workspace's own words from its `workspace.toml` (D-40).
 - Only Gemini answers: Fake mode, `FakeModel` and replay-based loop tests removed (D-32). Coverage gate 75% until the evals (D-33).
