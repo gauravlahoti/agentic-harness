@@ -697,3 +697,25 @@
 - **Because:** the top of the page should say whose agents these are; the mark belongs where the harness is shown
 - **Cost:** the menu cannot switch yet: the server runs one workspace, so a second agent needs the server to host several (a later change)
 - **Revisit if:** a second agent is added to CloudCo
+
+### D-87 · The approver is a named role, answered by role-play
+✅ Accepted · S06 · your pick ("A looks good")
+- **Chose:** every approval names an approver role (Sales, CFO, Finance, Engineering). The card says "Approve as CFO"; the person at the page clicks as that role; the outbox records the role and the time. The page labels it a demo
+- **Instead of:** switching profile to approve (the thread resets), or real logins
+- **Because:** this project has no accounts and runs on one machine; the mechanism (who must decide, who did) is what's being taught
+- **Cost:** not security: anyone at the keyboard can click as any role
+- **Revisit if:** the harness is ever hosted for several people
+
+### D-88 · Several approvals per tool, each with a condition
+✅ Accepted · S06
+- **Chose:** `[[approvals]]` may repeat for one tool. Each has `approver`, `because`, an optional `label`, and an optional condition on one argument (`arg` with `above` or `equals`, the same words as the never rules). All that match are asked in order; a rejection stops the rest
+- **Instead of:** one approval per tool
+- **Because:** the approval chart says different people decide different amounts
+- **Cost:** CloudCo's `workspace.toml` grows by four rules
+
+### D-89 · `ask_human`: the model chooses to pause
+✅ Accepted · S06
+- **Chose:** a built-in tool, on when `workspace.toml` says `ask_human = true`. The loop sends the question down the approval channel; the page shows a card with a text box; the answer returns to the model as the tool result. No answer in 10 minutes counts as "no answer"
+- **Instead of:** a second pause mechanism
+- **Because:** one channel, one timeout, one place for tests
+- **Cost:** a small model may ask too often; the tool description says to ask only when something needed is missing

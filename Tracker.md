@@ -26,7 +26,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S03](spec/stages/S03-tools.md) | Tools | 🟨 | 10/11 | 6/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 14/14 | 14/14 | 1 |
-| [S06](spec/stages/S06-approvals.md) | Approvals | 📝 | 0/12 | 0/12 | 1 |
+| [S06](spec/stages/S06-approvals.md) | Approvals | 🟦 | 0/12 | 0/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 
@@ -146,18 +146,18 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Approval rules come from `workspace.toml` and match CloudCo's approval chart | 🧪 | 📝 |  |
-| AC2 | A matching action pauses the loop until a human decides | 🧪 | 📝 |  |
-| AC3 | The card shows the action, values, reason, evidence IDs, rule and approver | 🧪 👀 | 📝 |  |
-| AC4 | Approve → it runs; the result goes back to the model | 🧪 | 📝 |  |
-| AC5 | Reject → the reason goes back to the model, and it adapts | 🧪 | 📝 |  |
-| AC6 | No answer in time → treated as Reject | 🧪 | 📝 |  |
-| AC7 | Only someone with the authority can approve (CFO items need the CFO profile) | 🧪 | 📝 |  |
-| AC8 | Sending anything to a customer always needs approval | 🧪 | 📝 |  |
-| AC9 | `ask_human` lets the model pause to ask a question | 🧪 | 📝 |  |
-| AC10 | The outbox records who approved what, and when | 🧪 | 📝 |  |
-| AC11 | Page: approval cards, "Waiting for CFO", "nothing was sent" | 👀 | 📝 |  |
-| AC12 | Live: the CFO rejects 25% ("max 20%") → the agent proposes 20% → approved → the reply is sent after Sales approves | 🔑 👀 | 📝 |  |
+| AC1 | Approval rules come from `workspace.toml`: several per tool, each with an approver role and an optional condition; CloudCo's match the approval chart (§1, §3) | 🧪 | 🟦 |  |
+| AC2 | A matching action pauses the loop until a person decides, once for each approval it needs | 🧪 | 🟦 |  |
+| AC3 | The card shows the action's values, the reason, the rule and the approver role, and counts down to the timeout | 🧪 👀 | 🟦 |  |
+| AC4 | Approve → it runs; the result goes back to the model | 🧪 | 🟦 |  |
+| AC5 | Reject → the reason goes back to the model, it adapts, and approvals still to come are not asked | 🧪 | 🟦 |  |
+| AC6 | No answer in time → treated as Reject | 🧪 | 🟦 |  |
+| AC7 | Each card names who must decide ("Approve as CFO") and the answer is recorded with that role. A demo of the mechanism, not a login (D-87) | 🧪 👀 | 🟦 |  |
+| AC8 | Sending anything to a customer always needs the Sales approval, on top of any other | 🧪 | 🟦 |  |
+| AC9 | `ask_human` lets the model pause to ask a question; the answer goes back to it | 🧪 👀 | 🟦 |  |
+| AC10 | The outbox file records who approved (role), when, and which rule asked | 🧪 | 🟦 |  |
+| AC11 | Page: "Waiting for CFO", the card after the answer, and "Nothing was sent" after a rejection | 👀 | 🟦 |  |
+| AC12 | Live: 25% discount → CFO rejects ("max 20%") → the agent proposes 20% → CFO approves → Sales approves the send | 🔑 👀 | 🟦 |  |
 
 ### S07 · Memory
 
@@ -243,3 +243,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | Found the cause of the `review_contract` failures: the S05 allow-list hid `load_skill` and `delegate_task` (D-84). Fixed; the agent now reads the contract (answers list five changes) but live answers still left out clause IDs, so the skill now asks for them. Live re-check blocked: Flash-Lite free tier hit 500 requests/day. S03-AC11, S04-AC10 stay 🟨. Also: no "Run complete" line; metrics under the answer; animated profile cards. |
 | 2026-11-10 | At your request: effort picker (Thinking: Auto / Low / Medium / High = Gemini `thinking_level`, D-85) next to the model menu; the final answer now ends in a run-summary card (count-up numbers, token split bar) instead of chips. Offline tests 230; checked in Chrome with a synthetic run (live quota spent). |
 | 2026-11-10 | At your request: CloudCo logo (made up) and an agent menu at the top of the sidebar, loop mark moved to the Harness pane, "agentic-harness" now a footer line (D-86); run summary is a visible pill again. 232 offline tests; checked in Chrome. |
+| 2026-11-10 | S06 re-briefed; you approved option A (role-play approver, D-87). S06-AC1–AC12 → 🟦. Choices D-87–D-89. |
