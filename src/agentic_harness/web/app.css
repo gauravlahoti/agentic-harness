@@ -1236,3 +1236,18 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 @keyframes retitle { from { color: var(--accent); opacity: 0.2; } }
 
 .note-list { margin: 6px 4px 4px; padding: 0 0 0 16px; display: grid; gap: 5px; font-size: 12.5px; color: var(--text-soft); }
+
+/* One line under the agent's name: what it does for people. */
+.agent-desc { margin: -8px 4px 14px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+/* Context fill: how full the working window was, under the token split. */
+.receipt-fill { display: grid; gap: 4px; }
+.fill-label { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.fill-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 8%, transparent); overflow: hidden; }
+.fill-level { display: block; height: 100%; border-radius: 2px; background: var(--pass); }
+.fill-level.warm { background: var(--part-guard); }
+.fill-level.hot { background: var(--fail); }
+.legend-item.lg-cached { color: var(--pass); }
+@media (prefers-reduced-motion: no-preference) {
+  .fill-level { transform-origin: left; animation: seg-grow 0.8s cubic-bezier(0.2, 0.9, 0.3, 1) 0.4s both; }
+}

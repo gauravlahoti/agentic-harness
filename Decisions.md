@@ -746,11 +746,11 @@
 - **Chose:** (1) a tool result over 10,000 characters is cut to its start and end plus a marker; (2) past 50% of the working window, old tool results become one-line stubs, in batches; (3) still past 70% after that: one Flash-Lite call summarizes the oldest turns. The fill is the last reply's real input-token count; after pruning, an estimate (characters ÷ 4)
 - **Instead of:** a tokenizer, or always summarizing
 - **Because:** the model reports exact usage; pruning is free and invents nothing
-- **Cost:** the 50% / 70% lines are my choice (set under `[memory]` in `workspace.toml`)
+- **Cost:** the 50% / 70% lines are my choice (set under `[trimming]` in `workspace.toml`)
 
 ### D-94 · The working window is small on purpose
 ✅ Accepted · S07
-- **Chose:** `[memory] window_tokens = 20000` for CloudCo, far below Gemini's 1M
+- **Chose:** `[trimming] window_tokens = 20000` for CloudCo, far below Gemini's 1M
 - **Instead of:** the model's real limit
 - **Because:** cost and quality fall long before 1M, and a small window lets the demo show trimming
 - **Cost:** trims earlier than strictly needed
@@ -761,3 +761,10 @@
 - **Instead of:** editing steps in place
 - **Because:** Gemini needs model steps and their thought signatures exactly as received
 - **Cost:** a trimmed run is not byte-identical to the saved file
+
+### D-96 · A line under the agent's name
+✅ Accepted · UI · your request
+- **Chose:** `description` in `workspace.toml` (one short line), shown under the agent menu
+- **Instead of:** nothing, or putting it in the menu itself
+- **Because:** a name alone doesn't say what the agent is for
+- **Cost:** none

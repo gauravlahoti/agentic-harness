@@ -34,6 +34,7 @@ from agentic_harness.pricing import Prices
 from agentic_harness.scope import Scope, ScopeCheck
 from agentic_harness.tools import Tool, ToolContext
 from agentic_harness.tools.registry import call_tool
+from agentic_harness.trimming import Summarize, Window, estimate_tokens, fit
 
 # Domain-free on purpose: the workspace adds who the agent is (S02).
 # Measured live (D-30): "use the tools when they help" made a small model call tools it
@@ -92,6 +93,8 @@ class Harness:
         approver: Approver | None = None,
         scope: Scope | None = None,
         scope_check: ScopeCheck | None = None,
+        window: Window | None = None,
+        summarizer: Summarize | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -99,6 +102,7 @@ class Harness:
         self.gate = gate  # what this profile may use, see, never do, and must ask for (S05)
         self.approver = approver  # who answers "may I?"; none means no (D-79)
         self.scope, self.scope_check = scope, scope_check  # stay on the job (D-81)
+        self.window, self.summarizer = window, summarizer  # forget on purpose (S07, D-93)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -195,10 +199,25 @@ class Harness:
                         "stopped", "outside_scope", self.scope.refusal if self.scope else ""
                     )
 
+        measured: int | None = None  # the last reply's real input-token count
         while (limit := budget.exceeded()) is None:
+            if self.window is not None:
+                # Forget on purpose, cheapest first (S07): sent shrinks, saved doesn't.
+                used = measured if measured is not None else estimate_tokens(steps)
+                fitted = await fit(steps, used=used, window=self.window, summarize=self.summarizer)
+                if fitted.events:
+                    steps = fitted.steps
+                    budget.charge(_take_cost(self.summarizer))
+                    for event in fitted.events:
+                        run.emit("context_trimmed", window=self.window.tokens, fill=used, **event)
             budget.count_step()
             run.emit(
-                "model_called", step=budget.steps, history=len(steps), prompt_id=self.prompt_id
+                "model_called",
+                step=budget.steps,
+                history=len(steps),
+                prompt_id=self.prompt_id,
+                fill=measured,
+                window=self.window.tokens if self.window else None,
             )
             try:
                 # The time limit also covers waiting for the model.
@@ -211,6 +230,7 @@ class Harness:
 
             usd = self.prices.cost(self.model.name, reply.usage)
             budget.charge(usd)
+            measured = int(reply.usage.get("total_input_tokens") or 0) or measured
             steps.extend(reply.steps)  # exactly as received: thought signatures live here
             save(list(reply.steps))
             calls = reply.tool_calls
@@ -405,6 +425,14 @@ class Harness:
             f"The person did not answer ({text}). Carry on with what you have, "
             "or say plainly what you still need."
         )
+
+
+def _take_cost(summarizer: Summarize | None) -> float:
+    """What the summarizer spent since last asked (it keeps a running ``last_usd``)."""
+    spent = float(getattr(summarizer, "last_usd", 0.0))
+    if summarizer is not None and hasattr(summarizer, "last_usd"):
+        summarizer.last_usd = 0.0
+    return spent
 
 
 class _Run:

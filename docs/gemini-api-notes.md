@@ -21,6 +21,7 @@
 | Usage: `total_input_tokens`, `total_output_tokens`, `total_thought_tokens`, `total_cached_tokens`, `total_tool_use_tokens`, `total_tokens` | 📄 API reference | `pricing.py`, cost limit |
 | `generation_config`: `max_output_tokens`, `thinking_level` (`minimal`…`high`), `thinking_summaries`, `tool_choice` (`auto`, `any`, `none`, `validated`) | 📄 API reference | config |
 | Effort is `generation_config.thinking_level`: `minimal`, `low`, `medium`, `high`. Defaults: `medium` on 3.5 / 3.6 Flash, `minimal` on 3.5 Flash-Lite. `minimal` is missing on 3.7 / 3.8 Flash and Pro, so the page offers low / medium / high. Never mix with the old `thinking_budget` (400) | 📄 thinking · what's new in 3.5 (checked 2026-11-10) | D-85 |
+| Signature validation covers the model's steps in the *current* turn (since the last user message that is not a function result); older turns: send consistently, all of it or none. So trimming may stub old tool results and summarize whole earlier turns, but never edits model steps | 📄 thought signatures (checked 2026-11-10) | D-95 |
 | Models listed include `gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-4-argon` | 📄 API reference | D-07 |
 
 ## Seen in live calls 🔴 · 2026-11-10

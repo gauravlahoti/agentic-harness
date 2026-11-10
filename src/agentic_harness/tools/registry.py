@@ -24,8 +24,8 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
 from agentic_harness.tools import RISKS, Risk, Tool, ToolContext
+from agentic_harness.trimming import cut_output
 
-MAX_OUTPUT_CHARS = 20_000
 JSON_TYPES = {str: "string", int: "integer", float: "number", bool: "boolean"}
 
 
@@ -176,7 +176,4 @@ def _whole_float(value: Any, tool: Tool, key: str) -> bool:
 
 
 def _cap(text: str) -> str:
-    if len(text) <= MAX_OUTPUT_CHARS:
-        return text
-    more = len(text) - MAX_OUTPUT_CHARS
-    return f"{text[:MAX_OUTPUT_CHARS]}\n[cut: {more} more characters; ask for a smaller part]"
+    return cut_output(text)  # start and end, with a marker (S07-AC5)

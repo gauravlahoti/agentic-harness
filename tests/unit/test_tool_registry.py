@@ -10,7 +10,8 @@ from typing import Annotated, Literal
 import pytest
 
 from agentic_harness.tools import Tool, ToolContext
-from agentic_harness.tools.registry import MAX_OUTPUT_CHARS, call_tool, check_arguments, tool
+from agentic_harness.tools.registry import call_tool, check_arguments, tool
+from agentic_harness.trimming import OUTPUT_LIMIT_CHARS
 
 
 @tool(risk="read")
@@ -141,11 +142,11 @@ async def test_s03_ac8_big_output_is_cut_with_a_visible_note() -> None:
     @tool(risk="read")
     def huge() -> str:
         """Too much."""
-        return "x" * (MAX_OUTPUT_CHARS + 500)
+        return "x" * (OUTPUT_LIMIT_CHARS + 500)
 
     result = await call_tool(huge, {}, None)
-    assert len(result.output) < MAX_OUTPUT_CHARS + 100
-    assert result.output.endswith("[cut: 500 more characters; ask for a smaller part]")
+    assert len(result.output) < OUTPUT_LIMIT_CHARS + 100
+    assert "cut from the middle" in result.output  # start and end stay (S07-AC5)
 
 
 async def test_s03_ac8_ctx_is_passed_in_and_writes_are_announced(tmp_path: Path) -> None:

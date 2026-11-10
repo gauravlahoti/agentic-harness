@@ -22,6 +22,7 @@ from agentic_harness.skills import Skill, find_skills
 from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import BUILTINS
+from agentic_harness.trimming import Window
 
 PROFILE = "{profile}"
 NAME = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # sub-agent names, like skill names
@@ -52,6 +53,7 @@ class Workspace:
     name: str  # the folder's name
     title: str = ""  # what the page shows; the folder's name if not set
     owner: str = ""
+    description: str = ""  # one line: what the agent does for people, shown under its name
     logo: str = ""  # a small .svg or .png in the workspace folder, shown at the top of the page
     tools: tuple[Tool, ...] = ()
     memory: tuple[str, ...] = ()
@@ -67,6 +69,8 @@ class Workspace:
     rules: tuple[Rule, ...] = ()  # "never" rules (D-77)
     approvals: tuple[Approval, ...] = ()  # who must approve a tool call, and when (D-79, D-88)
     ask_human: bool = False  # the model may pause to ask a person a question (D-89)
+    window: Window | None = None  # the working window, if the workspace sets one (D-94)
+    summary_model: str = ""  # the small model that summarizes older turns (D-93)
     notes: bool = False  # the agent may keep notes between tasks (D-92)
     title_model: str = ""  # the small model that titles a conversation (D-91); "" = the scope's
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
@@ -101,6 +105,7 @@ class Workspace:
             name=path.name,
             title=_text(config, "name") or path.name,
             owner=_text(config, "owner"),
+            description=_text(config, "description"),
             logo=_logo(path, _text(config, "logo")),
             tools=tools,
             memory=_texts(config, "memory"),
@@ -109,6 +114,10 @@ class Workspace:
             rules=_rules(config.get("rules", []), known_tools),
             approvals=_approvals(config.get("approvals", []), known_tools),
             ask_human=_flag(config, "ask_human"),
+            window=_window(config.get("trimming", {})),
+            summary_model=_text(config.get("trimming", {}), "summary_model")
+            if isinstance(config.get("trimming", {}), dict)
+            else "",
             notes=_flag(config, "notes"),
             title_model=_conversations(config.get("conversations", {})),
             flag_patterns=_texts(config, "flag_patterns"),
@@ -344,6 +353,22 @@ def _approvals(table: Any, known_tools: set[str]) -> tuple[Approval, ...]:
             )
         )
     return tuple(approvals)
+
+
+def _window(table: Any) -> Window | None:
+    if not isinstance(table, dict):
+        raise WorkspaceError("workspace.toml: [trimming] must be a table.")
+    if "window_tokens" not in table:
+        return None
+    try:
+        return Window(
+            tokens=int(table["window_tokens"]),
+            prune_at=float(table.get("prune_at", 0.5)),
+            summarize_at=float(table.get("summarize_at", 0.7)),
+            keep_recent=int(table.get("keep_recent", 2)),
+        )
+    except (TypeError, ValueError) as error:
+        raise WorkspaceError(f"workspace.toml: [trimming] {error}") from None
 
 
 def _conversations(table: Any) -> str:

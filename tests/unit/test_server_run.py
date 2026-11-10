@@ -225,7 +225,9 @@ def test_s05_workspace_logo_and_agent_menu(tmp_path: Path) -> None:
     web = client(tmp_path, workspace=CLOUDCO)
     workspace = web.get("/api/health").json()["workspace"]
     assert workspace["logo"] is True
-    assert workspace["agents"] == [{"id": "cloudco", "name": "Contract Agent"}]
+    (agent,) = workspace["agents"]
+    assert (agent["id"], agent["name"]) == ("cloudco", "Contract Agent")
+    assert "contract" in agent["description"].lower()  # what it does, under its name
     logo = web.get("/api/workspace/logo")
     assert logo.status_code == 200
     assert logo.headers["content-type"] == "image/svg+xml"

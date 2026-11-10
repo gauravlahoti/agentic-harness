@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -27,7 +27,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 14/14 | 14/14 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 11/12 | 1 |
-| [S07](spec/stages/S07-memory.md) | Memory | 🟦 | 0/11 | 0/11 | 2 |
+| [S07](spec/stages/S07-memory.md) | Memory | 🟨 | 10/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 
 ## Checks
@@ -163,17 +163,17 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Each task is saved as an append-only file; model steps are saved exactly | 🧪 | 🟦 |  |
-| AC2 | The sidebar lists the profile's conversations, newest first, each titled by its topic: open, continue, delete | 🧪 👀 | 🟦 |  |
-| AC3 | After a server restart the task resumes; an unfinished tool call is marked cancelled, not re-run | 🧪 | 🟦 |  |
-| AC4 | `save_note` keeps notes per profile; they enter the prompt next time (capped at ~2,000 tokens) | 🧪 | 🟦 |  |
-| AC5 | Big tool output → start + end + marker | 🧪 | 🟦 |  |
-| AC6 | Old tool results → one-line stubs, in batches past 50% | 🧪 | 🟦 |  |
-| AC7 | Summarize only if still past 70% after pruning | 🧪 | 🟦 |  |
-| AC8 | Model steps are never edited; a call never loses its result | 🧪 | 🟦 |  |
-| AC9 | Page: context fill bar, trimming card, cached tokens shown | 👀 | 🟦 |  |
+| AC1 | Each task is saved as an append-only file; model steps are saved exactly | 🧪 | 🟨 | `test_memory.py::test_s07_ac1_*` (3) + `test_server_sessions.py`: exact steps incl. signatures, a crash loses one line, a follow-up resends the history |
+| AC2 | The sidebar lists the profile's conversations, newest first, each titled by its topic: open, continue, delete | 🧪 👀 | 🟨 | `test_memory.py::test_s07_ac2_*` (2) + `test_server_sessions.py::test_s07_ac2_*` (2) · Chrome: Your work lists conversations by topic, open restores the thread, two-click delete removes the file |
+| AC3 | After a server restart the task resumes; an unfinished tool call is marked cancelled, not re-run | 🧪 | 🟨 | `test_memory.py::test_s07_ac3_*`: an unfinished call gets a "cancelled" result; `test_server_sessions.py::test_s07_ac3_*`: a second server over the same folder resumes |
+| AC4 | `save_note` keeps notes per profile; they enter the prompt next time (capped at ~2,000 tokens) | 🧪 | 🟨 | `test_notes.py` (9): dated lines per profile, newest kept under the cap, notes last in the prompt, read once per task, `save_note` open to every profile |
+| AC5 | Big tool output → start + end + marker | 🧪 | 🟨 | `test_trimming.py::test_s07_ac5_*` (2): start + end + marker, cut before it reaches the model |
+| AC6 | Old tool results → one-line stubs, in batches past 50% | 🧪 | 🟨 | `test_trimming.py::test_s07_ac6_*` (3): old results become stubs in a batch, newest stay, idempotent; the loop sends the pruned history and emits `context_trimmed` |
+| AC7 | Summarize only if still past 70% after pruning | 🧪 | 🟨 | `test_trimming.py::test_s07_ac7_*` (2): pruned and under 70% → no summary; still over → one summary call |
+| AC8 | Model steps are never edited; a call never loses its result | 🧪 | 🟨 | `test_trimming.py::test_s07_ac8_*` (2): model steps identical (signatures too), no step removed, the current turn untouched |
+| AC9 | Page: context fill bar, trimming card, cached tokens shown | 👀 | 🟨 | Chrome (synthetic run): "Trimmed context" line, Context 8,200 / 20,000 (41%) bar, Cached tokens, Memory pane shows the window |
 | AC10 | Live: in round 2 the agent recalls round 1's decisions | 🔑 👀 | 🟦 |  |
-| AC11 | A conversation gets a short topic title from a small model call; if that fails, the first words of the task | 🧪 🔑 | 🟦 |  |
+| AC11 | A conversation gets a short topic title from a small model call; if that fails, the first words of the task | 🧪 🔑 | 🟨 | `test_memory.py::test_s07_ac11_*` (3) + `test_server_sessions.py`: model title, first-words fallback · live test written, not run: quota |
 
 ### S08 · Proof and demo
 
@@ -248,3 +248,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S06-AC1–AC11 → 🟨: 243 offline tests; approval cards, the question card and the rejection path checked in Chrome with synthetic events. AC12 (and the live half of AC9) stays 🟦: the Gemini free-tier quota is spent (retry in ~15 h); `tests/live/test_live_approvals.py` is written. Walkthrough in `docs/stage-6.md`. |
 | 2026-11-10 | You verified S06 ("looks good"): S06-AC1–AC11 → ✅. AC12 stays open until the live run (quota). Moving to S07. |
 | 2026-11-10 | You approved the S07 brief ("go ahead and build") and asked that conversations appear in the left pane, titled by topic. S07-AC1–AC11 → 🟦 (AC11 new). Choices D-90–D-95. |
+| 2026-11-10 | S07-AC1–AC9, AC11 → 🟨: 284 offline tests; Your work, trimming card, Context bar and Memory pane checked in Chrome (synthetic events). AC10 (round 2 recalls round 1) stays 🟦: live, waits for Gemini quota; `tests/live/test_live_memory.py` written. Also at your request: a one-line description under the agent's name. Walkthrough in `docs/stage-7.md`. |

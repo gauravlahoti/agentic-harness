@@ -230,6 +230,9 @@ function setUpOrg(ws) {
     pick.append(option);
   }
   pick.value = ws.name;
+  const about = (ws.agents ?? []).find((a) => a.id === ws.name)?.description ?? "";
+  $("agent-desc").textContent = about;
+  $("agent-desc").hidden = !about;
 }
 
 function setUpProfilePicker(ws) {
@@ -526,7 +529,7 @@ function newTurn(task) {
   turn.append(you, agent);
   $("thread").append(turn);
   turn.scrollIntoView({ block: "end" });
-  return { activity, reply, files, foot, meta, stats, split: { input: 0, output: 0, thinking: 0 }, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
+  return { activity, reply, files, foot, meta, stats, split: { input: 0, output: 0, thinking: 0 }, cached: 0, window: null, lastInput: 0, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
 }
 
 // One activity line. It opens to plain facts, then the raw event (the X-ray).
@@ -672,7 +675,27 @@ function onEvent(ev, turn) {
         raw: c,
       });
     }
+  } else if (ev.type === "context_trimmed") {
+    const saved = Math.max(0, d.before - d.after);
+    const pct = d.window ? Math.round(((d.fill ?? d.before) / d.window) * 100) : null;
+    const what =
+      d.technique === "summarize"
+        ? `summarized ${plural(d.turns, "earlier task")}`
+        : `cleared ${plural(d.cleared, "old tool result")}`;
+    addActivity(turn, {
+      text: `Trimmed context · ${what} · about ${saved.toLocaleString()} tokens freed`,
+      part: "context",
+      state: "done",
+      facts: [
+        ["Why", pct === null ? "The conversation was getting long." : `The context was at ${pct}% of the ${d.window.toLocaleString()}-token working window.`],
+        ["What", d.technique === "summarize" ? "Older tasks were folded into a short summary by a small model." : "Old tool results became one-line stubs; the agent can ask again."],
+        ["Size", `about ${d.before.toLocaleString()} → ${d.after.toLocaleString()} tokens (estimated)`],
+        ["Kept", "The saved conversation still has everything. The model's own steps are never changed."],
+      ],
+      raw: d,
+    });
   } else if (ev.type === "model_called") {
+    if (d.window) turn.window = d.window;
     turn.model = addActivity(turn, {
       text: `Model is thinking · call ${d.step}`,
       facts: [["Sends", `the whole history: ${plural(d.history, "step")} (store=false)`]],
@@ -682,6 +705,8 @@ function onEvent(ev, turn) {
     const u = d.usage ?? {};
     const used = (u.total_input_tokens ?? 0) + (u.total_output_tokens ?? 0) + (u.total_thought_tokens ?? 0);
     turn.tokens += used;
+    turn.cached += u.total_cached_tokens ?? 0;
+    turn.lastInput = u.total_input_tokens ?? turn.lastInput;
     turn.split.input += u.total_input_tokens ?? 0;
     turn.split.output += u.total_output_tokens ?? 0;
     turn.split.thinking += u.total_thought_tokens ?? 0;
@@ -800,7 +825,7 @@ function onEvent(ev, turn) {
 function receipt(turn, d) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const cells = [
-    ["model calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
+    [d.model_calls === 1 ? "model call" : "model calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
     ["tokens in total", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
     ["cost", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
     ["elapsed", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
@@ -840,7 +865,24 @@ function receipt(turn, d) {
       item.append(el("i"), `${name} ${n.toLocaleString()}`);
       legend.append(item);
     }
+    if (turn.cached) {
+      const item = el("span", "legend-item lg-cached");
+      item.append(el("i"), `Cached ${turn.cached.toLocaleString()}`);
+      legend.append(item);
+    }
     card.append(bar, legend);
+  }
+  if (turn.window && turn.lastInput) {
+    // How full the working window was on the last call: green, amber past 50%, red past 70%.
+    const share = Math.min(1, turn.lastInput / turn.window);
+    const row = el("div", "receipt-fill");
+    const track = el("div", "fill-track");
+    const level = el("span", `fill-level ${share >= 0.7 ? "hot" : share >= 0.5 ? "warm" : "cool"}`);
+    level.style.width = `${Math.max(2, Math.round(share * 100))}%`;
+    track.append(level);
+    row.append(el("span", "fill-label", `Context ${turn.lastInput.toLocaleString()} / ${turn.window.toLocaleString()} (${Math.round(share * 100)}%)`), track);
+    row.title = "How full the agent's working window was on its last call. Past 50% old tool results are cleared; past 70% older tasks are summarized.";
+    card.append(row);
   }
   return card;
 }
@@ -1252,6 +1294,16 @@ function renderPane() {
   const memory = paneSection("memory", "Memory", `${plural(m.conversations, "conversation")} · ${m.notes_on ? plural(m.notes.length, "note") : "no notes"}`, [
     subhead("Conversations", "this profile"),
     el("p", "pane-note", `${plural(m.conversations, "conversation")} saved. Open one from Your work to carry on; the agent remembers it.`),
+    ...(m.trimming
+      ? [
+          subhead("Working window", "forgets on purpose"),
+          facts([
+            ["Window", `${m.trimming.window.toLocaleString()} tokens (far below the model's limit, so trimming shows)`],
+            ["Past " + Math.round(m.trimming.prune_at * 100) + "%", `old tool results become stubs (the last ${m.trimming.keep_recent} stay whole)`],
+            ["Past " + Math.round(m.trimming.summarize_at * 100) + "%", "older tasks are summarized by a small model"],
+          ]),
+        ]
+      : []),
     subhead("Notes", "kept across tasks"),
     !m.notes_on
       ? el("p", "pane-note", "This agent doesn't keep notes.")

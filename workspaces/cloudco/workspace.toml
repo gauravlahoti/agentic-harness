@@ -4,6 +4,7 @@
 
 name = "Contract Agent"
 owner = "CloudCo"
+description = "Checks contract changes against CloudCo's terms and says who must approve."
 logo = "logo.svg"  # a made-up mark, shown at the top of the page
 
 # The agent may pause to ask the person a question when something it needs is missing (D-89).
@@ -45,6 +46,15 @@ max_words = 200
 # A conversation's topic title comes from one tiny call on this model (D-91).
 [conversations]
 title_model = "gemini-3.5-flash-lite"
+
+# The working window: far below Gemini's 1M on purpose, so trimming is visible (D-94).
+# Past 50% old tool results become stubs; past 70% after that, older turns are summarized (D-93).
+[trimming]
+window_tokens = 20000
+prune_at = 0.5
+summarize_at = 0.7
+keep_recent = 2
+summary_model = "gemini-3.5-flash-lite"
 
 # ── Guardrails (S05): read by the harness, never shown to the model ──────────────────
 # Scope: the job. Off-topic tasks are refused before the agent starts (D-81).

@@ -215,7 +215,13 @@ def create_app(
                 "logo": bool(workspace.logo),
                 # One agent per workspace folder for now; the page lists them as a menu so a
                 # company with several is one more entry, not a redesign.
-                "agents": [{"id": workspace.name, "name": workspace.title}],
+                "agents": [
+                    {
+                        "id": workspace.name,
+                        "name": workspace.title,
+                        "description": workspace.description,
+                    }
+                ],
                 "tools": [tool.name for tool in workspace.tools],
                 "profiles": [{"id": p.id, "label": p.label} for p in workspace.profiles],
                 "examples": list(workspace.examples),

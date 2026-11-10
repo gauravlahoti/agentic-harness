@@ -35,6 +35,7 @@ from agentic_harness.subagents import (
 from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
+from agentic_harness.trimming import ModelSummarizer
 from agentic_harness.workspace import Workspace, WorkspaceError
 
 DEFAULT_MEMORY_DIR = Path(".agentic-harness")  # sessions and notes live under it (S07)
@@ -133,6 +134,13 @@ def create_harness(
             prices.for_model(workspace.scope.model)
             check_model = model_factory(workspace.scope.model)
         check = scope_check(workspace.scope, check_model, prices)
+    summarizer = None
+    if workspace.window is not None:  # one small call, only when pruning is not enough (D-93)
+        small = model
+        if workspace.summary_model and workspace.summary_model != model.name and model_factory:
+            prices.for_model(workspace.summary_model)
+            small = model_factory(workspace.summary_model)
+        summarizer = ModelSummarizer(small, prices.cost)
     harness = Harness(
         model,
         limits,
@@ -147,6 +155,8 @@ def create_harness(
         approver=approver,
         scope=workspace.scope,
         scope_check=check,
+        window=workspace.window,
+        summarizer=summarizer,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
@@ -244,6 +254,14 @@ def describe_harness(
             "conversations": len(SessionStore(memory_dir, workspace.name).list(profile))
             if memory_dir
             else 0,
+            "trimming": None
+            if workspace.window is None
+            else {
+                "window": workspace.window.tokens,
+                "prune_at": workspace.window.prune_at,
+                "summarize_at": workspace.window.summarize_at,
+                "keep_recent": workspace.window.keep_recent,
+            },
         },
         "context": {
             "files": context.summary()["files"],
