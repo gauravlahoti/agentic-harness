@@ -229,7 +229,7 @@ def not_allowed_prompt(workspace: Workspace, gate: Gate) -> str:
         return ""
     lines = []
     for t in blocked:
-        does = t.description.strip().split("\n")[0].rstrip(".")
+        does = " ".join(t.description.split()).split(". ")[0].rstrip(".")  # first sentence
         can = [p.label for p in workspace.profiles if t.name in (p.tools or ())]
         who = f" {' or '.join(can)} can." if can else ""
         lines.append(f'- {does}: reply only "{gate.label} can\'t do that here.{who}"')
