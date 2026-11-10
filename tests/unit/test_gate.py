@@ -136,3 +136,20 @@ def test_s05_ac13_a_profile_only_sees_rules_for_tools_it_can_use() -> None:
     assert summary["not_allowed"] == ["send"]
     assert summary["never"] == []
     assert summary["approvals"] == []
+
+
+def test_s05_ac2_a_profile_is_told_what_it_cant_do_and_who_can() -> None:
+    """Found live: Engineering, asked to send, improvised a long answer (D-105)."""
+    from pathlib import Path
+
+    from agentic_harness.api import not_allowed_prompt
+    from agentic_harness.context import build_context
+    from agentic_harness.workspace import Workspace
+
+    cloudco = Workspace.load(Path(__file__).resolve().parents[2] / "workspaces" / "cloudco")
+    text = not_allowed_prompt(cloudco, cloudco.gate("engineering"))
+    assert text.startswith("## Not available to Engineering")
+    assert "Send a message to a customer" in text
+    assert '"Engineering can\'t do that here. Sales can."' in text
+    assert not_allowed_prompt(cloudco, cloudco.gate("sales")) == ""  # Sales can do everything
+    assert "## Not available" in build_context(cloudco, "engineering", not_allowed=text).system

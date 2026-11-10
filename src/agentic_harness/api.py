@@ -17,6 +17,7 @@ from typing import Any
 
 from agentic_harness.approvals import ask_human_tool
 from agentic_harness.context import build_context
+from agentic_harness.gate import Gate
 from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
 from agentic_harness.memory import SessionStore, load_notes, note_path, save_note_tool
@@ -86,13 +87,19 @@ def create_harness(
     prices.for_model(model.name)  # no price → fail now, not after the first call (D-25)
     profile = workspace.check_profile(profile)
     off = _check_off(workspace, profile, off or Off())
+    gate = workspace.gate(profile)  # what this profile may use, see, never do, must ask (S05)
     notes_file = (
         note_path(memory_dir, workspace.name, profile) if memory_dir and workspace.notes else None
     )
     # Notes are read once, here: the prompt is the same for every call of the task (D-92).
     notes = load_notes(notes_file) if notes_file else ""
-    context = build_context(workspace, profile, skip_skills=off.skills, notes=notes)
-    gate = workspace.gate(profile)  # what this profile may use, see, never do, must ask (S05)
+    context = build_context(
+        workspace,
+        profile,
+        skip_skills=off.skills,
+        notes=notes,
+        not_allowed=not_allowed_prompt(workspace, gate),
+    )
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.
     available = _tools(workspace, off)
@@ -208,6 +215,29 @@ def _helper_model(
         return parent
     prices.for_model(wanted)  # a helper's model needs a price too, checked now
     return factory(wanted)
+
+
+def not_allowed_prompt(workspace: Workspace, gate: Gate) -> str:
+    """What this profile can't do, and the one sentence to say when asked (D-105).
+
+    The tools are hidden from the model (D-75), so without this it improvises: a found-live
+    answer explained approvals and repeated terms instead of a plain no.
+    """
+    tools = [*workspace.tools, *builtin_tools(workspace.builtins)]
+    blocked = [t for t in tools if not gate.allows(t.name)]
+    if not blocked:
+        return ""
+    lines = []
+    for t in blocked:
+        does = t.description.strip().split("\n")[0].rstrip(".")
+        can = [p.label for p in workspace.profiles if t.name in (p.tools or ())]
+        who = f" {' or '.join(can)} can." if can else ""
+        lines.append(f'- {does}: reply only "{gate.label} can\'t do that here.{who}"')
+    return (
+        f"## Not available to {gate.label}\n\n"
+        "If you are asked for one of these, reply with that one sentence and stop: no details "
+        "of the work, no drafts, no workarounds.\n" + "\n".join(lines)
+    )
 
 
 def describe_harness(

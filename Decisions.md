@@ -827,3 +827,10 @@
 - **Instead of:** live Claude tests
 - **Because:** every Claude call costs the person money
 - **Cost:** Claude is checked live only by the person's own runs
+
+### D-105 · A profile is told what it can't do, and the one sentence to say
+✅ Accepted · S05 · your report ("engineering should be denied with a different message")
+- **Chose:** the harness adds a "Not available to <profile>" section to the prompt, built from the gate and the workspace's profiles: each blocked tool's first description line, and the reply to give ("Engineering can't do that here. Sales can."), with no details, drafts or workarounds. The tool stays hidden and blocked as before (D-75)
+- **Instead of:** leaving the model to improvise around a tool it can't see
+- **Because:** found live: asked to send, Engineering explained approvals and repeated contract terms
+- **Cost:** a prompt rule, so a model can still word it differently; the block itself is in code

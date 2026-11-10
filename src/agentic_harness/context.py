@@ -65,6 +65,7 @@ def build_context(
     *,
     skip_skills: Collection[str] = (),
     notes: str = "",
+    not_allowed: str = "",
 ) -> Context:
     files = workspace.memory_files(profile)
     # A switched-off skill is not even listed: the model can't ask for it (D-70).
@@ -73,6 +74,8 @@ def build_context(
     parts = [SYSTEM_PROMPT]
     if workspace.scope:
         parts.append(scope_prompt(workspace.scope))  # what the agent is for (D-81)
+    if not_allowed.strip():
+        parts.append(not_allowed.strip())  # what this profile can't do, and what to say (D-105)
     parts += [f"## From {f.path}\n\n{f.text.strip()}" for f in files]
     if skills:
         lines = [f"- {s.name}: {s.description} ({s.source})" for s in skills]

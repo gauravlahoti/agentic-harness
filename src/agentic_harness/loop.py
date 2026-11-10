@@ -147,7 +147,7 @@ class Harness:
             task=task,
             model=self.model.name,
             thinking=getattr(self.model, "thinking", None),
-            tools=list(self.tools),
+            tools=[t.name for t in self.visible_tools()],  # what the model was offered
             limits={
                 "max_steps": self.limits.max_steps,
                 "max_usd": self.limits.max_usd,
