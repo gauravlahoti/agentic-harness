@@ -25,6 +25,9 @@ agentic-harness = "agentic_harness.cli:main"
 requires = ["uv_build>=0.11.21,<0.12.0"]
 build-backend = "uv_build"
 
+[tool.uv]
+default-groups = ["dev", "evals"]  # `make setup` installs DeepEval for the evals (S10, D-115)
+
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
@@ -35,12 +38,15 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.17.4",
 ]
+evals = [
+    "deepeval>=4.3.3,<5",
+]
 
 # ── Lint + format ────────────────────────────────────────────────────────────
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "."]  # "." makes the top-level evals/ package first-party (S10)
 extend-exclude = ["*.md"]  # code blocks in docs are illustrations, aligned for reading
 
 [tool.ruff.lint]
@@ -66,23 +72,29 @@ select = [
 # ── Types ────────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.12"
-files = ["src"]
+files = ["src", "evals"]
 strict = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["deepeval", "deepeval.*"]
+ignore_missing_imports = true
+follow_imports = "skip"  # DeepEval is treated as untyped (Any): its own hints are loose, and strict mode would check them
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not live'"
+pythonpath = ["."]  # the evals/ package (S10) is imported from the project root
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib -m 'not live' -p no:deepeval"  # DeepEval's auto-loaded plugin would start before evals/ turns its telemetry and .env reading off
 markers = ["live: calls the real Gemini API (needs a key, costs cents); run with `make live`"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
-source = ["agentic_harness"]
+source = ["agentic_harness", "evals"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 75  # D-33: back to 85 when the S08 evals land
+fail_under = 85  # D-33: back to 85 now that the evals exist (S10-AC8)
 show_missing = true
 skip_covered = true

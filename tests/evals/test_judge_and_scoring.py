@@ -1,0 +1,136 @@
+"""S10-AC5: the judged metrics run through DeepEval with our judge; 429/503 → Claude Haiku.
+
+No test calls Gemini or Anthropic (S10-AC8): the judge's model is a scripted stand-in, and
+the scoring tests use a stand-in judge that fills in whatever schema DeepEval asks for.
+"""
+
+from pathlib import Path
+from typing import Any
+
+import pytest
+from pydantic import BaseModel
+
+from agentic_harness.model import ModelError
+from agentic_harness.pricing import load_prices
+from evals.cases import Case
+from evals.judge import Judge, JudgeUnavailableError, busy, parse
+from evals.plan import estimate, judge_calls
+from evals.scoring import code_scores, judged_scores
+from evals.traces import read_run
+from tests.evals.standins import Scripted, StandInJudge
+
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "eval_traces"
+
+
+class Verdict(BaseModel):
+    verdict: str
+    reason: str
+
+
+async def test_s10_ac5_judge_parses_json_and_counts_cost() -> None:
+    gemini = Scripted("gemini-3.5-flash-lite", ['```json\n{"verdict": "yes", "reason": "ok"}\n```'])
+    judge = Judge(gemini, load_prices())
+    judge.start()
+    out = await judge.a_generate("judge this", schema=Verdict)
+    assert out == Verdict(verdict="yes", reason="ok")
+    used, usd = judge.taken()
+    assert used == ["gemini-3.5-flash-lite"]
+    assert usd > 0
+    assert judge.usd == usd
+    with pytest.raises(ValueError, match="JSON"):
+        parse("no json here", Verdict)
+
+
+async def test_s10_ac5_out_of_quota_switches_to_claude_haiku_for_the_rest() -> None:
+    gemini = Scripted("gemini-3.5-flash-lite", [ModelError("Gemini 429: quota exceeded")])
+    claude = Scripted("claude-haiku-5-5", ['{"verdict": "no", "reason": "r"}'] * 2)
+    judge = Judge(gemini, load_prices(), fallback=lambda: claude)
+    judge.start()
+    await judge.a_generate("first", schema=Verdict)
+    await judge.a_generate("second", schema=Verdict)
+    assert judge.current == "claude-haiku-5-5"
+    assert "gemini-3.5-flash-lite → claude-haiku-5-5" in judge.switched
+    assert gemini.calls == 1
+    assert claude.calls == 2
+    assert judge.taken()[0] == ["claude-haiku-5-5"]
+
+
+async def test_s10_ac5_no_fallback_or_other_errors_stop_the_eval() -> None:
+    no_key = Judge(
+        Scripted("gemini-3.5-flash-lite", [ModelError("Gemini 503: busy")]), load_prices()
+    )
+    with pytest.raises(JudgeUnavailableError, match="no Claude key"):
+        await no_key.a_generate("x")
+    bad = Judge(
+        Scripted("gemini-3.5-flash-lite", [ModelError("Gemini 400: bad request")]),
+        load_prices(),
+        fallback=lambda: Scripted("claude-haiku-5-5", ["{}"]),
+    )
+    with pytest.raises(JudgeUnavailableError, match="400"):
+        await bad.a_generate("x")
+    assert busy(ModelError("Gemini 429: x"))
+    assert not busy(ModelError("Gemini 400: x"))
+
+
+# ── Scoring with a stand-in judge ───────────────────────────────────────────────────────
+
+
+def case(**fields: Any) -> Case:
+    base: dict[str, Any] = {
+        "id": "c",
+        "group": "G",
+        "profile": "sales",
+        "turns": ("t",),
+        "expected_outcome": "lists the changes",
+    }
+    return Case(**{**base, **fields})
+
+
+async def test_s10_ac5_one_turn_gets_agent_layers_and_faithfulness() -> None:
+    view = read_run(FIXTURES / "20261110-235952-d16300.jsonl")
+    scores = await judged_scores(
+        case(), [view], StandInJudge(), role="Contract Agent", topics=["contracts"]
+    )
+    names = [s.metric for s in scores]
+    assert names == [
+        "plan_adherence",
+        "argument_correctness",
+        "task_completion",
+        "step_efficiency",
+        "turn_faithfulness",
+    ]
+    for score in scores:
+        assert score.judge == ["stand-in"], score
+        assert score.score is not None, score.error
+
+
+async def test_s10_ac5_conversation_metrics_and_required_words() -> None:
+    first = read_run(FIXTURES / "20261111-000506-f67c30.jsonl")
+    refused = read_run(FIXTURES / "20261111-010639-4c92e2.jsonl")
+    two = case(turns=("a", "b"), must_include=("Priya Raman",))
+    scores = {
+        s.metric: s
+        for s in await judged_scores(
+            two, [first, refused], StandInJudge(), role="Contract Agent", topics=["contracts"]
+        )
+    }
+    assert set(scores) >= {
+        "knowledge_retention",
+        "conversation_completeness",
+        "role_adherence",
+        "topic_adherence",
+        "turn_faithfulness",
+    }
+    # Only turn 1 ran the loop; the refused turn has no plan or tools to judge.
+    assert "Turn 2" not in scores["plan_adherence"].reason
+    assert not scores["task_completion"].passed
+    assert "leaves out: Priya Raman" in scores["task_completion"].reason
+    codes = {s.metric for s in code_scores(two, [first, refused])}
+    assert codes == {"tool_correctness", "guardrails_turns"}
+
+
+def test_s10_ac5_refused_case_needs_no_judge_and_estimates_are_positive() -> None:
+    assert judge_calls(case(scope="out")) == 0
+    assert judge_calls(case()) > 0
+    assert judge_calls(case(turns=("a", "b"))) > judge_calls(case())
+    assert estimate([case(), case(turns=("a", "b"))], 3)["agent_runs"] == 9
