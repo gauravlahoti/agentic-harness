@@ -28,7 +28,7 @@ Model steps are never edited (thought signatures). A call never loses its result
 | ID | Check | How |
 |---|---|---|
 | S07-AC1 | Each task is saved as an append-only file; model steps are saved exactly | 🧪 |
-| S07-AC2 | The sidebar lists the profile's tasks: open, continue, delete | 🧪 👀 |
+| S07-AC2 | The sidebar lists the profile's conversations, newest first, each titled by its topic: open, continue, delete | 🧪 👀 |
 | S07-AC3 | After a server restart the task resumes; an unfinished tool call is marked cancelled, not re-run | 🧪 |
 | S07-AC4 | `save_note` keeps notes per profile; they enter the prompt next time (capped at ~2,000 tokens) | 🧪 |
 | S07-AC5 | Big tool output → start + end + marker | 🧪 |
@@ -37,12 +37,15 @@ Model steps are never edited (thought signatures). A call never loses its result
 | S07-AC8 | Model steps are never edited; a call never loses its result | 🧪 |
 | S07-AC9 | Page: context fill bar, trimming card, cached tokens shown | 👀 |
 | S07-AC10 | Live: in round 2 the agent recalls round 1's decisions | 🔑 👀 |
+| S07-AC11 | A conversation gets a short topic title from a small model call; if that fails, the first words of the task | 🧪 🔑 |
 
 ## Key choices
 
 - **Append-only task files** → a crash loses at most one line; readable with `cat`. *Cost:* a summary means a new file.
 - **Notes only through `save_note`** → you can see every note it keeps. *Cost:* it forgets what it didn't save.
 - **Prune before summarizing** → free, and nothing is invented. *Cost:* shrinks less.
+- **Conversations are listed by topic** (D-91) → "ShopCo discount and liability" beats "What did ShopCo change…". *Cost:* one tiny Flash-Lite call per conversation.
+- **Notes are read once, at the start of a task** (D-92) → the prompt stays identical for the whole task and keeps caching. *Cost:* a note shows up from the next task.
 - **A small working window** (configurable, well below Gemini's 1M) → cost and quality drop long before 1M, and the demo can show trimming. *Cost:* trims earlier than strictly needed.
 
 ## Without it / with it
@@ -59,3 +62,4 @@ Model steps are never edited (thought signatures). A call never loses its result
 ## Changes
 
 - 2026-11-10 · Created (v3).
+- 2026-11-10 · Brief approved ("go ahead and build") with your addition: conversations appear in the left pane, titled by topic. AC2 reworded, AC11 added (D-90–D-95).

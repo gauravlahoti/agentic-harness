@@ -719,3 +719,45 @@
 - **Instead of:** a second pause mechanism
 - **Because:** one channel, one timeout, one place for tests
 - **Cost:** a small model may ask too often; the tool description says to ask only when something needed is missing
+
+### D-90 · A conversation is one append-only file of exact steps
+✅ Accepted · S07 · your approval
+- **Chose:** `.agentic-harness/sessions/<workspace>/<profile>/<id>.jsonl`: a header line, then each user input, model step and tool result as it happens, then a line per finished turn (task, answer, cost). A follow-up resends the steps (`store=false`). On resume, a tool call with no result gets a "cancelled" result and is never re-run
+- **Instead of:** rebuilding from trace files (events, not model steps)
+- **Because:** a crash loses at most one line; thought signatures stay exact; you can read it with `cat`
+- **Cost:** a second record next to the trace
+
+### D-91 · Conversations are listed by topic
+✅ Accepted · S07 · your request
+- **Chose:** the left pane's "Your work" lists the profile's conversations, newest first. The title comes from one small Flash-Lite call on the first task (3–6 words), run alongside the first turn; if it fails or times out (3 s), the title is the task's first words
+- **Instead of:** always the raw first question
+- **Because:** a topic is what you look for when you come back
+- **Cost:** about $0.00005 per conversation
+
+### D-92 · Notes enter the prompt once per task
+✅ Accepted · S07
+- **Chose:** `save_note` (on with `notes = true` in `workspace.toml`) appends to `.agentic-harness/notes/<workspace>/<profile>.md`. Notes are added at the end of the system prompt when a task starts, newest kept, capped at about 2,000 tokens
+- **Instead of:** refreshing the prompt on every call
+- **Because:** the prompt must be identical on every call (S02-AC8), and an unchanged start keeps Gemini's caching
+- **Cost:** a note is not visible in the task that saved it
+
+### D-93 · Forgetting, cheapest first, measured not guessed
+✅ Accepted · S07
+- **Chose:** (1) a tool result over 10,000 characters is cut to its start and end plus a marker; (2) past 50% of the working window, old tool results become one-line stubs, in batches; (3) still past 70% after that: one Flash-Lite call summarizes the oldest turns. The fill is the last reply's real input-token count; after pruning, an estimate (characters ÷ 4)
+- **Instead of:** a tokenizer, or always summarizing
+- **Because:** the model reports exact usage; pruning is free and invents nothing
+- **Cost:** the 50% / 70% lines are my choice (set under `[memory]` in `workspace.toml`)
+
+### D-94 · The working window is small on purpose
+✅ Accepted · S07
+- **Chose:** `[memory] window_tokens = 20000` for CloudCo, far below Gemini's 1M
+- **Instead of:** the model's real limit
+- **Because:** cost and quality fall long before 1M, and a small window lets the demo show trimming
+- **Cost:** trims earlier than strictly needed
+
+### D-95 · Trimming never touches the model's own steps
+✅ Accepted · S07
+- **Chose:** only tool results are shortened, and only whole old turns are replaced by a summary. A call's result is never removed while its call is kept. The saved file keeps everything; trimming changes only what is sent
+- **Instead of:** editing steps in place
+- **Because:** Gemini needs model steps and their thought signatures exactly as received
+- **Cost:** a trimmed run is not byte-identical to the saved file

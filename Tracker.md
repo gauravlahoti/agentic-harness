@@ -27,7 +27,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 14/14 | 14/14 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 11/12 | 1 |
-| [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
+| [S07](spec/stages/S07-memory.md) | Memory | 🟦 | 0/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 
 ## Checks
@@ -163,16 +163,17 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | Each task is saved as an append-only file; model steps are saved exactly | 🧪 | 📝 |  |
-| AC2 | The sidebar lists the profile's tasks: open, continue, delete | 🧪 👀 | 📝 |  |
-| AC3 | After a server restart the task resumes; an unfinished tool call is marked cancelled, not re-run | 🧪 | 📝 |  |
-| AC4 | `save_note` keeps notes per profile; they enter the prompt next time (capped at ~2,000 tokens) | 🧪 | 📝 |  |
-| AC5 | Big tool output → start + end + marker | 🧪 | 📝 |  |
-| AC6 | Old tool results → one-line stubs, in batches past 50% | 🧪 | 📝 |  |
-| AC7 | Summarize only if still past 70% after pruning | 🧪 | 📝 |  |
-| AC8 | Model steps are never edited; a call never loses its result | 🧪 | 📝 |  |
-| AC9 | Page: context fill bar, trimming card, cached tokens shown | 👀 | 📝 |  |
-| AC10 | Live: in round 2 the agent recalls round 1's decisions | 🔑 👀 | 📝 |  |
+| AC1 | Each task is saved as an append-only file; model steps are saved exactly | 🧪 | 🟦 |  |
+| AC2 | The sidebar lists the profile's conversations, newest first, each titled by its topic: open, continue, delete | 🧪 👀 | 🟦 |  |
+| AC3 | After a server restart the task resumes; an unfinished tool call is marked cancelled, not re-run | 🧪 | 🟦 |  |
+| AC4 | `save_note` keeps notes per profile; they enter the prompt next time (capped at ~2,000 tokens) | 🧪 | 🟦 |  |
+| AC5 | Big tool output → start + end + marker | 🧪 | 🟦 |  |
+| AC6 | Old tool results → one-line stubs, in batches past 50% | 🧪 | 🟦 |  |
+| AC7 | Summarize only if still past 70% after pruning | 🧪 | 🟦 |  |
+| AC8 | Model steps are never edited; a call never loses its result | 🧪 | 🟦 |  |
+| AC9 | Page: context fill bar, trimming card, cached tokens shown | 👀 | 🟦 |  |
+| AC10 | Live: in round 2 the agent recalls round 1's decisions | 🔑 👀 | 🟦 |  |
+| AC11 | A conversation gets a short topic title from a small model call; if that fails, the first words of the task | 🧪 🔑 | 🟦 |  |
 
 ### S08 · Proof and demo
 
@@ -246,3 +247,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S06 re-briefed; you approved option A (role-play approver, D-87). S06-AC1–AC12 → 🟦. Choices D-87–D-89. |
 | 2026-11-10 | S06-AC1–AC11 → 🟨: 243 offline tests; approval cards, the question card and the rejection path checked in Chrome with synthetic events. AC12 (and the live half of AC9) stays 🟦: the Gemini free-tier quota is spent (retry in ~15 h); `tests/live/test_live_approvals.py` is written. Walkthrough in `docs/stage-6.md`. |
 | 2026-11-10 | You verified S06 ("looks good"): S06-AC1–AC11 → ✅. AC12 stays open until the live run (quota). Moving to S07. |
+| 2026-11-10 | You approved the S07 brief ("go ahead and build") and asked that conversations appear in the left pane, titled by topic. S07-AC1–AC11 → 🟦 (AC11 new). Choices D-90–D-95. |
