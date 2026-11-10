@@ -834,3 +834,10 @@
 - **Instead of:** leaving the model to improvise around a tool it can't see
 - **Because:** found live: asked to send, Engineering explained approvals and repeated contract terms
 - **Cost:** a prompt rule, so a model can still word it differently; the block itself is in code
+
+### D-106 · Tools know the asking profile, so they can leave things out in code
+✅ Accepted · S05 · your pick ("filter in the tool")
+- **Chose:** `ToolContext.profile` is set by the loop for the main agent and every helper (a helper gets its caller's profile). CloudCo's `review_contract` leaves out §3 (fees and discounts) and §4 (invoicing and payment) for Engineering, says how many edits it left out and why, and returns no text for a single hidden clause
+- **Instead of:** a firmer prompt rule (Haiku already ignored the softer one), or leaving contract text visible
+- **Because:** found live: the reviewer returned ShopCo's payment terms to Engineering as plain text; field masking (D-76) only covers structured fields
+- **Cost:** each workspace tool must filter its own free text; a new tool that returns text needs the same care

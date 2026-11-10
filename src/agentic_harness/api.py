@@ -133,6 +133,7 @@ def create_harness(
                 root=workspace.path,
                 readable=workspace.readable,
                 gate=gate,
+                profile=profile,  # the caller's: a helper sees no more than it (D-106)
             )
 
         tools.append(delegate_tool(helpers, make_child))
@@ -169,6 +170,7 @@ def create_harness(
         scope_check=check,
         window=workspace.window,
         summarizer=summarizer,
+        profile=profile,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))

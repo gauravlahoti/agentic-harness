@@ -16,6 +16,7 @@ from agentic_harness.tools.registry import call_tool
 from agentic_harness.workspace import Workspace
 
 CLOUDCO = Path(__file__).resolve().parents[2] / "workspaces" / "cloudco"
+SALES = ToolContext("run-1", CLOUDCO, profile="sales")
 MATERIAL = {"2.1", "3.2", "4.1", "6.1", "9.2"}  # term, discount, payment, uptime, liability
 HIDDEN = "B.7"  # the appendix clause with the planted instruction
 
@@ -75,14 +76,14 @@ async def test_s03_ac4_unknown_records_are_clear_errors(tools: dict[str, Tool]) 
 
 
 async def test_s03_ac4_one_clause_in_both_versions(tools: dict[str, Tool]) -> None:
-    clause = await call(tools, "review_contract", contract_id="CT-2207", clause="6.1")
+    clause = await call(tools, "review_contract", SALES, contract_id="CT-2207", clause="6.1")
     assert "99.99%" in clause["customer"]
     assert "99.9%" in clause["standard"]
     assert "99.99%" not in clause["standard"]
 
 
 async def test_s03_ac5_review_returns_every_edit_with_clause_ids(tools: dict[str, Tool]) -> None:
-    diff = await call(tools, "review_contract", contract_id="CT-2207")
+    diff = await call(tools, "review_contract", SALES, contract_id="CT-2207")
     edits = diff["edits"]
     assert 55 <= len(edits) <= 65  # ~60 edits, mostly wording
     assert diff["count"] == len(edits)
@@ -94,7 +95,7 @@ async def test_s03_ac5_review_returns_every_edit_with_clause_ids(tools: dict[str
     by_clause = {e["clause"]: e for e in edits}
     assert "25%" in by_clause["3.2"]["added"]
     assert "unlimited" in by_clause["9.2"]["added"].lower()
-    result = await call_tool(tools["review_contract"], {"contract_id": "CT-2207"}, None)
+    result = await call_tool(tools["review_contract"], {"contract_id": "CT-2207"}, SALES)
     assert len(result.output) < 20_000  # fits under the tool output cap (D-50)
 
 
@@ -255,3 +256,21 @@ async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: 
     assert "2026-11-10 14:02:11" in text
     assert "Discount over 15%" in text
     assert "Sales" in text
+
+
+async def test_s05_ac3_engineering_never_gets_fee_or_payment_clauses(
+    tools: dict[str, Tool],
+) -> None:
+    """Found live: the reviewer returned payment terms to Engineering as plain text (D-106)."""
+    engineering = ToolContext("run-1", CLOUDCO, profile="engineering")
+    all_edits = await call(tools, "review_contract", SALES, contract_id="CT-2207")
+    theirs = await call(tools, "review_contract", engineering, contract_id="CT-2207")
+    sales_sections = {e["clause"].split(".")[0] for e in all_edits["edits"]}
+    assert {"3", "4"} <= sales_sections  # Sales sees the fee and payment edits
+    assert not {e["clause"].split(".")[0] for e in theirs["edits"]} & {"3", "4"}
+    assert "left out" in theirs["hidden"]
+    one = await call(tools, "review_contract", engineering, contract_id="CT-2207", clause="4.1")
+    assert set(one) == {"contract_id", "clause", "hidden"}  # no text, standard or customer's
+    text = json.dumps(theirs)
+    assert "Net 60" not in text
+    assert "25%" not in text

@@ -65,6 +65,9 @@ class ToolContext:
     # Who approved this call, in order: {"approver", "rule", "at", "note"}. A tool that leaves
     # a record (an outbox file) can write it down (S06-AC10).
     approvals: tuple[dict[str, str], ...] = ()
+    # Which profile is asking, so a tool can leave out what that profile must not see, in
+    # code rather than by asking the model (D-106). Helpers get their caller's profile.
+    profile: str | None = None
 
     @property
     def task_dir(self) -> Path:

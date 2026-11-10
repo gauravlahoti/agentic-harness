@@ -95,6 +95,7 @@ class Harness:
         scope_check: ScopeCheck | None = None,
         window: Window | None = None,
         summarizer: Summarize | None = None,
+        profile: str | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -103,6 +104,7 @@ class Harness:
         self.approver = approver  # who answers "may I?"; none means no (D-79)
         self.scope, self.scope_check = scope, scope_check  # stay on the job (D-81)
         self.window, self.summarizer = window, summarizer  # forget on purpose (S07, D-93)
+        self.profile = profile  # who is asking; tools may filter by it (D-106)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -337,6 +339,7 @@ class Harness:
                             call_id or "",
                             budget,
                             tuple(g for g in given if g["approved"] == "yes"),
+                            self.profile,
                         )
                     result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
                     output, is_error = result.output, result.is_error
