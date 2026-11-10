@@ -8,7 +8,7 @@
 | Proof | What it shows |
 |---|---|
 | **The swap test** | A second workspace (default: `workspaces/coder/`, a small code-review agent using only built-in file tools) runs with **zero changes to `src/agentic_harness/`** |
-| **Evals** | 6 CloudCo tasks, 3 runs each, checked by scripts |
+| **Evals** | Moved to [S10 · Evals](S10-evals.md) (D-108) |
 | **Replay** | Any saved task plays back on the same page with zero API calls, and becomes the public page on gauravlahoti.dev |
 
 **Eval tasks**
@@ -60,3 +60,4 @@ The same CloudCo workspace on **Google ADK**: `SkillToolset` ↔ our skills · `
 ## Changes
 
 - 2026-11-10 · Created (v3). Swap test added after the "agent demo vs harness" review.
+- 2026-11-11 · The eval part (task table, AC7, AC8) moved to S10 · Evals at your request (D-108). The eval task table below is kept for history; S10's 16 cases replace it.

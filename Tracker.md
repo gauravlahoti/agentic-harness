@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S10 · Evals planned and approved, being built (your call: "focus on building evals first") · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -30,6 +30,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S07](spec/stages/S07-memory.md) | Memory | 🟨 | 10/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
+| [S10](spec/stages/S10-evals.md) | Evals (built next, after S07) | 🟦 | 0/11 | 0/11 | 1 |
 
 ## Checks
 
@@ -186,8 +187,8 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC4 | Mini loop ring lights the part acting right now | 👀 | 📝 |  |
 | AC5 | Run summary card: steps, tools, approvals, blocks, tokens, cost, time | 👀 | 📝 |  |
 | AC6 | Each harness part can be switched off for recording, only in demo mode, with a red banner | 🧪 👀 | 📝 |  |
-| AC7 | Eval set: 6 tasks with check scripts, 3 runs each, own budget cap | 🧪 🔑 | 📝 |  |
-| AC8 | Eval pass rate ≥ 5 of 6 | 🔑 | 📝 |  |
+| AC7 | Eval set: 6 tasks with check scripts, 3 runs each, own budget cap | 🧪 🔑 | ➡️ | Moved to S10 (D-108) |
+| AC8 | Eval pass rate ≥ 5 of 6 | 🔑 | ➡️ | Moved to S10 (D-108) |
 | AC9 | Export a saved run as a static page: no backend, no key, no API calls | 🧪 📄 | 📝 |  |
 | AC10 | Demo mode: big type, slower cards, short output | 👀 | 📝 |  |
 | AC11 | A clean 1080p recording in 16:9, 1:1 and 4:5 | 👀 | 📝 |  |
@@ -211,6 +212,22 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC13 | On a Claude run, the helper, off-topic check, titles and summaries use Claude Haiku 5.5 | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac13_*`: on a Claude run, helper, check, summary and title models are all `claude-haiku-5-5` |
 | AC14 | No test and no `make live` run calls Anthropic: the key is used only for runs the person starts on the page or with the CLI | 🧪 | 🟨 | `test_anthropic_model.py::test_s09_ac14_*` (2): key read from its own name and shown as `***`; no live test names a Claude model |
 
+### S10 · Evals
+
+| ID | Check | How | Status | Evidence |
+|---|---|---|---|---|
+| AC1 | 16 golden cases load and validate; a bad case names its field | 🧪 | 🟦 |  |
+| AC2 | Each case runs through `create_harness` with a scripted approver, its own memory folder and trace folder; multi-turn cases resend the history | 🧪 | 🟦 |  |
+| AC3 | Replay: a saved trace (with a sub-agent) becomes DeepEval spans and test cases with zero model calls | 🧪 | 🟦 | Spike 2026-11-11: a Claude Haiku run with the clause-reviewer replayed and scored (TaskCompletion, StepEfficiency, PlanAdherence) with a stand-in judge, network blocked |
+| AC4 | The 3 code metrics score pass and fail cases correctly on recorded traces | 🧪 | 🟦 |  |
+| AC5 | The 9 judged metrics run through DeepEval with our judge; Gemini 429/503 → Claude Haiku, named per score; no usable judge → a clear stop | 🧪 | 🟦 |  |
+| AC6 | 3 runs per case, pass only if all 3 pass; the eval's own budget cap stops it with a named reason | 🧪 | 🟦 |  |
+| AC7 | Result JSON saved; telemetry off; DeepEval reads no `.env`; no key in any result or trace | 🧪 | 🟦 |  |
+| AC8 | No test calls Gemini or Anthropic; `make check` passes with coverage back to 85% | 🧪 | 🟦 |  |
+| AC9 | Evals page: summary, category tables (covered + greyed), grid with reasons, history; baseline test passes | 🧪 👀 | 🟦 |  |
+| AC10 | Run button: dialog with estimate, live progress, Stop, one eval at a time; only the fixed command | 🧪 👀 | 🟦 |  |
+| AC11 | Live: a full eval (16 × 3) finishes; ≥ 14 of 16 cases pass | 🔑 👀 | 🟦 |  |
+
 ## Product goals
 
 | ID | Goal | Status |
@@ -219,7 +236,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | P-SC2 | `src/agentic_harness/` contains zero domain words | 🟨 guarded by a test from day one |
 | P-SC3 | A second workspace runs with zero harness changes | ⬜ |
 | P-SC4 | All offline tests < 10 s | 🟨 6.3 s today (96 tests) |
-| P-SC5 | ≥ 5 of 6 eval tasks pass | ⬜ |
+| P-SC5 | ≥ 14 of 16 eval cases pass, all 3 runs (S10) | ⬜ |
 | P-SC6 | Every episode has a real without/with clip pair | ⬜ |
 | P-SC7 | 75 s demo from replay, zero API calls | ⬜ |
 | P-SC8 | You can explain any file | ⬜ |
@@ -278,3 +295,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-11 | Your report: Engineering, asked to send, gave a long answer with contract terms. Debugged: send_to_customer was hidden (correct) but the agent wasn't told what to say; the terms came from an earlier turn where the reviewer returned payment clauses as free text (field masking only covers structured fields). Fixed: each profile is told what it can't do and the one sentence to say (D-105); the run's tool list now shows only what the profile was offered. The free-text leak is open: your choice next. |
 | 2026-11-11 | Your pick: filter in the tool (D-106). Tools now get the asking profile (helpers get their caller's); CloudCo's contract tool leaves out fee, discount and payment clauses for Engineering. 306 offline tests. |
 | 2026-11-11 | Your report: Engineering's contract review still showed a price lock, Net 60 and liability. Debugged: the contract filter hid only §3/§4, `search_policy` didn't filter at all, the note named the hidden topics, and Engineering ran Sales' review skill. Fixed (D-107, your picks): technical sections only (allow-list), technical policy only, a neutral note, and Engineering's own `technical-review` skill. 307 offline tests; the leaked run's tool calls replayed offline with no leaked words. |
+| 2026-11-11 | You approved S10 · Evals (DeepEval, 12 metrics in its categories, Gemini judge with Claude Haiku fallback, a Run button, a dedicated `evals/` folder) and asked to build it now, before the S07 check. S10-AC1–AC11 → 🟦; S08-AC7/AC8 moved to S10. The replay spike passed (AC3 evidence). Your report of a refused follow-up ("who is the point of contact": the scope check reads only the newest message) became eval case `follow-up-in-scope`, not fixed yet at your request. D-108–D-115. |

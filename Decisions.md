@@ -848,3 +848,59 @@
 - **Instead of:** hiding fees and payment only (term, price locks, liability and payment rules from the policy still reached Engineering, found live)
 - **Because:** spec/01-company.md: Engineering answers technical questions and approves uptime up to our record; prices, payment and the commercial review are Sales'
 - **Cost:** a new contract section must be added to the allow-list to reach Engineering
+
+### D-108 · Evals are their own stage, built next
+✅ Accepted · S10 · your pick ("own stage, next")
+- **Chose:** a new stage S10 · Evals, built right after S07, which takes over S08's eval part (AC7, AC8). S08 keeps the swap test, replay, export and demo mode
+- **Instead of:** growing S08, which would hold swap test, replay, demo, DeepEval and a new page
+- **Because:** one clear goal per stage
+- **Cost:** stage numbers no longer follow the build order (the Tracker says so)
+
+### D-109 · Code checks exact rules; a judge model checks judgment
+✅ Accepted · S10
+- **Chose:** three metrics in code (tool and argument correctness, guardrails held, guardrails across turns) and nine judged by a model (plan adherence, argument correctness, task completion, step efficiency, knowledge retention, conversation completeness, role adherence, topic adherence, turn faithfulness)
+- **Instead of:** judging everything with a model, or only code checks
+- **Because:** safety rules must be exact, free and never flaky; completeness and faithfulness can't be read by code
+- **Cost:** two kinds of metric to explain
+
+### D-110 · DeepEval scores a replay of our saved trace
+✅ Accepted · S10 · proven in a spike (no model calls)
+- **Chose:** `evals/replay.py` re-emits a saved run as DeepEval spans (`@observe` agent → llm / tool, a helper as a nested agent) inside `evals_iterator`, so the trajectory metrics get a real trace
+- **Instead of:** `@observe` inside the harness core, or plain test cases (TaskCompletion, StepEfficiency and PlanAdherence "MUST be used in the `evals_iterator` or `observe` decorator")
+- **Because:** the harness core stays free of DeepEval, and a saved run can be re-scored for judge cost only
+- **Cost:** a replay layer to explain
+
+### D-111 · The judge goes through our own model clients: Gemini Flash-Lite, then Claude Haiku
+✅ Accepted · S10 · your pick ("Gemini with fallback as Claude Haiku")
+- **Chose:** a small `DeepEvalBaseLLM` wrapper over `make_model`. The judge is Gemini 3.5 Flash-Lite; a 429 or 503 switches the rest of the eval to Claude Haiku 5.5, only if `ANTHROPIC_API_KEY` is set. Every score records its judge; costs come from `pricing.toml`
+- **Instead of:** DeepEval's own `GeminiModel` (its own key handling and retry policy), or Claude only
+- **Because:** one key path (`config.py`), no hidden retries (D-42), real costs, and the eval still finishes when Gemini's free quota runs out
+- **Cost:** Haiku costs a few cents per eval; two judges can score differently
+
+### D-112 · A case passes only if all 3 runs pass
+✅ Accepted · S10
+- **Chose:** 3 runs per case (1 while building), pass^3
+- **Instead of:** one run, or an average
+- **Because:** one lucky run doesn't count; an agent that fails one run in three isn't reliable
+- **Cost:** 3× the quota
+
+### D-113 · An Evals page with a Run button behind a dialog and a budget cap
+✅ Accepted · S10 · your pick ("show + run button")
+- **Chose:** a sidebar page with DeepEval's two category tables, a cases × metrics grid, reasons and history; a Run button opens an in-page dialog (cases, runs, model, judge, estimated calls, cap) and starts one fixed command; one eval at a time, with Stop
+- **Instead of:** results only, run from the terminal
+- **Because:** see, learn and start evals in one place
+- **Cost:** one click spends quota; guarded by the dialog, the cap and one-at-a-time
+
+### D-114 · 12 metrics, not all of DeepEval's
+✅ Accepted · S10 · your review of DeepEval's categories
+- **Chose:** the 12 metrics in `spec/stages/S10-evals.md`; skipped: PlanQuality, TurnRelevancy, GoalAccuracy, ToolUse, the turn contextual relevancy / precision / recall metrics, and a separate Custom block
+- **Instead of:** every metric in the two tables
+- **Because:** each skipped one overlaps another or grades something this agent doesn't have (a ranked retriever); the page still shows them, greyed, with the reason
+- **Cost:** about 10 judge calls per run
+
+### D-115 · Everything for evals lives in a dedicated `evals/` folder
+✅ Accepted · S10 · your request ("all of this should be in a dedicated evals folder")
+- **Chose:** `evals/` at the top level (runner, replay, checks, judge, report, cases), `tests/evals/` for its tests, results in `.agentic-harness/evals/`. The server reads result files and starts `python -m evals.run` as a fixed command
+- **Instead of:** `src/agentic_harness/evals/`
+- **Because:** the harness never imports DeepEval; a workspace's cases sit next to the code that runs them
+- **Cost:** one more top-level folder to lint, type-check and cover
