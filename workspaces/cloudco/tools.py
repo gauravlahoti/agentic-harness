@@ -217,7 +217,15 @@ def send_to_customer(
     }
     terms = "\n".join(f"- {k}: {v}" for k, v in offered.items() if v) or "- none"
     footer = "(Local outbox: not sent. Fictional demo.)"
-    text = f"To: {row['id']}\nSubject: {subject}\n\n{body}\n\nOffered terms:\n{terms}\n\n{footer}\n"
+    # Who said yes, in what role and when (S06-AC10). Roles are played on the page, not logins.
+    signed = (
+        "\n".join(f"- {a['approver']} · {a['at']} · {a['rule']}" for a in ctx.approvals)
+        or "- none recorded"
+    )
+    text = (
+        f"To: {row['id']}\nSubject: {subject}\n\n{body}\n\nOffered terms:\n{terms}\n\n"
+        f"Approved by:\n{signed}\n\n{footer}\n"
+    )
     saved = ctx.save_outbox_file(f"{ctx.run_id}-to-{row['id']}.md", text)
     return {"saved": saved, "status": "saved to the local outbox, not sent"}
 

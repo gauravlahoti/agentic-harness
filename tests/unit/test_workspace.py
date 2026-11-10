@@ -206,3 +206,43 @@ def test_s05_ac1_bad_rules_are_clear_errors(tmp_path: Path) -> None:
     (tmp_path / "tools.py").write_text(GATED_TOOLS)
     with pytest.raises(WorkspaceError, match="price-never"):
         Workspace.load(tmp_path)
+
+
+def test_s06_ac9_ask_human_is_on_only_when_the_workspace_says_so(tmp_path: Path) -> None:
+    (tmp_path / "workspace.toml").write_text("ask_human = true\n")
+    assert Workspace.load(tmp_path).ask_human is True
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    assert Workspace.load(plain).ask_human is False
+
+
+def test_s06_ac1_approvals_take_a_role_a_label_and_a_condition(tmp_path: Path) -> None:
+    (tmp_path / "tools.py").write_text(
+        "from agentic_harness.tools.registry import tool\n\n"
+        "@tool(risk='action')\ndef send(price: int = 0) -> str:\n    'Send.'\n    return 'ok'\n\n"
+        "TOOLS = [send]\n"
+    )
+    (tmp_path / "workspace.toml").write_text(
+        """
+[[approvals]]
+tool = "send"
+approver = "Boss"
+label = "Price over 20"
+arg = "price"
+above = 20
+because = "chart §1"
+
+[[approvals]]
+tool = "send"
+approver = "Sales"
+because = "chart §3"
+"""
+    )
+    approvals = Workspace.load(tmp_path).approvals
+    assert [(a.approver, a.label, a.arg, a.above) for a in approvals] == [
+        ("Boss", "Price over 20", "price", 20),
+        ("Sales", "", "", None),
+    ]
+    (tmp_path / "workspace.toml").write_text('[[approvals]]\ntool = "send"\narg = "price"\n')
+    with pytest.raises(WorkspaceError, match="needs above or equals"):
+        Workspace.load(tmp_path)

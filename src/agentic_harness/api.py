@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agentic_harness.approvals import ask_human_tool
 from agentic_harness.context import build_context
 from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
@@ -92,6 +93,8 @@ def create_harness(
     tools = [t for t in available.values() if not (helpers and t.name in workspace.delegate_only)]
     if context.skills:
         tools.append(load_skill_tool(context.skills))  # built in: reads a skill on demand
+    if workspace.ask_human:
+        tools.append(ask_human_tool())  # the model may pause to ask a person (D-89)
     if helpers:
         models = {a.name: _helper_model(a, model, model_factory, prices) for a in helpers}
 

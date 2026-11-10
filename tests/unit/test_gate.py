@@ -26,7 +26,17 @@ RULES = (
         because="terms §5",
     ),
 )
-APPROVALS = (Approval("send", because="chart §3: sending needs a person"),)
+APPROVALS = (
+    Approval(
+        "send",
+        approver="Boss",
+        because="chart §1: a price over 20 needs the boss",
+        label="Price over 20",
+        arg="price",
+        above=20,
+    ),
+    Approval("send", approver="Sales", because="chart §3: sending needs a person"),
+)
 
 
 def gate(allowed: tuple[str, ...] | None = None, hide: tuple[str, ...] = ()) -> Gate:
@@ -80,6 +90,16 @@ def test_s05_ac12_send_needs_a_person() -> None:
     assert gate().check("find", {}).kind == "allow"
 
 
+def test_s06_ac1_ac2_ac8_every_matching_approval_is_asked_in_order() -> None:
+    """A price over 20 needs the boss first; sending always needs Sales (D-88)."""
+    low = gate().check("send", {"price": 10})
+    assert [a.approver for a in low.approvals] == ["Sales"]
+    high = gate().check("send", {"price": 30})
+    assert [a.approver for a in high.approvals] == ["Boss", "Sales"]
+    assert gate().check("send", {"price": 20}).approvals[0].approver == "Sales"  # at the line
+    assert gate().check("find", {}).approvals == ()
+
+
 def test_s05_ac3_named_fields_are_hidden_in_structured_results() -> None:
     output = json.dumps({"id": "R-1", "value": 480000, "rows": [{"id": "I-1", "amount": 40000}]})
     seen = gate(hide=("value", "amount")).inspect(output)
@@ -104,7 +124,10 @@ def test_s05_ac13_summary_for_the_pane() -> None:
     assert summary["not_allowed"] == ["read_doc"]
     assert summary["hidden_fields"] == ["value"]
     assert [r["label"] for r in summary["never"]] == ["Price above 50", "A deal that never ends"]
-    assert summary["approvals"] == [{"tool": "send", "because": "chart §3: sending needs a person"}]
+    assert [(a["approver"], a["label"]) for a in summary["approvals"]] == [
+        ("Boss", "Price over 20"),
+        ("Sales", "send"),
+    ]
 
 
 def test_s05_ac13_a_profile_only_sees_rules_for_tools_it_can_use() -> None:

@@ -115,16 +115,30 @@ def run(args: argparse.Namespace) -> int:
 
 
 async def ask_in_terminal(request: ApprovalRequest) -> tuple[bool, str]:
-    """Human in the loop, in the terminal: show what would happen, wait for y/N."""
-    print(f"  ⏸ {request.tool} needs your approval · {request.because}")
+    """Human in the loop, in the terminal: a question gets an answer, an action gets y/N."""
+    if request.kind == "question":
+        print(f"  ⏸ the agent asks: {request.arguments.get('question', '')}")
+        try:
+            said = (await asyncio.to_thread(input, "    Your answer (empty to skip): ")).strip()
+        except EOFError:
+            return False, "no one at the terminal"
+        return (True, said) if said else (False, "skipped")
+    role = f" as {request.approver}" if request.approver else ""
+    print(f"  ⏸ {request.tool} needs approval{role} · {request.because}")
     for key, value in request.arguments.items():
         print(f"      {key}: {value}")
     try:
-        answer = await asyncio.to_thread(input, "    Approve? [y/N] ")
+        answer = await asyncio.to_thread(input, f"    Approve{role}? [y/N] ")
     except EOFError:  # no terminal to ask: the answer is no
         return False, "no one at the terminal"
     approved = answer.strip().lower() in ("y", "yes")
-    return approved, "" if approved else "rejected in the terminal"
+    if approved:
+        return True, ""
+    try:
+        why = (await asyncio.to_thread(input, "    Reason for the agent (optional): ")).strip()
+    except EOFError:
+        why = ""
+    return False, why or "rejected in the terminal"
 
 
 def print_event(event: Event) -> None:

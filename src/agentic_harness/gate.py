@@ -4,7 +4,7 @@ Harness part: guardrails. The model can ask for anything; the gate decides, in c
 
     before:  ① is this tool allowed for the profile?        no  → block  (D-75)
              ② does a "never" rule match the arguments?    yes → block  (D-77)
-             ③ does this tool need a person's approval?    yes → ask    (D-79)
+             ③ which approvals match? each names a role    any → ask    (D-79, D-88)
     after:   ④ hide named fields from structured results            (D-76)
              ⑤ flag text that tries to instruct the AI              (D-78)
 
@@ -37,7 +37,7 @@ FLAG_PATTERNS = (
 # The harness's own tools: reading a skill and handing a job to a helper. A profile's list
 # is about the workspace's tools; these are how the agent works at all, so they stay open.
 # (Found live in S05: the list hid them, and the agent could no longer read skills or delegate.)
-CORE_TOOLS = ("load_skill", "delegate_task")
+CORE_TOOLS = ("load_skill", "delegate_task", "ask_human")
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,24 +53,39 @@ class Rule:
     because: str = ""  # the policy behind it, e.g. "terms §2"
 
     def matches(self, arguments: dict[str, Any]) -> bool:
-        value = arguments.get(self.arg)
-        if value is None:
-            return False
-        if self.above is not None:
-            return (
-                isinstance(value, int | float)
-                and not isinstance(value, bool)
-                and value > self.above
-            )
-        return bool(value == self.equals)
+        return _crosses(arguments.get(self.arg), self.above, self.equals)
+
+
+def _crosses(value: Any, above: float | None, equals: Any) -> bool:
+    """One argument against a line: above a number, or equal to a value."""
+    if value is None:
+        return False
+    if above is not None:
+        return isinstance(value, int | float) and not isinstance(value, bool) and value > above
+    return bool(value == equals)
 
 
 @dataclass(frozen=True, slots=True)
 class Approval:
-    """A tool that waits for a person before it runs."""
+    """A tool that waits for a person before it runs.
+
+    ``approver`` is the role that decides ("CFO"); ``label`` says the rule in plain words.
+    With ``arg`` set it applies only when that argument crosses its line; with no ``arg`` it
+    always applies. A tool may have several: all that match are asked, in order (D-88).
+    """
 
     tool: str
     because: str = ""
+    approver: str = ""
+    label: str = ""
+    arg: str = ""
+    above: float | None = None
+    equals: Any = None
+
+    def matches(self, arguments: dict[str, Any]) -> bool:
+        if not self.arg:
+            return True
+        return _crosses(arguments.get(self.arg), self.above, self.equals)
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +94,7 @@ class Decision:
     rule: str = ""
     label: str = ""
     because: str = ""
+    approvals: tuple[Approval, ...] = ()  # for "ask": who must decide, in order
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +115,10 @@ class ApprovalRequest:
     tool: str
     arguments: dict[str, Any]
     because: str
+    approver: str = ""  # the role that must decide; empty for a question
+    kind: Literal["approval", "question"] = "approval"  # question: ask_human (D-89)
+    step: int = 1  # which of the approvals this call needs, and how many
+    of: int = 1
 
 
 ALLOW = Decision("allow")
@@ -118,7 +138,7 @@ class Gate:
         self.allowed = None if allowed is None else tuple(allowed)  # None: every tool
         self.hide_fields = tuple(hide_fields)
         self.rules = tuple(rules)
-        self.approvals = {a.tool: a for a in approvals}
+        self.approvals = tuple(approvals)
         self._flags = [re.compile(p, re.I | re.S) for p in (*FLAG_PATTERNS, *flag_patterns)]
 
     def allows(self, name: str) -> bool:
@@ -140,8 +160,9 @@ class Gate:
         for rule in self.rules:
             if rule.tool == name and rule.matches(arguments):
                 return Decision("block", rule.id, rule.label, rule.because)
-        if approval := self.approvals.get(name):
-            return Decision("ask", "approval", f"{name} needs a person", approval.because)
+        asks = tuple(a for a in self.approvals if a.tool == name and a.matches(arguments))
+        if asks:
+            return Decision("ask", "approval", f"{name} needs a person", asks[0].because, asks)
         return ALLOW
 
     def inspect(self, output: str) -> Seen:
@@ -192,8 +213,13 @@ class Gate:
                 if self.allows(r.tool)
             ],
             "approvals": [
-                {"tool": a.tool, "because": a.because}
-                for a in self.approvals.values()
+                {
+                    "tool": a.tool,
+                    "because": a.because,
+                    "approver": a.approver,
+                    "label": a.label or a.tool,
+                }
+                for a in self.approvals
                 if self.allows(a.tool)
             ],
             "flags": True,

@@ -62,6 +62,9 @@ class ToolContext:
     emit: Callable[..., None] = _no_events
     call_id: str = ""  # which tool call is running, so the page can tie a file to it
     budget: Budget | None = None  # the run's budget: a helper gets a slice of it (S04)
+    # Who approved this call, in order: {"approver", "rule", "at", "note"}. A tool that leaves
+    # a record (an outbox file) can write it down (S06-AC10).
+    approvals: tuple[dict[str, str], ...] = ()
 
     @property
     def task_dir(self) -> Path:

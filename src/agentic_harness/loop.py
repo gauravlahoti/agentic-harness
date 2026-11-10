@@ -243,23 +243,57 @@ class Harness:
                 )
                 is_error = True
             else:
-                approved, note = True, ""
+                approved, note, who = True, "", ""
+                given: list[dict[str, str]] = []  # who approved, in order: the tool may record it
                 if decision and decision.kind == "ask":
-                    approved, note = await self._ask(
-                        run, call_id or "", name, arguments, decision.because, budget
-                    )
-                    guard["approval"] = {"approved": approved, "note": note}
+                    asks = decision.approvals
+                    for number, ask in enumerate(asks, 1):
+                        request = ApprovalRequest(
+                            run.id,
+                            call_id or "",
+                            name,
+                            dict(arguments),
+                            ask.because,
+                            approver=ask.approver,
+                            step=number,
+                            of=len(asks),
+                        )
+                        approved, note = await self._pause(run, request, budget, rule=ask.label)
+                        who = ask.approver
+                        given.append(
+                            {
+                                "approver": ask.approver,
+                                "rule": ask.label or ask.tool,
+                                "at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                "note": note,
+                                "approved": "yes" if approved else "no",
+                            }
+                        )
+                        if not approved:
+                            break  # the rest are not asked: nothing will run (S06-AC5)
+                    guard["approvals"] = given
                 if not approved:
-                    output = "A person rejected this, so it was not done" + (
-                        f": {note}" if note else "."
+                    output = (
+                        f"A person rejected this{f' ({who})' if who else ''}, so it was not done"
+                        + (f": {note}" if note else ".")
                     )
                     is_error = True
+                elif name == "ask_human":
+                    # The model asked a person a question: the loop waits for the answer (D-89).
+                    output = await self._question(run, call_id or "", arguments, budget)
+                    is_error = False
                 else:
                     # A fresh context per call: it knows the call, so a file can be tied to it.
                     ctx = None
                     if self.root is not None:
                         ctx = ToolContext(
-                            run.id, self.root, self.readable, run.emit, call_id or "", budget
+                            run.id,
+                            self.root,
+                            self.readable,
+                            run.emit,
+                            call_id or "",
+                            budget,
+                            tuple(g for g in given if g["approved"] == "yes"),
                         )
                     result = await call_tool(tool, arguments, ctx)  # never raises (S03-AC8)
                     output, is_error = result.output, result.is_error
@@ -290,31 +324,64 @@ class Harness:
             result_step["is_error"] = True
         return result_step
 
-    async def _ask(
-        self,
-        run: "_Run",
-        call_id: str,
-        name: str,
-        arguments: dict[str, Any],
-        because: str,
-        budget: Budget,
+    async def _pause(
+        self, run: "_Run", request: ApprovalRequest, budget: Budget, **shown: Any
     ) -> tuple[bool, str]:
         """Pause for a person. The wait is not run time: it doesn't count toward the limit."""
         run.emit(
-            "approval_requested", call_id=call_id, name=name, arguments=arguments, because=because
+            "approval_requested",
+            call_id=request.call_id,
+            name=request.tool,
+            arguments=request.arguments,
+            because=request.because,
+            kind=request.kind,
+            approver=request.approver,
+            step=request.step,
+            of=request.of,
+            timeout_s=int(APPROVAL_TIMEOUT),  # the page counts down to it
+            **shown,
         )
         started = budget.elapsed()
         if self.approver is None:
-            approved, note = False, "no one is here to approve it"
+            approved, note = False, "no one is here to answer"
         else:
-            request = ApprovalRequest(run.id, call_id, name, dict(arguments), because)
             try:
                 approved, note = await asyncio.wait_for(self.approver(request), APPROVAL_TIMEOUT)
             except TimeoutError:
-                approved, note = False, "no answer in 10 minutes"
+                approved, note = False, "no answer in time"
         budget.exclude(budget.elapsed() - started)
-        run.emit("approval_decided", call_id=call_id, name=name, approved=approved, note=note)
+        run.emit(
+            "approval_decided",
+            call_id=request.call_id,
+            name=request.tool,
+            approved=approved,
+            note=note,
+            kind=request.kind,
+            approver=request.approver,
+            step=request.step,
+            of=request.of,
+        )
         return approved, note
+
+    async def _question(
+        self, run: "_Run", call_id: str, arguments: dict[str, Any], budget: Budget
+    ) -> str:
+        """ask_human: the answer goes back to the model as the tool's result (D-89)."""
+        request = ApprovalRequest(
+            run.id,
+            call_id,
+            "ask_human",
+            dict(arguments),
+            "The agent needs to know",
+            kind="question",
+        )
+        answered, text = await self._pause(run, request, budget)
+        if answered:
+            return f"The person answered: {text}"
+        return (
+            f"The person did not answer ({text}). Carry on with what you have, "
+            "or say plainly what you still need."
+        )
 
 
 class _Run:

@@ -202,7 +202,8 @@ def test_s05_ac12_a_reply_within_limits_waits_for_a_person() -> None:
     }
     decision = Workspace.load(CLOUDCO).gate("sales").check("send_to_customer", offer)
     assert decision.kind == "ask"
-    assert "approval-chart §3" in decision.because
+    assert decision.approvals[-1].approver == "Sales"  # Sales sends last, always (§3)
+    assert "approval-chart §3" in decision.approvals[-1].because
 
 
 def test_s05_ac4_ac5_rules_files_cannot_be_written(tmp_path: Path) -> None:
@@ -213,3 +214,43 @@ def test_s05_ac4_ac5_rules_files_cannot_be_written(tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="file name"):
             ctx.save_task_file(name, "rewritten")
     assert (CLOUDCO / "AGENTS.md").read_text() == before
+
+
+def test_s06_ac1_cloudco_approvals_match_the_chart() -> None:
+    """approval-chart §1: who decides what. §3: Sales approves every send."""
+    gate = Workspace.load(CLOUDCO).gate("sales")
+
+    def who(**terms: object) -> list[str]:
+        return [a.approver for a in gate.check("send_to_customer", dict(terms)).approvals]
+
+    assert who(discount_pct=10, payment_days=45) == ["Sales"]
+    assert who(discount_pct=20) == ["CFO", "Sales"]
+    assert who(discount_pct=15) == ["Sales"]  # up to 15% is Sales' own call
+    assert who(payment_days=60) == ["Finance", "Sales"]
+    assert who(payment_days=45) == ["Sales"]
+    assert who(uptime_pct=99.95) == ["Engineering", "Sales"]
+    assert who(uptime_pct=99.9) == ["Sales"]
+    assert who(liability_cap_months=24) == ["CFO", "Sales"]
+    assert who(liability_cap_months=12) == ["Sales"]
+    assert who(discount_pct=30) == []  # never: blocked, not asked
+    assert gate.check("send_to_customer", {"discount_pct": 30}).kind == "block"
+
+
+async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: Path) -> None:
+    tools = {t.name: t for t in Workspace.load(CLOUDCO).tools}
+    approvals = (
+        {"approver": "CFO", "rule": "Discount over 15%", "at": "2026-11-10 14:02:11", "note": ""},
+        {"approver": "Sales", "rule": "Any message", "at": "2026-11-10 14:02:40", "note": ""},
+    )
+    ctx = ToolContext("run-9", tmp_path, approvals=approvals)
+    await call_tool(
+        tools["send_to_customer"],
+        {"customer_id": "CUS-0042", "subject": "Renewal", "body": "Hi", "discount_pct": 20},
+        ctx,
+    )
+    text = next((tmp_path / "outbox").glob("*.md")).read_text()
+    assert "Approved by:" in text
+    assert "CFO" in text
+    assert "2026-11-10 14:02:11" in text
+    assert "Discount over 15%" in text
+    assert "Sales" in text

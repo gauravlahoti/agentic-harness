@@ -65,7 +65,8 @@ class Workspace:
     subagents: tuple[SubAgent, ...] = ()  # helpers delegate_task can start (D-55)
     delegate_only: tuple[str, ...] = ()  # tools only helpers get while delegating (D-59)
     rules: tuple[Rule, ...] = ()  # "never" rules (D-77)
-    approvals: tuple[Approval, ...] = ()  # tools that wait for a person (D-79)
+    approvals: tuple[Approval, ...] = ()  # who must approve a tool call, and when (D-79, D-88)
+    ask_human: bool = False  # the model may pause to ask a person a question (D-89)
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
     scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
 
@@ -105,6 +106,7 @@ class Workspace:
             profiles=tuple(_profile(key, value, known_tools) for key, value in profiles.items()),
             rules=_rules(config.get("rules", []), known_tools),
             approvals=_approvals(config.get("approvals", []), known_tools),
+            ask_human=_flag(config, "ask_human"),
             flag_patterns=_texts(config, "flag_patterns"),
             scope=_scope(config.get("scope")),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
@@ -320,8 +322,31 @@ def _approvals(table: Any, known_tools: set[str]) -> tuple[Approval, ...]:
         tool = _text(item, "tool")
         if tool not in known_tools:
             raise WorkspaceError(f"workspace.toml: approval for unknown tool {tool!r}.")
-        approvals.append(Approval(tool=tool, because=_text(item, "because")))
+        arg = _text(item, "arg")
+        above, equals = item.get("above"), item.get("equals")
+        if arg and above is None and "equals" not in item:
+            raise WorkspaceError(
+                f"workspace.toml: approval for {tool} on {arg!r} needs above or equals."
+            )
+        approvals.append(
+            Approval(
+                tool=tool,
+                because=_text(item, "because"),
+                approver=_text(item, "approver"),
+                label=_text(item, "label"),
+                arg=arg,
+                above=above,
+                equals=equals,
+            )
+        )
     return tuple(approvals)
+
+
+def _flag(config: dict[str, Any], key: str) -> bool:
+    value = config.get(key, False)
+    if not isinstance(value, bool):
+        raise WorkspaceError(f"workspace.toml: {key} must be true or false.")
+    return value
 
 
 def _scope(table: Any) -> Scope | None:

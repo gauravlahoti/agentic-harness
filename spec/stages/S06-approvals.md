@@ -46,7 +46,7 @@ model asks to act → gate: allowed → approval rule matches? ── no ──�
 | S06-AC8 | Sending anything to a customer always needs the Sales approval, on top of any other | 🧪 |
 | S06-AC9 | `ask_human` lets the model pause to ask a question; the answer goes back to it | 🧪 👀 |
 | S06-AC10 | The outbox file records who approved (role), when, and which rule asked | 🧪 |
-| S06-AC11 | Page: "Waiting for CFO", the card after the answer, and "Nothing was sent" after a rejection | 👀 |
+| S06-AC11 | Page: "Waiting for CFO", the card after the answer, and "Nothing ran" after a rejection | 👀 |
 | S06-AC12 | Live: 25% discount → CFO rejects ("max 20%") → the agent proposes 20% → CFO approves → Sales approves the send | 🔑 👀 |
 
 ## Key choices

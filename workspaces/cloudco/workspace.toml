@@ -6,6 +6,9 @@ name = "Contract Agent"
 owner = "CloudCo"
 logo = "logo.svg"  # a made-up mark, shown at the top of the page
 
+# The agent may pause to ask the person a question when something it needs is missing (D-89).
+ask_human = true
+
 # Always in the prompt, in this order. {profile} picks the active profile's file.
 memory = ["AGENTS.md", "teams/{profile}.md"]
 
@@ -87,6 +90,42 @@ equals = true
 because = "standard-terms §5"
 
 # Human in the loop: these wait for a person to approve them (D-79).
+# Who decides (D-87, D-88). Every rule that matches is asked, in this order: the specialists
+# first (approval-chart §1), Sales last, because Sales approves every send (§3).
 [[approvals]]
 tool = "send_to_customer"
+approver = "CFO"
+label = "Discount over 15%"
+arg = "discount_pct"
+above = 15
+because = "approval-chart §1: a discount of 15–25% needs the CFO"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "CFO"
+label = "Liability cap over 12 months"
+arg = "liability_cap_months"
+above = 12
+because = "approval-chart §1: a liability cap up to 24 months needs the CFO"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "Finance"
+label = "Payment beyond Net 45"
+arg = "payment_days"
+above = 45
+because = "approval-chart §1: Net 60 needs Finance"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "Engineering"
+label = "Uptime over 99.9%"
+arg = "uptime_pct"
+above = 99.9
+because = "approval-chart §1: uptime above 99.9%, up to 99.95%, needs Engineering"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "Sales"
+label = "Any message to a customer"
 because = "approval-chart §3: sending anything to the customer always needs a person"

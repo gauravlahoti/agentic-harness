@@ -752,39 +752,79 @@ function onLaneEvent(ev, turn) {
 
 // ⏸ Human in the loop (D-79): the run waits here until you approve or reject.
 function approvalCard(turn, d) {
+  const asking = d.kind === "question";
+  const role = d.approver || "you";
   const row = addActivity(turn, {
-    text: `⏸ Waiting for your approval · ${d.name}`,
+    text: asking ? "⏸ The agent has a question for you" : `⏸ Waiting for ${role}${d.of > 1 ? ` · ${d.step} of ${d.of}` : ""} · ${d.name}`,
     part: "guard",
     facts: [["Why", d.because]],
     raw: d,
   });
   const card = el("div", "approval-card");
-  const terms = facts(
-    Object.entries(d.arguments ?? {})
-      .filter(([, v]) => v !== null && v !== false && v !== "")
-      .map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)]),
+  const head = el("div", "approval-head");
+  const countdown = el("span", "approval-clock");
+  head.append(
+    el("span", "approval-role", asking ? "Question" : `Needs ${d.approver || "a person"}`),
+    ...(d.of > 1 ? [el("span", "approval-step", `${d.step} of ${d.of}`)] : []),
+    countdown,
   );
   const buttons = el("div", "approval-actions");
-  const approve = el("button", "approve", "Approve");
-  const reject = el("button", "reject", "Reject");
+  const field = el(asking ? "textarea" : "input", "approval-field");
+  field.setAttribute("aria-label", asking ? "Your answer" : "Reason, shown to the agent if you reject");
+  field.placeholder = asking ? "Your answer…" : "Reason if you reject (the agent will read it)";
+  if (asking) field.rows = 2;
+  field.maxLength = 500;
+  const approve = el("button", "approve", asking ? "Send answer" : d.approver ? `Approve as ${d.approver}` : "Approve");
+  const reject = el("button", "reject", asking ? "Skip" : "Reject");
   for (const b of [approve, reject]) b.type = "button";
   buttons.append(approve, reject);
-  card.append(el("p", "approval-why", d.because), terms, buttons);
+
+  if (asking) {
+    card.append(head, el("p", "approval-question", d.arguments?.question ?? ""), field, buttons);
+  } else {
+    const terms = facts(
+      Object.entries(d.arguments ?? {})
+        .filter(([, v]) => v !== null && v !== false && v !== "")
+        .map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)]),
+    );
+    card.append(head, el("p", "approval-why", d.rule ? `${d.rule}: ${d.because}` : d.because), terms, field, buttons);
+    if (d.approver) card.append(el("p", "approval-demo", `Demo: you are acting as ${d.approver}. This project has no logins.`));
+  }
   row.li.append(card);
   card.scrollIntoView({ block: "nearest" });
-  announce(`${d.name} is waiting for your approval`);
+  announce(asking ? "The agent has a question for you" : `${d.name} is waiting for ${role}`);
+
+  // A countdown to the time-out: no answer in time counts as no.
+  const ends = Date.now() + (d.timeout_s ?? 0) * 1000;
+  const tick = d.timeout_s
+    ? setInterval(() => {
+        const left = Math.max(0, Math.round((ends - Date.now()) / 1000));
+        countdown.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} left`;
+      }, 1000)
+    : null;
+  if (d.timeout_s) countdown.textContent = `${Math.floor(d.timeout_s / 60)}:${String(d.timeout_s % 60).padStart(2, "0")} left`;
 
   async function answer(approved) {
-    approve.disabled = reject.disabled = true;
+    approve.disabled = reject.disabled = field.disabled = true;
+    const said = field.value.trim();
+    if (asking && approved && !said) {
+      approve.disabled = reject.disabled = field.disabled = false;
+      field.focus();
+      return;
+    }
     try {
       const response = await fetch("/api/approval", {
         method: "POST",
         headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-        body: JSON.stringify({ call_id: d.call_id, approved, note: approved ? "" : "rejected on the page" }),
+        body: JSON.stringify({
+          call_id: d.call_id,
+          approved,
+          note: asking ? (approved ? said : "skipped") : approved ? "" : said || "rejected on the page",
+        }),
       });
       if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     } catch (error) {
-      approve.disabled = reject.disabled = false;
+      approve.disabled = reject.disabled = field.disabled = false;
       card.append(el("p", "approval-error", `Couldn't send your answer: ${error.message}`));
     }
   }
@@ -793,12 +833,25 @@ function approvalCard(turn, d) {
 
   return {
     decided(result) {
+      if (tick) clearInterval(tick);
       buttons.remove();
-      setActivity(row, {
-        text: `${result.approved ? "✓ Approved by you" : "✗ Rejected by you"} · ${d.name}`,
-        state: result.approved ? "done" : "error",
-      });
+      field.remove();
+      countdown.remove();
+      card.querySelector(".approval-demo")?.remove();
+      const noAnswer = result.note === "no answer in time";
+      const label = asking
+        ? result.approved
+          ? "✓ You answered"
+          : "✗ Skipped"
+        : result.approved
+          ? `✓ Approved as ${role}`
+          : `✗ ${noAnswer ? `No answer from ${role}` : `Rejected as ${role}`}`;
+      setActivity(row, { text: `${label} · ${d.name}`, state: result.approved ? "done" : "error" });
       card.classList.add(result.approved ? "approved" : "rejected");
+      if (asking && result.approved) card.append(el("p", "approval-result", result.note));
+      if (!asking && !result.approved) {
+        card.append(el("p", "approval-result", `${result.note || "Rejected"}`), el("p", "approval-nothing", "Nothing ran. The agent has been told why."));
+      }
     },
   };
 }
@@ -1110,7 +1163,7 @@ function renderPane() {
   ]);
   const pauseCard = card("pause", "⏸", "Human in the loop", "asks you first", [
     g.approvals.length
-      ? list(g.approvals.map((a) => line(a.tool, a.because)))
+      ? list(g.approvals.map((a) => line(a.approver ? `${a.label} → ${a.approver}` : a.tool, a.because)))
       : el("p", "guard-text", `Not applicable for ${g.profile}`),
   ]);
   const guardBody = [allowedCard, notAllowedCard, pauseCard];

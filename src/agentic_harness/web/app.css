@@ -1072,6 +1072,34 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle) { display:
 .approval-actions button:disabled { opacity: 0.5; cursor: default; }
 .approval-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .approval-error { margin: 8px 0 0; color: var(--fail); }
+.approval-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.approval-role { font-weight: 700; color: var(--part-guard); }
+.approval-step {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--part-guard) 14%, transparent);
+  color: var(--part-guard);
+  font-size: 11px;
+  font-weight: 600;
+}
+.approval-clock { margin-left: auto; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.approval-question { margin: 0 0 8px; font-size: 14px; }
+.approval-field {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.approval-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.approval-demo { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.approval-result { margin: 8px 0 0; color: var(--text-soft); font-size: 13px; }
+.approval-nothing { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 
 /* Scrolling to a line or an approval card must stop above the docked input box,
    or the Approve button sits behind it (found live in S05). */
