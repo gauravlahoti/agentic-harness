@@ -100,11 +100,11 @@ async def test_s03_ac5_review_returns_every_edit_with_clause_ids(tools: dict[str
 
 
 async def test_s03_ac6_search_policy_returns_rule_and_section(tools: dict[str, Tool]) -> None:
-    hits = await call(tools, "search_policy", query="discount approval CFO")
+    hits = await call(tools, "search_policy", SALES, query="discount approval CFO")
     assert hits[0]["policy"] == "standard-terms"
     assert hits[0]["section"] == "§2"
     assert "25%" in hits[0]["text"]
-    none = await call(tools, "search_policy", query="parking spaces")
+    none = await call(tools, "search_policy", SALES, query="parking spaces")
     assert none == []
 
 
@@ -258,19 +258,44 @@ async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: 
     assert "Sales" in text
 
 
-async def test_s05_ac3_engineering_never_gets_fee_or_payment_clauses(
-    tools: dict[str, Tool],
-) -> None:
-    """Found live: the reviewer returned payment terms to Engineering as plain text (D-106)."""
+async def test_s05_ac3_engineering_sees_only_technical_clauses(tools: dict[str, Tool]) -> None:
+    """Found live twice: term, fees, payment and liability reached Engineering (D-106, D-107)."""
     engineering = ToolContext("run-1", CLOUDCO, profile="engineering")
-    all_edits = await call(tools, "review_contract", SALES, contract_id="CT-2207")
+    everything = await call(tools, "review_contract", SALES, contract_id="CT-2207")
     theirs = await call(tools, "review_contract", engineering, contract_id="CT-2207")
-    sales_sections = {e["clause"].split(".")[0] for e in all_edits["edits"]}
-    assert {"3", "4"} <= sales_sections  # Sales sees the fee and payment edits
-    assert not {e["clause"].split(".")[0] for e in theirs["edits"]} & {"3", "4"}
-    assert "left out" in theirs["hidden"]
-    one = await call(tools, "review_contract", engineering, contract_id="CT-2207", clause="4.1")
-    assert set(one) == {"contract_id", "clause", "hidden"}  # no text, standard or customer's
-    text = json.dumps(theirs)
-    assert "Net 60" not in text
-    assert "25%" not in text
+    technical = {"5", "6", "7", "8", "A", "B"}
+    assert {"2", "3", "4", "9"} <= {e["clause"].split(".")[0] for e in everything["edits"]}
+    assert {e["clause"].split(".")[0] for e in theirs["edits"]} <= technical
+    assert "6.1" in [e["clause"] for e in theirs["edits"]]  # the uptime change is theirs
+    assert (
+        theirs["hidden"]
+        == "Only technical clauses are shown to Engineering; Sales handles the rest."
+    )
+    for clause in ("2.1", "4.1", "9.2"):
+        one = await call(
+            tools, "review_contract", engineering, contract_id="CT-2207", clause=clause
+        )
+        assert set(one) == {"contract_id", "clause", "hidden"}  # no text from either version
+    text = json.dumps(theirs).lower()
+    for word in ("net 60", "25%", "price", "liability", "discount"):
+        assert word not in text, word
+
+
+async def test_s05_ac3_engineering_reads_only_technical_policy(tools: dict[str, Tool]) -> None:
+    engineering = ToolContext("run-1", CLOUDCO, profile="engineering")
+    hits = await call(
+        tools,
+        "search_policy",
+        engineering,
+        query="term renewal price fixed uptime payment liability discount",
+    )
+    assert {(h["policy"], h["section"]) for h in hits} <= {
+        ("standard-terms", "§4"),
+        ("approval-chart", "§1"),
+    }
+    text = json.dumps(hits).lower()
+    for word in ("net 60", "discount", "liability", "cfo", "price"):
+        assert word not in text, word
+    assert "99.95%" in text  # the uptime rule and who approves it are still there
+    sales = await call(tools, "search_policy", SALES, query="payment liability")
+    assert any(h["section"] == "§3" for h in sales)  # Sales is unchanged

@@ -24,7 +24,8 @@ def test_s02_ac10_the_files_are_there(cloudco: Workspace) -> None:
         "AGENTS.md",
         "teams/sales.md",
         "teams/engineering.md",
-        "skills/company/contract-review/SKILL.md",
+        "skills/sales/contract-review/SKILL.md",
+        "skills/engineering/technical-review/SKILL.md",
         "skills/sales/reply-to-customer/SKILL.md",
         "skills/engineering/uptime-check/SKILL.md",
         "policies/standard-terms.md",
@@ -39,7 +40,7 @@ def test_s02_ac10_the_files_are_there(cloudco: Workspace) -> None:
     ("profile", "skills"),
     [
         ("sales", ["contract-review", "reply-to-customer"]),
-        ("engineering", ["contract-review", "uptime-check"]),
+        ("engineering", ["technical-review", "uptime-check"]),  # D-107
     ],
 )
 def test_s02_ac10_each_profile_gets_its_skills(

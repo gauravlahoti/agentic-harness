@@ -841,3 +841,10 @@
 - **Instead of:** a firmer prompt rule (Haiku already ignored the softer one), or leaving contract text visible
 - **Because:** found live: the reviewer returned ShopCo's payment terms to Engineering as plain text; field masking (D-76) only covers structured fields
 - **Cost:** each workspace tool must filter its own free text; a new tool that returns text needs the same care
+
+### D-107 · Engineering sees only technical clauses, and has its own review skill
+✅ Accepted · S05 · your picks ("technical only", "own technical skill")
+- **Chose:** an allow-list instead of D-106's deny-list. In a contract, Engineering sees sections 5 The services, 6 Service levels, 7 Support, 8 Data protection, and appendices A and B; everything else is left out with one neutral note ("Only technical clauses are shown to Engineering; Sales handles the rest": no count, no topics). In policy, it reads standard-terms §4 and the uptime line of approval-chart §1. Engineering gets a `technical-review` skill; the full `contract-review` moves to Sales
+- **Instead of:** hiding fees and payment only (term, price locks, liability and payment rules from the policy still reached Engineering, found live)
+- **Because:** spec/01-company.md: Engineering answers technical questions and approves uptime up to our record; prices, payment and the commercial review are Sales'
+- **Cost:** a new contract section must be added to the allow-list to reach Engineering

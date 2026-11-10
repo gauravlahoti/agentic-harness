@@ -130,7 +130,7 @@ def test_s04_ac11_harness_endpoint_shows_what_a_run_gets(tmp_path: Path) -> None
     body = web.get("/api/harness", params={"profile": "engineering"}).json()
     assert body["profile"] == "engineering"
     assert [f["path"] for f in body["context"]["files"]] == ["AGENTS.md", "teams/engineering.md"]
-    assert {s["name"] for s in body["skills"]} == {"contract-review", "uptime-check"}
+    assert {s["name"] for s in body["skills"]} == {"technical-review", "uptime-check"}
     tools = {t["name"]: t for t in body["tools"]}
     assert tools["send_to_customer"]["risk"] == "action"
     assert tools["review_contract"]["delegate_only"] is True

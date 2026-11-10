@@ -17,7 +17,7 @@ notes = true
 memory = ["AGENTS.md", "teams/{profile}.md"]
 
 # One line per skill in the prompt; load_skill reads the rest. Each profile sees its own folder.
-skills = ["skills/company", "skills/{profile}"]
+skills = ["skills/{profile}"]  # each team its own (D-107): Sales reviews and replies, Engineering checks technical clauses
 
 memory_budget_tokens = 2000
 
