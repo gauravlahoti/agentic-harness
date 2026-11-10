@@ -689,3 +689,11 @@
 - **Instead of:** `thinking_budget` (a token count; not recommended on Gemini 3.x, an error on Gemini 4), or also offering `minimal`
 - **Because:** `thinking_level` is the documented control; `minimal` is missing on some models, so a 4th choice could fail with a 400
 - **Cost:** higher effort costs more thinking tokens (billed as output); small models may call more tools at high effort
+
+### D-86 · Company logo and an agent menu at the top; the harness mark moves
+✅ Accepted · UI · your request
+- **Chose:** `logo = "logo.svg"` in `workspace.toml` (a small .svg or .png inside the workspace, served read-only at `/api/workspace/logo`); the sidebar shows logo + company name, then a menu of the company's agents (one entry today: the page builds it from `agents` in `/api/health`). The loop mark moved to the Harness pane's title; "agentic-harness" is now a plain "powered by" line in the sidebar footer
+- **Instead of:** the harness name and mark at the top, with the agent as plain text
+- **Because:** the top of the page should say whose agents these are; the mark belongs where the harness is shown
+- **Cost:** the menu cannot switch yet: the server runs one workspace, so a second agent needs the server to host several (a later change)
+- **Revisit if:** a second agent is added to CloudCo

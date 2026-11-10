@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CloudCo logo (fictional)">
+  <defs>
+    <linearGradient id="sky" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f8bff"/>
+      <stop offset="0.55" stop-color="#6a5cff"/>
+      <stop offset="1" stop-color="#b06bff"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- rounded tile -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#sky)"/>
+  <rect x="2" y="2" width="60" height="30" rx="16" fill="url(#shine)"/>
+  <!-- the cloud: three lobes on a flat base -->
+  <path d="M20 43a8 8 0 0 1-.9-15.9A11 11 0 0 1 40.4 25 9.5 9.5 0 0 1 44 43Z" fill="#fff"/>
+  <!-- a small signal arc: the "Co" connecting -->
+  <path d="M26 36.5a8 8 0 0 1 12 0" fill="none" stroke="url(#sky)" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="32" cy="38.6" r="1.9" fill="url(#sky)"/>
+</svg>

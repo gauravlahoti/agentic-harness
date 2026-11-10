@@ -219,3 +219,31 @@ def test_s05_effort_is_offered_checked_and_reaches_the_model(tmp_path: Path) -> 
     )
     assert built
     assert built[-1].thinking == "low"
+
+
+def test_s05_workspace_logo_and_agent_menu(tmp_path: Path) -> None:
+    web = client(tmp_path, workspace=CLOUDCO)
+    workspace = web.get("/api/health").json()["workspace"]
+    assert workspace["logo"] is True
+    assert workspace["agents"] == [{"id": "cloudco", "name": "Contract Agent"}]
+    logo = web.get("/api/workspace/logo")
+    assert logo.status_code == 200
+    assert logo.headers["content-type"] == "image/svg+xml"
+    assert b"fictional" in logo.content  # all CloudCo material is labelled made up
+    assert client(tmp_path, workspace=HELLO).get("/api/workspace/logo").status_code == 404
+
+
+def test_s05_a_logo_must_be_a_small_picture_inside_the_workspace(tmp_path: Path) -> None:
+    import pytest
+
+    from agentic_harness.workspace import WorkspaceError
+
+    (tmp_path / "workspace.toml").write_text('logo = "../outside.svg"\n')
+    with pytest.raises(WorkspaceError, match="inside the workspace"):
+        Workspace.load(tmp_path)
+    (tmp_path / "workspace.toml").write_text('logo = "missing.svg"\n')
+    with pytest.raises(WorkspaceError, match="not found"):
+        Workspace.load(tmp_path)
+    (tmp_path / "workspace.toml").write_text('logo = "notes.txt"\n')
+    with pytest.raises(WorkspaceError, match="inside the workspace"):
+        Workspace.load(tmp_path)

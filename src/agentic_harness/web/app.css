@@ -68,8 +68,13 @@ body {
   border-right: 1px solid var(--line);
   background: var(--surface);
 }
-.brand { font-weight: 650; font-size: 16px; }
-.workspace { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.org { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.org-logo { width: 40px; height: 40px; border-radius: 11px; flex: none; box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+.org-name { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.agent-box { margin: 0 0 14px -4px; }
+.agent-pick { color: var(--text); font-weight: 600; }
+.agent-pick::picker(select) { position-area: block-end span-inline-end; transform-origin: top left; min-width: 210px; }
+.agent-pick .agent-mark { width: 15px; height: 15px; color: var(--accent); }
 .nav-item {
   padding: 6px 10px;
   border-radius: 8px;
@@ -279,7 +284,8 @@ progress {
   max-width: 780px;
   margin: 0 auto;
 }
-.brand-mark { width: 16px; height: 16px; vertical-align: -2px; color: var(--accent); }
+.brand-mark { width: 15px; height: 15px; vertical-align: -2px; color: var(--accent); margin-right: 2px; }
+.powered { font-weight: 600; }
 
 .thread { flex: 1; display: flex; flex-direction: column; gap: 34px; padding: 8px 0 28px; }
 
@@ -464,14 +470,26 @@ details[open] > summary .chev { rotate: 180deg; }
 .run-meta { margin: 10px 0 0; }
 .run-meta:empty { display: none; }
 /* ── Run summary under the final answer: one quiet line ─────────────────────── */
-.receipt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12px; color: var(--muted); }
-.receipt-grid { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
-.receipt-cell { display: inline-flex; align-items: baseline; gap: 4px; }
-.receipt-num { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.receipt {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--muted);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+.receipt-grid { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.receipt-cell { display: inline-flex; align-items: baseline; gap: 5px; }
+.receipt-num { color: var(--text); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .receipt-label { text-transform: lowercase; }
 /* Where the tokens went: read / written / thinking, as a thin bar. Numbers on hover. */
-.receipt-bar { display: flex; gap: 2px; width: 96px; height: 4px; }
-.seg { min-width: 3px; border-radius: 2px; transform-origin: left; }
+.receipt-bar { display: flex; gap: 2px; width: 110px; height: 6px; }
+.seg { min-width: 4px; border-radius: 3px; transform-origin: left; }
 .seg-in { background: color-mix(in srgb, var(--accent) 45%, var(--surface)); }
 .seg-out { background: var(--accent); }
 .seg-think { background: linear-gradient(90deg, #b06bff, #ff7ab8); }

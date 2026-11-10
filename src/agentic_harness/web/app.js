@@ -172,7 +172,7 @@ function setUpAgent() {
   }
   // Every name and example comes from the workspace: the page knows no agent (D-40).
   agentName = ws.title;
-  $("workspace-name").textContent = ws.owner ? `${ws.title} · ${ws.owner}` : ws.title;
+  setUpOrg(ws);
   $("empty-title").textContent = `What should the ${ws.title} do?`;
   $("empty-hint").textContent = "";
   setUpProfilePicker(ws);
@@ -212,6 +212,24 @@ function modelLabel(id) {
 // Profiles (D-39): whose view the agent works for. Same menu style as the model menu.
 // Switching starts a fresh thread, because each profile gets different context.
 const profileKey = (ws) => `profile:${ws.name}`;
+
+// Top of the sidebar: the company (name and logo), then a menu of its agents. All from the
+// workspace; one agent per workspace for now, so the menu has one entry (D-86).
+function setUpOrg(ws) {
+  $("org-name").textContent = ws.owner || ws.title;
+  const logo = $("org-logo");
+  logo.hidden = !ws.logo;
+  if (ws.logo) logo.src = "/api/workspace/logo";
+  const pick = $("agent-pick");
+  for (const old of pick.querySelectorAll("option")) old.remove();
+  for (const agent of ws.agents ?? []) {
+    const option = el("option");
+    option.value = agent.id;
+    option.append(fromTemplate("tpl-mark"), el("span", null, agent.name));
+    pick.append(option);
+  }
+  pick.value = ws.name;
+}
 
 function setUpProfilePicker(ws) {
   const pick = $("profile"); // stays as the one source of the value; the cards below drive it

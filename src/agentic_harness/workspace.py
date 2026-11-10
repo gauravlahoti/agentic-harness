@@ -52,6 +52,7 @@ class Workspace:
     name: str  # the folder's name
     title: str = ""  # what the page shows; the folder's name if not set
     owner: str = ""
+    logo: str = ""  # a small .svg or .png in the workspace folder, shown at the top of the page
     tools: tuple[Tool, ...] = ()
     memory: tuple[str, ...] = ()
     skill_dirs: tuple[str, ...] = ()
@@ -97,6 +98,7 @@ class Workspace:
             name=path.name,
             title=_text(config, "name") or path.name,
             owner=_text(config, "owner"),
+            logo=_logo(path, _text(config, "logo")),
             tools=tools,
             memory=_texts(config, "memory"),
             skill_dirs=_texts(config, "skills"),
@@ -170,6 +172,24 @@ def _read_toml(file: Path) -> dict[str, Any]:
         return tomllib.loads(file.read_text())
     except tomllib.TOMLDecodeError as error:
         raise WorkspaceError(f"workspace.toml: {error}") from None
+
+
+LOGO_TYPES = {".svg": "image/svg+xml", ".png": "image/png"}
+MAX_LOGO_BYTES = 200_000
+
+
+def _logo(root: Path, name: str) -> str:
+    """The logo's file name if it is a small .svg or .png inside the workspace; "" if none."""
+    if not name:
+        return ""
+    file = (root / name).resolve()
+    if root.resolve() not in file.parents or file.suffix.lower() not in LOGO_TYPES:
+        raise WorkspaceError("workspace.toml: logo must be an .svg or .png inside the workspace.")
+    if not file.is_file():
+        raise WorkspaceError(f"workspace.toml: logo {name!r} not found.")
+    if file.stat().st_size > MAX_LOGO_BYTES:
+        raise WorkspaceError(f"workspace.toml: logo {name!r} is over {MAX_LOGO_BYTES // 1000} KB.")
+    return name
 
 
 def _text(config: dict[str, Any], key: str) -> str:

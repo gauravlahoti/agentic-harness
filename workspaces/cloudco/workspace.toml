@@ -4,6 +4,7 @@
 
 name = "Contract Agent"
 owner = "CloudCo"
+logo = "logo.svg"  # a made-up mark, shown at the top of the page
 
 # Always in the prompt, in this order. {profile} picks the active profile's file.
 memory = ["AGENTS.md", "teams/{profile}.md"]

@@ -32,7 +32,7 @@ from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.runs import stream_run
-from agentic_harness.workspace import Workspace, WorkspaceError
+from agentic_harness.workspace import LOGO_TYPES, Workspace, WorkspaceError
 
 WEB_DIR = Path(agentic_harness.__file__).parent / "web"
 PROJECT_ROOT = Path(agentic_harness.__file__).resolve().parents[2]  # src/ layout → repo root
@@ -122,6 +122,14 @@ def create_app(
         # Browsers ask for this path on their own; answer instead of logging a 404.
         return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml")
 
+    @app.get("/api/workspace/logo")
+    async def workspace_logo() -> FileResponse:
+        """The workspace's logo, if it declares one. Read-only, and only that one file."""
+        if workspace is None or not workspace.logo:
+            raise HTTPException(404, "No logo.")
+        file = workspace.path / workspace.logo
+        return FileResponse(file, media_type=LOGO_TYPES[file.suffix.lower()])
+
     @app.get("/api/health")
     async def health() -> dict[str, object]:
         # "missing" is not an error: offline work never needs the key (S00-AC12, AC15).
@@ -138,6 +146,10 @@ def create_app(
                 "name": workspace.name,
                 "title": workspace.title,
                 "owner": workspace.owner,
+                "logo": bool(workspace.logo),
+                # One agent per workspace folder for now; the page lists them as a menu so a
+                # company with several is one more entry, not a redesign.
+                "agents": [{"id": workspace.name, "name": workspace.title}],
                 "tools": [tool.name for tool in workspace.tools],
                 "profiles": [{"id": p.id, "label": p.label} for p in workspace.profiles],
                 "examples": list(workspace.examples),
