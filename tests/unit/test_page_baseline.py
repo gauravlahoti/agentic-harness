@@ -92,3 +92,8 @@ def test_s05_ac10_ac12_ac13_guardrails_on_the_page() -> None:
 
 def test_s05_ac12_approval_card_scrolls_above_the_input_box() -> None:
     assert "scroll-margin-bottom" in CSS  # the docked composer must not cover Approve
+
+
+def test_s05_ac14_scope_guard_on_the_page() -> None:
+    assert '"scope_checked"' in JS
+    assert "Outside scope" in JS

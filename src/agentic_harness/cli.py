@@ -144,6 +144,13 @@ def print_event(event: Event) -> None:
             )
         for warning in context.get("warnings", []):
             print(f"  ⚠ {warning}")
+    elif event.type == "scope_checked":
+        if not d["in_scope"]:
+            print(f"  ⛔ outside scope: {d['reason']}")
+        elif d.get("error"):
+            print("  · scope check skipped (busy); the prompt still keeps it on topic")
+        else:
+            print("  ✓ in scope")
     elif event.type == "model_called":
         print(f"  → asking the model (call {d['step']})")
     elif event.type == "model_replied":

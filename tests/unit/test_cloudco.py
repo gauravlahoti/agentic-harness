@@ -69,3 +69,11 @@ def test_s02_ac11_instructions_ask_for_the_answer_format(cloudco: Workspace) -> 
     system = build_context(cloudco, "sales").system
     for heading in ("**Summary**", "**Needs a human decision**", "**Sources**"):
         assert heading in system
+
+
+def test_s05_ac14_cloudco_declares_its_scope(cloudco: Workspace) -> None:
+    assert cloudco.scope is not None
+    assert "contracts" in cloudco.scope.covers
+    assert "Contract Assistant" in cloudco.scope.refusal
+    assert cloudco.scope.model == "gemini-3.5-flash-lite"
+    assert "## Scope" in build_context(cloudco, "sales").system

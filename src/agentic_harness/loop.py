@@ -31,6 +31,7 @@ from agentic_harness.gate import ApprovalRequest, Gate
 from agentic_harness.limits import Budget, Limits
 from agentic_harness.model import ModelClient, ModelError, Step
 from agentic_harness.pricing import Prices
+from agentic_harness.scope import Scope, ScopeCheck
 from agentic_harness.tools import Tool, ToolContext
 from agentic_harness.tools.registry import call_tool
 
@@ -49,6 +50,7 @@ Outcome = Literal["completed", "stopped", "failed"]
 # A person's answer to an approval request: (approved, note). The server and CLI supply one.
 Approver = Callable[[ApprovalRequest], Awaitable[tuple[bool, str]]]
 APPROVAL_TIMEOUT = 600.0  # seconds; no answer counts as "no" (D-79)
+SCOPE_CHECK_SECONDS = 15.0  # the scope check is small; a stuck one must not hold the run
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,12 +84,15 @@ class Harness:
         off: dict[str, list[str]] | None = None,
         gate: Gate | None = None,
         approver: Approver | None = None,
+        scope: Scope | None = None,
+        scope_check: ScopeCheck | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
         self.off = off or {}  # what was switched off for this harness (D-72)
         self.gate = gate  # what this profile may use, see, never do, and must ask for (S05)
         self.approver = approver  # who answers "may I?"; none means no (D-79)
+        self.scope, self.scope_check = scope, scope_check  # stay on the job (D-81)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -142,6 +147,26 @@ class Harness:
                 seconds=result.seconds,
             )
             return result
+
+        # The scope guard runs once, before the loop: off-topic tasks never start (D-81).
+        if self.scope_check is not None:
+            try:
+                async with asyncio.timeout(min(SCOPE_CHECK_SECONDS, budget.seconds_left())):
+                    verdict = await self.scope_check(task)
+            except Exception as error:  # a busy check must not block real work
+                run.emit("scope_checked", in_scope=True, reason="", usd=0.0, error=f"{error}"[:300])
+            else:
+                budget.charge(verdict.usd)
+                run.emit(
+                    "scope_checked",
+                    in_scope=verdict.in_scope,
+                    reason=verdict.reason,
+                    usd=verdict.usd,
+                )
+                if not verdict.in_scope:
+                    return finish(
+                        "stopped", "outside_scope", self.scope.refusal if self.scope else ""
+                    )
 
         while (limit := budget.exceeded()) is None:
             budget.count_step()

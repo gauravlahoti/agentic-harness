@@ -20,6 +20,7 @@ from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
 from agentic_harness.model import ModelClient
 from agentic_harness.pricing import Prices, load_prices
+from agentic_harness.scope import scope_check
 from agentic_harness.skills import load_skill_tool
 from agentic_harness.subagents import (
     MAX_CHILD_STEPS,
@@ -112,6 +113,13 @@ def create_harness(
 
         tools.append(delegate_tool(helpers, make_child))
     _check_unique(tools)
+    check = None
+    if workspace.scope:  # one small call per task, before the loop (D-81)
+        check_model = model
+        if workspace.scope.model and workspace.scope.model != model.name and model_factory:
+            prices.for_model(workspace.scope.model)
+            check_model = model_factory(workspace.scope.model)
+        check = scope_check(workspace.scope, check_model, prices)
     harness = Harness(
         model,
         limits,
@@ -124,6 +132,8 @@ def create_harness(
         off=off.summary(),
         gate=gate,
         approver=approver,
+        scope=workspace.scope,
+        scope_check=check,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
@@ -195,6 +205,11 @@ def describe_harness(
         # Guardrails in three parts (S05): Permissions, Never allowed, Human in the loop.
         "guardrails": {
             **workspace.gate(profile).summary(tools),
+            "scope": (
+                {"covers": workspace.scope.covers, "refusal": workspace.scope.refusal}
+                if workspace.scope
+                else None
+            ),
             "writes": ["tasks/<run-id>/", "outbox/"],
             "protected": [
                 "workspace.toml",

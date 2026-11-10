@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agentic_harness.loop import SYSTEM_PROMPT
+from agentic_harness.scope import scope_prompt
 from agentic_harness.skills import Skill
 from agentic_harness.workspace import MemoryFile, Workspace
 
@@ -66,6 +67,8 @@ def build_context(
     skills = [s for s in workspace.skills(profile) if s.name not in skip_skills]
 
     parts = [SYSTEM_PROMPT]
+    if workspace.scope:
+        parts.append(scope_prompt(workspace.scope))  # what the agent is for (D-81)
     parts += [f"## From {f.path}\n\n{f.text.strip()}" for f in files]
     if skills:
         lines = [f"- {s.name}: {s.description} ({s.source})" for s in skills]

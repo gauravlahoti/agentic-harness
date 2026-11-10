@@ -28,6 +28,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versions fol
 - Harness pane: Agentic Loop · Context · Tools · Guardrails · Memory, in plain words; switches remove skills, tools or sub-agents for the next run (`GET /api/harness`, `off` in the run request).
 
 ### Added (S05)
+- Scope guard: `[scope]` in `workspace.toml` adds a Scope section to the prompt and a quick check before each run; off-topic requests get a polite refusal and never start the loop (D-81).
 - The gate (`gate.py`): tools per profile (hidden and blocked), hidden fields per profile, "never" rules on offer fields, flags for instruction-like text, and human approval for `send_to_customer` (⏸ card with Approve / Reject on the page; y/N in the CLI; the wait doesn't count toward the time limit).
 - Guardrails in the Harness pane: Allowed · Not allowed · Human in the loop.
 

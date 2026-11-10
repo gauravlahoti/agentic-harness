@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S05 verified · fixing: off-topic questions get answered · S04 verified except AC10 · S02 verified · S00 and S01 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 69 built · 43 verified · 112 total
+> **Now:** scope guard built (S05-AC14), waiting for your check · S04 verified except AC10 · S02 verified · S00 and S01 built, verification waived for now
+> **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -25,7 +25,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S02](spec/stages/S02-context.md) | Context | ✅ | 12/12 | 12/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 🟨 | 10/11 | 6/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 🟨 | 12/13 | 12/13 | 1 |
-| [S05](spec/stages/S05-permissions.md) | Permissions | ✅ | 13/13 | 13/13 | 1 |
+| [S05](spec/stages/S05-permissions.md) | Permissions | 🟨 | 14/14 | 13/14 | 1 |
 | [S06](spec/stages/S06-approvals.md) | Approvals | 📝 | 0/12 | 0/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 📝 | 0/10 | 0/10 | 1 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
@@ -140,6 +140,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC11 | Live: the same question as Sales and as Engineering gives 2 different, correct answers | 🔑 👀 | ✅ | `make live`: `test_s05_ac11_two_profiles_two_answers` passed (Sales sees $480,000; Engineering is told it's hidden) |
 | AC12 | `send_to_customer` waits for a person: approve runs it, reject sends the reason back; the wait doesn't count toward the time limit | 🧪 👀 | ✅ | `test_gate_loop.py::test_s05_ac12_*` (5): approve runs, reject returns the reason, no approver = no, the wait doesn't use the time limit · Chrome: real Approve click → outbox file, run completed in 6.1 s |
 | AC13 | Harness pane: Guardrails shows Permissions, Never allowed, Human in the loop for the current profile | 👀 | ✅ | Chrome: Guardrails = green Allowed · red Not allowed (tools, hidden data, locked files, hard limits with § badges) · amber Human in the loop |
+| AC14 | Questions outside the workspace's scope are refused before the loop runs (and the scope is in the prompt) | 🧪 🔑 | 🟨 | `test_scope.py::test_s05_ac14_*` (4) + CloudCo/page tests · `make live` 3/3: "prime minister" and "a poem" refused (0 loop calls, ~$0.00005, ~2 s); an uptime question still answered · Chrome: ⛔ Outside scope line + polite reply |
 
 ### S06 · Approvals
 
@@ -233,3 +234,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You approved S05 ("go ahead with the build") with changes: two profiles (D-74), human approval for `send_to_customer` now (D-79), Guardrails pane in three parts. S05-AC1–AC13 → 🟦. Choices D-75–D-80. |
 | 2026-11-10 | S05-AC1–AC13 → 🟨: 220 offline tests; live AC11 passed; Approve tested with a real click. Found and fixed: the input box covered the Approve button. Guardrails pane redesigned as three colour-coded cards at your request. |
 | 2026-11-10 | You verified S05 ("s5 looks good to me"): S05-AC1–AC13 → ✅. Tagged `stage-5`. Your report: an off-topic question ("who is the prime minister of India") was answered; a scope guardrail is needed. |
+| 2026-11-10 | You chose "prompt + input check" for the scope guard (D-81). S05-AC14 added → 🟦. |
+| 2026-11-10 | S05-AC14 → 🟨: off-topic tasks refused before the loop (prompt + Flash-Lite check, D-81); 227 offline tests, 3 live tests passed. |

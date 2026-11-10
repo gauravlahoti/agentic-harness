@@ -159,6 +159,7 @@ const REASONS = {
   step_limit: "hit the step limit",
   cost_limit: "hit the cost limit",
   time_limit: "hit the time limit",
+  outside_scope: "outside this assistant's job",
   output_limit: "the answer was cut off at the output limit",
 };
 let agentName = "agent";
@@ -521,6 +522,21 @@ function onEvent(ev, turn) {
         });
       }
     }
+  } else if (ev.type === "scope_checked") {
+    // The scope guard (D-81): one small check before the loop starts.
+    const out = !d.in_scope;
+    addActivity(turn, {
+      text: out ? `⛔ Outside scope · ${d.reason || "not this assistant's job"}` : d.error ? "Scope check skipped (the check model was busy)" : "Checked the request is in scope",
+      part: "guard",
+      state: out ? "error" : "done",
+      facts: [
+        ["Verdict", out ? "outside scope: refused before the agent started" : "in scope"],
+        ...(d.reason ? [["Why", d.reason]] : []),
+        ...(d.error ? [["Check failed", `${d.error} (the run went ahead; the prompt still keeps it on topic)`]] : []),
+        ["Cost", money(d.usd ?? 0)],
+      ],
+      raw: d,
+    });
   } else if (ev.type === "approval_requested") {
     turn.approvals.set(d.call_id, approvalCard(turn, d));
   } else if (ev.type === "approval_decided") {
@@ -927,11 +943,13 @@ function renderPane() {
     }),
   );
   const allowedCard = card("ok", "✓", "Allowed", `for ${g.profile}`, [
+    ...(g.scope ? [group("Topics", g.scope.covers)] : []),
     group("Tools", chips(g.allowed, "ok")),
     group("Data", g.hidden_fields.length ? "Everything except the hidden fields" : "All fields"),
     group("Writes to", chips(g.writes, "path")),
   ]);
   const notAllowedCard = card("no", "✕", "Not allowed", "blocked by the harness", [
+    ...(g.scope ? [group("Off-topic", "Refused before the agent starts, with a polite reply")] : []),
     ...(g.not_allowed.length ? [group("Tools", chips(g.not_allowed, "no"))] : []),
     ...(g.hidden_fields.length ? [group("Hidden data", chips(g.hidden_fields, "hidden"))] : []),
     group("Locked files", chips(g.protected, "locked")),

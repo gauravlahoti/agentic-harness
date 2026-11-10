@@ -651,3 +651,11 @@
 - **Because:** switches only remove (D-70); turning the gate off would add power
 - **Cost:** the red-banner demo is dropped
 - **Revisit if:** S08 demo mode
+
+### D-81 · A scope guard: in the prompt, and checked before the loop
+✅ Accepted · S05 · your report ("who is the prime minister of India" was answered)
+- **Chose:** `[scope] covers / refusal` in `workspace.toml`; the harness adds a Scope section to the system prompt *and* runs one small check (Flash-Lite) on each task before the loop; OUT → the run ends with the refusal, no tools, a ⛔ "Outside scope" line. If the check itself fails, the run goes ahead (the prompt still applies)
+- **Instead of:** the prompt alone
+- **Because:** a prompt is followed, not enforced; an input check is the common "input guardrail" pattern and stops off-topic work before it costs a loop
+- **Cost:** one tiny call per task (~$0.0002, 1–2 s); a borderline request may be refused by mistake
+- **Revisit if:** the check refuses real CloudCo questions in practice

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from agentic_harness.gate import Approval, Gate, Rule
+from agentic_harness.scope import Scope
 from agentic_harness.skills import Skill, find_skills
 from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
@@ -65,6 +66,7 @@ class Workspace:
     rules: tuple[Rule, ...] = ()  # "never" rules (D-77)
     approvals: tuple[Approval, ...] = ()  # tools that wait for a person (D-79)
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
+    scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -102,6 +104,7 @@ class Workspace:
             rules=_rules(config.get("rules", []), known_tools),
             approvals=_approvals(config.get("approvals", []), known_tools),
             flag_patterns=_texts(config, "flag_patterns"),
+            scope=_scope(config.get("scope")),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
             examples=_texts(config, "examples"),
@@ -299,3 +302,11 @@ def _approvals(table: Any, known_tools: set[str]) -> tuple[Approval, ...]:
             raise WorkspaceError(f"workspace.toml: approval for unknown tool {tool!r}.")
         approvals.append(Approval(tool=tool, because=_text(item, "because")))
     return tuple(approvals)
+
+
+def _scope(table: Any) -> Scope | None:
+    if table is None:
+        return None
+    if not isinstance(table, dict) or not _text(table, "covers") or not _text(table, "refusal"):
+        raise WorkspaceError("workspace.toml: [scope] needs text for covers and refusal.")
+    return Scope(_text(table, "covers"), _text(table, "refusal"), _text(table, "model") or None)

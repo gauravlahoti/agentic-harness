@@ -38,6 +38,7 @@ All of it is declared in `workspace.toml` and enforced by `src/agentic_harness/g
 | S05-AC11 | Live: the same question as Sales and as Engineering gives 2 different, correct answers | 🔑 👀 |
 | S05-AC12 | `send_to_customer` waits for a person: approve runs it, reject sends the reason back; the wait doesn't count toward the time limit | 🧪 👀 |
 | S05-AC13 | Harness pane: Guardrails shows Permissions, Never allowed, Human in the loop for the current profile | 👀 |
+| S05-AC14 | Questions outside the workspace's scope are refused before the loop runs (and the scope is in the prompt) | 🧪 🔑 |
 
 ## Key choices
 
@@ -61,3 +62,4 @@ All of it is declared in `workspace.toml` and enforced by `src/agentic_harness/g
 
 - 2026-11-10 · Created (v3).
 - 2026-11-10 · Brief approved (D-75–D-80) with your changes: two profiles (D-74); human approval for `send_to_customer` moved here from S06 (D-79, AC12); Guardrails pane in three parts (AC13); AC3 covers structured fields; no permissions-off switch.
+- 2026-11-10 · AC14 added after your report: an off-topic question was answered. Scope guard (D-81).
