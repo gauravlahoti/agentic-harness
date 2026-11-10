@@ -805,3 +805,25 @@
 - **Instead of:** notes, conversations and the working window mixed in one pane section
 - **Because:** people need to see what the agent keeps about their work, per profile, and be able to remove it
 - **Cost:** forgetting rewrites the facts file (the one memory file that is not append-only); the agent sees the change from its next task
+
+### D-102 · Claude as a second provider, through the same model boundary
+✅ Accepted · S09 · your request
+- **Chose:** an `AnthropicModel` next to `GeminiModel`, behind the same `create(system, steps, tools)`. It translates the loop's steps to Claude's messages (`tool_use` / `tool_result`) and back, keeps Claude's `thinking` blocks exactly as received, and maps effort to `output_config.effort`. Models: `claude-haiku-5-5`, `claude-sonnet-5-5`, priced in `pricing.toml`. SDK retries off, like D-42
+- **Instead of:** a neutral step format for both (a rewrite of every stored conversation), or Gemini only
+- **Because:** one loop, one gate, one approval channel for both; the translation lives in one file
+- **Cost:** thinking doesn't cross providers: on a switch mid-conversation the other provider's thinking steps are left out
+- **Changes:** the "Gemini only" rule in `CLAUDE.md` becomes "Gemini by default; Claude as a paid option the person picks"
+
+### D-103 · On a Claude run, small calls use Claude Haiku 5.5
+✅ Accepted · S09 · your pick
+- **Chose:** when the run's model is Claude, the helper, the off-topic check, titles and summaries use `claude-haiku-5-5` instead of their Gemini Flash-Lite setting
+- **Instead of:** keeping them on Gemini (free, but out of quota some days)
+- **Because:** a Claude run should not fail because Gemini's free quota ran out
+- **Cost:** a little more per run (Haiku: $0.10 / $0.50 per 1M tokens)
+
+### D-104 · The person pays for Claude, so nothing automatic calls it
+✅ Accepted · S09 · your instruction ("don't use it for local testing at all")
+- **Chose:** `ANTHROPIC_API_KEY` in `.env`, loaded by `config.py` only and redacted like the Gemini key. Offline tests use a recorded stand-in for the SDK; `make live` and every live test stay on Gemini; Claude runs only when the person picks it in the model menu (or names it in the CLI)
+- **Instead of:** live Claude tests
+- **Because:** every Claude call costs the person money
+- **Cost:** Claude is checked live only by the person's own runs

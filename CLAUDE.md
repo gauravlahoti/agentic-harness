@@ -33,6 +33,10 @@ A learning project: a **general agent harness** built from scratch in plain Pyth
 - Check current docs (`gcp-developer-knowledge` MCP, or the `gemini-api-dev` skill) before writing Gemini code, not memory. Record verified shapes in `docs/gemini-api-notes.md`.
 - Model names live in config only.
 
+## Claude rules (from S09, D-102–D-104)
+- Claude Haiku 5.5 / Sonnet 5.5 are a **paid, person-chosen** option. Never call Anthropic from tests, `make live`, or any check: use a recorded stand-in. Only runs the person starts use the key.
+- `anthropic` SDK only; retries off; keep `thinking` blocks exactly as received; check the `claude-api` skill before writing Claude code.
+
 ## Secrets and safety
 - Never read or print `.env`. The user fills it in. Only `src/agentic_harness/config.py` loads it.
 - The key never reaches logs, traces, exports, the page or tool results.

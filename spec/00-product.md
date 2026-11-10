@@ -190,7 +190,7 @@ Each stage adds one harness part and gives one LinkedIn episode. **Gemini never 
 | [S6](stages/S06-approvals.md) | **Approvals** | The reply goes straight to ShopCo | ⏸ CFO card; nothing is sent without a click |
 | [S7](stages/S07-memory.md) | **Memory** | Round 2 starts from zero | "The CFO approved 20% in round 1." |
 | [S8](stages/S08-demo.md) | **Proof** | — | The swap test · 75 s finale with X-ray · replay page on gauravlahoti.dev |
-| [S9](stages/S09-production.md) | **Production readiness** | A rate limit ends the run; a crash loses it | Falls back to another model; Resume picks up where it stopped; the pane answers a reviewer's questions |
+| [S9](stages/S09-production.md) | **Production readiness** | A rate limit ends the run; a crash loses it | Falls back to another model; Claude Haiku and Sonnet as a paid option; Resume picks up where it stopped; the pane answers a reviewer's questions |
 | Bonus | ADK | — | The same workspace on Google ADK, side by side |
 
 ## How we test

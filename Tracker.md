@@ -29,7 +29,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S06](spec/stages/S06-approvals.md) | Approvals | 🟨 | 11/12 | 11/12 | 1 |
 | [S07](spec/stages/S07-memory.md) | Memory | 🟨 | 10/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
-| [S09](spec/stages/S09-production.md) | Production readiness | 📝 | 0/9 | 0/9 | 1 |
+| [S09](spec/stages/S09-production.md) | Production readiness | 📝 | 0/14 | 0/14 | 1 |
 
 ## Checks
 
@@ -205,6 +205,11 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC7 | Environment shows where tools run, read/write paths, network, what persists, and says "by convention" / "not restricted" where true | 👀 | 📝 |  |
 | AC8 | State & Memory separates run state from long-term memory; Tools shows what a helper gets and doesn't | 👀 | 📝 |  |
 | AC9 | Live: with the main model out of quota, a run finishes on the fallback | 🔑 👀 | 📝 |  |
+| AC10 | Claude Haiku 5.5 and Sonnet 5.5 are in the model menu when `ANTHROPIC_API_KEY` is set; a run on either works through the same loop, tools, gate and approvals | 🧪 👀 | 📝 |  |
+| AC11 | The loop's steps translate to Claude's messages and back; Claude's thinking blocks are kept exactly as received; switching provider mid-conversation drops only the other provider's thinking | 🧪 | 📝 |  |
+| AC12 | The effort menu maps to Claude's `output_config.effort` (Auto sends nothing); each Claude call is priced from `pricing.toml` | 🧪 | 📝 |  |
+| AC13 | On a Claude run, the helper, off-topic check, titles and summaries use Claude Haiku 5.5 | 🧪 | 📝 |  |
+| AC14 | No test and no `make live` run calls Anthropic: the key is used only for runs the person starts on the page or with the CLI | 🧪 | 📝 |  |
 
 ## Product goals
 
@@ -266,3 +271,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | S07-AC1–AC9, AC11 → 🟨: 284 offline tests; Your work, trimming card, Context bar and Memory pane checked in Chrome (synthetic events). AC10 (round 2 recalls round 1) stays 🟦: live, waits for Gemini quota; `tests/live/test_live_memory.py` written. Also at your request: a one-line description under the agent's name. Walkthrough in `docs/stage-7.md`. |
 | 2026-11-10 | Gap review (your 15 questions): answered from the code; S09 · Production readiness added after S08 (model fallback, checkpoint + Resume, 7-section pane). You chose fallback + Resume, not the environment scan or per-role effort. S09-AC1–AC9 → 📝. Choices D-97–D-100. |
 | 2026-11-10 | At your request (D-101): Memory pane split into Short-term and Long-term; pruning/summarizing moved to Context → Context management; new left-lane **Memory** page lists facts per profile with Forget. 288 offline tests; checked in Chrome (sample facts seeded, then forgotten through the page). |
+| 2026-11-10 | Claude Haiku 5.5 and Sonnet 5.5 added to S09 at your request (D-102–D-104): background calls on a Claude run use Haiku (your pick); never in tests or `make live`. You put `ANTHROPIC_API_KEY` in `.env` (git-ignored; added at your request). S09-AC10–AC14 → 📝. |
