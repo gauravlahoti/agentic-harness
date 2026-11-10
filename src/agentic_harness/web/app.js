@@ -517,7 +517,7 @@ function newTurn(task) {
   const agent = el("div", "agent");
   const head = el("header", "agent-head");
   const stats = el("span", "agent-stats working", "Working…");
-  head.append(fromTemplate("tpl-mark"), el("span", "agent-name", agentName), el("span", "agent-label", "Activity"), stats);
+  head.append(el("span", "agent-name", agentName), el("span", "agent-label", "Activity"), stats);
   const activity = el("ol", "activity");
   activity.setAttribute("aria-label", "What the harness did");
   const reply = el("div", "reply");
@@ -892,7 +892,7 @@ function newLane(turn, d) {
   const box = el("div", "lane");
   const head = el("div", "lane-head");
   const stats = el("span", "lane-stats working", "Working…");
-  head.append(fromTemplate("tpl-mark"), el("span", "lane-name", d.agent), el("span", "lane-meta", ""), stats);
+  head.append(el("span", "lane-name", d.agent), el("span", "lane-meta", ""), stats);
   const activity = el("ol", "activity lane-activity");
   activity.setAttribute("aria-label", `What ${d.agent} did`);
   box.append(head, activity);

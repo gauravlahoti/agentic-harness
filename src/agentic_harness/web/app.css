@@ -335,7 +335,6 @@ progress {
 }
 
 .agent-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
-.agent-mark { width: 17px; height: 17px; color: var(--accent); flex: none; }
 .agent-name { font-weight: 650; }
 .agent-label { color: var(--muted); }
 .agent-stats {
@@ -1009,7 +1008,6 @@ body:has(#view-checks:not([hidden])) :is(.harness-pane, .pane-toggle, .lane-righ
   border-left: 2px solid color-mix(in srgb, var(--part-actions) 45%, transparent);
 }
 .lane-head { display: flex; align-items: center; gap: 7px; font-size: 12.5px; }
-.lane-head .agent-mark { width: 14px; height: 14px; color: var(--part-actions); }
 .lane-name { font-weight: 650; }
 .lane-meta { color: var(--muted); }
 .lane-stats { margin-left: auto; color: var(--muted); font-size: 12px; }
