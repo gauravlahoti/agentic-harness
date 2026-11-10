@@ -225,7 +225,7 @@ function setUpOrg(ws) {
   for (const agent of ws.agents ?? []) {
     const option = el("option");
     option.value = agent.id;
-    option.append(fromTemplate("tpl-mark"), el("span", null, agent.name));
+    option.append(el("span", null, agent.name));
     pick.append(option);
   }
   pick.value = ws.name;

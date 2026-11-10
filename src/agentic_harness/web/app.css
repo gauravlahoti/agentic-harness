@@ -74,7 +74,6 @@ body {
 .agent-box { margin: 0 0 14px -4px; }
 .agent-pick { color: var(--text); font-weight: 600; }
 .agent-pick::picker(select) { position-area: block-end span-inline-end; transform-origin: top left; min-width: 210px; }
-.agent-pick .agent-mark { width: 15px; height: 15px; color: var(--accent); }
 .nav-item {
   padding: 6px 10px;
   border-radius: 8px;
