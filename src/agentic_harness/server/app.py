@@ -259,6 +259,8 @@ def create_app(
             "model": settings.model,
             "models": priced_models,
             "efforts": ["low", "medium", "high"],
+            # What a Claude run's helper, checks and titles use (D-103), for the Harness pane.
+            "claude_small_model": CLAUDE_SMALL_MODEL if settings.has_anthropic_key else None,
             "workspace": None
             if workspace is None
             else {

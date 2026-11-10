@@ -738,11 +738,11 @@ function onEvent(ev, turn) {
     });
   } else if (ev.type === "tool_started") {
     const args = argText(d.arguments);
-    const part = d.part === "context" ? "context" : "tool";
+    const part = d.name === "delegate_task" ? "sub-agent" : d.part === "context" ? "context" : "tool";
     // load_skill is the harness's own context tool: name it for what it does.
     let label = `Tool call · ${callBrief(d.name, d.arguments)}`;
     if (d.name === "load_skill") label = `Read skill ${d.arguments?.name ?? ""}`;
-    if (d.name === "delegate_task") label = `Handed the job to ${d.arguments?.agent ?? "a helper"}`;
+    if (d.name === "delegate_task") label = `Handed the job to the ${d.arguments?.agent ?? "helper"} sub-agent`;
     const risk = part === "tool" ? d.risk : undefined;
     const row = addActivity(turn, { text: label, part, risk, raw: d });
     turn.tools.set(d.call_id, { row, args, label, name: d.name, arguments: d.arguments ?? {} });
@@ -902,7 +902,9 @@ function newLane(turn, d) {
   activity.setAttribute("aria-label", `What ${d.agent} did`);
   box.append(head, activity);
   (turn.delegateRow?.li ?? turn.activity).append(box);
-  return { box, head, stats, activity, model: null, tools: new Map(), tokens: 0, lanes: new Map() };
+  // The same counters as a main turn: onEvent fills them for the helper too (found live:
+  // a missing split crashed the page on the helper's first reply).
+  return { box, head, stats, activity, model: null, tools: new Map(), tokens: 0, lanes: new Map(), split: { input: 0, output: 0, thinking: 0 }, cached: 0, window: null, lastInput: 0 };
 }
 
 function onLaneEvent(ev, turn) {
@@ -1283,7 +1285,8 @@ function renderPane() {
       paneItem({
         kind: "subagents",
         name: a.name,
-        tags: [el("span", "pane-tag", a.model ? modelLabel(a.model) : "same model")],
+        // On a Claude run every helper uses the small Claude model (D-103).
+        tags: [el("span", "pane-tag", ($("model").value || "").startsWith("claude-") && health.claude_small_model ? modelLabel(health.claude_small_model) : a.model ? modelLabel(a.model) : "same model")],
         off: off.subagents.includes(a.name),
         detail: facts([
           ["Does", a.description],

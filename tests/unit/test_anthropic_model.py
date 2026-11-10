@@ -273,6 +273,8 @@ def test_s09_ac10_claude_is_offered_only_when_its_key_is_set(tmp_path: Path) -> 
         .json()
     )
     assert {"claude-haiku-5-5", "claude-sonnet-5-5"} <= set(with_key["models"])
+    assert with_key["claude_small_model"] == CLAUDE_SMALL_MODEL  # the pane shows helpers' model
+    assert without["claude_small_model"] is None
     refused = page(tmp_path, Settings(api_key=Secret("g")), []).post(
         "/api/run", headers=PAGE_HEADER, json={"task": "hi", "model": "claude-sonnet-5-5"}
     )

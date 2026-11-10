@@ -1337,3 +1337,6 @@ body.resizing iframe { pointer-events: none; }
 nav[aria-label="Sections"] { display: flex; flex-wrap: nowrap; gap: 2px; }
 nav[aria-label="Sections"] .nav-item { padding: 6px 9px; white-space: nowrap; }
 .claude-glyph { color: #c4683f; }
+/* A hand-off to a sub-agent: same colour as tools, its own tag. */
+.part-sub-agent .act-text { color: var(--part-actions); }
+.part-sub-agent .act-tag { color: var(--part-actions); border-color: color-mix(in srgb, var(--part-actions) 35%, transparent); }
