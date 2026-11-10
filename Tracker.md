@@ -1,7 +1,7 @@
 # Tracker
 
-> **Now:** S02 (context) built, waiting for your verification · S00 and S01 built, verification waived for now
-> **Updated:** 2026-11-10 · **Checks:** 34 built · 0 verified · 107 total
+> **Now:** S02 verified · next: S03 (tools) brief · S00 and S01 built, verification waived for now
+> **Updated:** 2026-11-10 · **Checks:** 34 built · 12 verified · 107 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
 
@@ -9,7 +9,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | | What | Unblocks |
 |---|---|---|
-| 0 | Verify S02: "Verify it yourself" in `docs/stage-2.md` | S02 → ✅, then S03 |
+| 0 | Approve the S03 (Tools) brief | S03 → 🟦 |
 | 1 | Verify S01 when convenient: "Verify it yourself" in `docs/stage-1.md` (waived to start S02) | S01 → ✅ |
 | 1b | Verify S00 when convenient: "Verify it yourself" in `docs/stage-0.md` (waived to start S01) | S00 → ✅ |
 | 2 | Remove the old `GEMINI_API_KEY` export from your shell profile (e.g. `~/.zshrc`); it overrides `.env` | Live runs from your terminal |
@@ -22,7 +22,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 |---|---|---|---|---|---|
 | [S00](spec/stages/S00-setup.md) | Scaffold and setup | 🟨 Part A + B | 15/16 | 0/16 | – |
 | [S01](spec/stages/S01-loop.md) | The loop | 🟦 | 7/13 | 0/13 | 2 |
-| [S02](spec/stages/S02-context.md) | Context | 🟦 | 12/12 | 0/12 | 1 |
+| [S02](spec/stages/S02-context.md) | Context | ✅ | 12/12 | 12/12 | 1 |
 | [S03](spec/stages/S03-tools.md) | Tools | 📝 | 0/11 | 0/11 | 1 |
 | [S04](spec/stages/S04-subagent.md) | Sub-agent | 📝 | 0/10 | 0/10 | 1 |
 | [S05](spec/stages/S05-permissions.md) | Permissions | 📝 | 0/11 | 0/11 | 1 |
@@ -76,18 +76,18 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | The harness reads `workspace.toml`: memory files, skill folders, tools file | 🧪 | 🟨 | `test_workspace.py::test_s02_ac1_*` (4): reads every field; file optional (D-41); wrong types and broken TOML are clear errors |
-| AC2 | System prompt is built in a fixed order: base → memory files → skill list | 🧪 | 🟨 | `test_context.py::test_s02_ac2_*` + `test_api.py` (4): base → memory → skills, in that order; no skills → no section and no `load_skill` |
-| AC3 | `{profile}` in a path picks the active profile's file | 🧪 | 🟨 | `test_workspace.py` + `test_api.py::test_s02_ac3_*` (5): `{profile}` picks the file; missing profile file skipped, missing fixed file an error; unknown profile refused (CLI exit 2) |
-| AC4 | Only skill names + descriptions go in the prompt; `load_skill` returns the full text | 🧪 | 🟨 | `test_skills.py` + `test_context.py::test_s02_ac4_*` (3): only `name: description` in the prompt; `load_skill` returns body + source; only visible names offered · live: "Read skill contract-review" |
-| AC5 | Skills use the open `SKILL.md` format (name, description) and are checked on load | 🧪 | 🟨 | `test_skills.py::test_s02_ac5_*` (12): name + description only, name matches folder, ≤ 1024 chars, same name twice refused |
-| AC6 | Each profile sees only its own skill folders | 🧪 | 🟨 | `test_workspace.py::test_s02_ac6_*` (2): alpha sees shared + alpha only · Chrome: Engineering gets uptime-check, CFO gets 1 skill |
-| AC7 | A memory file over its size budget gives a warning | 🧪 | 🟨 | `test_context.py::test_s02_ac7_*` (2): a file over budget gives a named warning; estimate = chars ÷ 4 |
-| AC8 | The prompt is identical on every call in a session | 🧪 | 🟨 | `test_context.py::test_s02_ac8_*` · live: `test_s02_ac11_*` checks one `prompt_id` across all calls (`77e41f5c0001` for Sales) |
-| AC9 | The domain-free test (from S00) also checks each workspace's own words, declared in its `workspace.toml` | 🧪 | 🟨 | `test_generic_harness.py::test_s02_ac9_*`: every workspace declares `domain_words`; all `src/` text files scanned (caught hello's examples in `app.js` → moved to `workspace.toml`) |
-| AC10 | CloudCo files written: `AGENTS.md`, 3 team files, 4 skills, 2 policies | 📄 | 🟨 | `test_cloudco.py::test_s02_ac10_*` (7): AGENTS.md, 3 team files, 4 skills, 2 policies; each marked fictional; every profile within budget |
-| AC11 | Answers follow: Summary → Needs a human decision → Sources | 🔑 👀 | 🟨 | `test_cloudco.py::test_s02_ac11_*` · `make live` passed on 3.5 Flash-Lite: `test_s02_ac11_answer_follows_cloudco_format` (Summary → Needs a human decision → Sources; CFO named) |
-| AC12 | Page: profile switcher, Context tags, the skill listed in Sources | 👀 | 🟨 | `test_server_run.py` + `test_context.py::test_s02_ac12_*` (3) · Chrome, Sales, 3.5 Flash-Lite: profile switcher, 2 CONTEXT lines, `skills/company/contract-review/SKILL.md` in Sources, console clean |
+| AC1 | The harness reads `workspace.toml`: memory files, skill folders, tools file | 🧪 | ✅ | `test_workspace.py::test_s02_ac1_*` (4): reads every field; file optional (D-41); wrong types and broken TOML are clear errors |
+| AC2 | System prompt is built in a fixed order: base → memory files → skill list | 🧪 | ✅ | `test_context.py::test_s02_ac2_*` + `test_api.py` (4): base → memory → skills, in that order; no skills → no section and no `load_skill` |
+| AC3 | `{profile}` in a path picks the active profile's file | 🧪 | ✅ | `test_workspace.py` + `test_api.py::test_s02_ac3_*` (5): `{profile}` picks the file; missing profile file skipped, missing fixed file an error; unknown profile refused (CLI exit 2) |
+| AC4 | Only skill names + descriptions go in the prompt; `load_skill` returns the full text | 🧪 | ✅ | `test_skills.py` + `test_context.py::test_s02_ac4_*` (3): only `name: description` in the prompt; `load_skill` returns body + source; only visible names offered · live: "Read skill contract-review" |
+| AC5 | Skills use the open `SKILL.md` format (name, description) and are checked on load | 🧪 | ✅ | `test_skills.py::test_s02_ac5_*` (12): name + description only, name matches folder, ≤ 1024 chars, same name twice refused |
+| AC6 | Each profile sees only its own skill folders | 🧪 | ✅ | `test_workspace.py::test_s02_ac6_*` (2): alpha sees shared + alpha only · Chrome: Engineering gets uptime-check, CFO gets 1 skill |
+| AC7 | A memory file over its size budget gives a warning | 🧪 | ✅ | `test_context.py::test_s02_ac7_*` (2): a file over budget gives a named warning; estimate = chars ÷ 4 |
+| AC8 | The prompt is identical on every call in a session | 🧪 | ✅ | `test_context.py::test_s02_ac8_*` · live: `test_s02_ac11_*` checks one `prompt_id` across all calls (`77e41f5c0001` for Sales) |
+| AC9 | The domain-free test (from S00) also checks each workspace's own words, declared in its `workspace.toml` | 🧪 | ✅ | `test_generic_harness.py::test_s02_ac9_*`: every workspace declares `domain_words`; all `src/` text files scanned (caught hello's examples in `app.js` → moved to `workspace.toml`) |
+| AC10 | CloudCo files written: `AGENTS.md`, 3 team files, 4 skills, 2 policies | 📄 | ✅ | `test_cloudco.py::test_s02_ac10_*` (7): AGENTS.md, 3 team files, 4 skills, 2 policies; each marked fictional; every profile within budget |
+| AC11 | Answers follow: Summary → Needs a human decision → Sources | 🔑 👀 | ✅ | `test_cloudco.py::test_s02_ac11_*` · `make live` passed on 3.5 Flash-Lite: `test_s02_ac11_answer_follows_cloudco_format` (Summary → Needs a human decision → Sources; CFO named) |
+| AC12 | Page: profile switcher, Context tags, the skill listed in Sources | 👀 | ✅ | `test_server_run.py` + `test_context.py::test_s02_ac12_*` (3) · Chrome, Sales, 3.5 Flash-Lite: profile switcher, 2 CONTEXT lines, `skills/company/contract-review/SKILL.md` in Sources, console clean |
 
 ### S03 · Tools
 
@@ -216,3 +216,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-10 | You waived S01 verification and approved the S02 brief ("proceed with stage 2"); choice 8 (Fake recordings) dropped per D-32. S02-AC1–AC12 → 🟦. Choices recorded as D-34–D-41. |
 | 2026-11-10 | Your report: runs on 3.6/3.8 Flash stuck at "Thinking" until the time limit. Cause: the SDK silently slept on a 429 "retry in 41m" (3.6 Flash free tier: 20 requests/day used up) and a 503 on 3.8 Flash. Fix (D-42): SDK retries off; the run now fails at once with Gemini's own sentence. |
 | 2026-11-10 | S02-AC1–AC12 → 🟨: 123 offline tests pass; `make live` 2/2 on 3.5 Flash-Lite; page checked in Chrome. Walkthrough in `docs/stage-2.md`. Waiting for your verification. |
+| 2026-11-10 | You verified S02 ("looks good"): S02-AC1–AC12 → ✅. Tagged `stage-2`. |
