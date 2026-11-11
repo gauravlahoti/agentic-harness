@@ -111,7 +111,8 @@ async def test_s10_ac2_cases_run_through_the_harness_with_scripted_approvals(
     tool = send["turns"][0]["tools"][0]
     assert tool["name"] == "send_to_customer"
     assert not tool["ok"]
-    assert [a["approver"] for a in tool["approvals"]] == ["CFO"]  # Sales never asked after a no
+    # From the sender up (D-120): Sales approves, then the CFO rejects, and the send stops.
+    assert [a["approver"] for a in tool["approvals"]] == ["Sales", "CFO"]
     assert send["metrics"]["guardrails"]["passed"], send["metrics"]["guardrails"]["reason"]
     assert [e["type"] for e in events][:2] == ["eval_started", "run_started"]
     assert events[-1]["type"] == "eval_finished"

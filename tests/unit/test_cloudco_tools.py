@@ -121,9 +121,13 @@ async def test_s03_ac7_actions_write_only_to_the_local_outbox(
         body="Hello ShopCo.",
     )
     written = files_under(tmp_path)
-    assert written == [sent["saved"]]
+    assert written == [sent["file"]]
     assert all(path.startswith("outbox/") for path in written)
-    assert "not sent" in sent["status"]
+    # The agent must be able to tell the person it went out (D-120): this demo's "sent"
+    # means delivered to the local outbox, never real email.
+    assert sent["status"] == "sent"
+    assert "local outbox" in sent["delivered_to"]
+    assert "no real email" in sent["delivered_to"]
 
 
 def files_under(folder: Path) -> list[str]:
@@ -204,8 +208,10 @@ def test_s05_ac12_a_reply_within_limits_waits_for_a_person() -> None:
     }
     decision = Workspace.load(CLOUDCO).gate("sales").check("send_to_customer", offer)
     assert decision.kind == "ask"
-    assert decision.approvals[-1].approver == "Sales"  # Sales sends last, always (§3)
-    assert "approval-chart §3" in decision.approvals[-1].because
+    # From the sender up (D-120): Sales first (it sends, §3), the CFO last (final sign-off).
+    assert decision.approvals[0].approver == "Sales"
+    assert "approval-chart §3" in decision.approvals[0].because
+    assert decision.approvals[-1].approver == "CFO"
 
 
 def test_s05_ac4_ac5_rules_files_cannot_be_written(tmp_path: Path) -> None:
@@ -226,13 +232,16 @@ def test_s06_ac1_cloudco_approvals_match_the_chart() -> None:
         return [a.approver for a in gate.check("send_to_customer", dict(terms)).approvals]
 
     assert who(discount_pct=10, payment_days=45) == ["Sales"]
-    assert who(discount_pct=20) == ["CFO", "Sales"]
+    assert who(discount_pct=20) == ["Sales", "CFO"]
     assert who(discount_pct=15) == ["Sales"]  # up to 15% is Sales' own call
-    assert who(payment_days=60) == ["Finance", "Sales"]
+    assert who(payment_days=60) == ["Sales", "Finance"]
     assert who(payment_days=45) == ["Sales"]
-    assert who(uptime_pct=99.95) == ["Engineering", "Sales"]
+    assert who(uptime_pct=99.95) == ["Sales", "Engineering"]
     assert who(uptime_pct=99.9) == ["Sales"]
-    assert who(liability_cap_months=24) == ["CFO", "Sales"]
+    assert who(liability_cap_months=24) == ["Sales", "CFO"]
+    # Everything at once: from the sender up to the most senior (D-120).
+    everything = who(discount_pct=20, payment_days=60, uptime_pct=99.95, liability_cap_months=24)
+    assert everything == ["Sales", "Engineering", "Finance", "CFO", "CFO"]
     assert who(liability_cap_months=12) == ["Sales"]
     assert who(discount_pct=30) == []  # never: blocked, not asked
     assert gate.check("send_to_customer", {"discount_pct": 30}).kind == "block"
@@ -256,6 +265,31 @@ async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: 
     assert "2026-11-10 14:02:11" in text
     assert "Discount over 15%" in text
     assert "Sales" in text
+
+
+async def test_s06_the_send_tool_tells_the_agent_who_approved(tmp_path: Path) -> None:
+    """D-120: after CFO, Engineering and Sales all approved, the agent said "it hasn't gone
+    out yet, a person has to approve it": the tool said "not sent" and named no one."""
+    tools = {t.name: t for t in Workspace.load(CLOUDCO).tools}
+    approvals = (
+        {"approver": "Sales", "rule": "Any message", "at": "2026-11-12 02:57:40", "note": ""},
+        {"approver": "CFO", "rule": "Liability cap", "at": "2026-11-12 02:58:02", "note": ""},
+    )
+    ctx = ToolContext("run-10", tmp_path, approvals=approvals)
+    reply = await call_tool(
+        tools["send_to_customer"],
+        {
+            "customer_id": "CUS-0042",
+            "subject": "Our reply",
+            "body": "Hi",
+            "liability_cap_months": 24,
+        },
+        ctx,
+    )
+    assert not reply.is_error, reply.output
+    assert '"status": "sent"' in reply.output
+    assert '"approved_by": ["Sales", "CFO"]' in reply.output
+    assert "not sent" not in reply.output
 
 
 async def test_s05_ac3_engineering_sees_only_technical_clauses(tools: dict[str, Tool]) -> None:

@@ -110,8 +110,32 @@ equals = true
 because = "standard-terms §5"
 
 # Human in the loop: these wait for a person to approve them (D-79).
-# Who decides (D-87, D-88). Every rule that matches is asked, in this order: the specialists
-# first (approval-chart §1), Sales last, because Sales approves every send (§3).
+# Who decides (D-87, D-88). Every rule that matches is asked, in this order: from the sender
+# up (D-120). Sales first, because Sales approves every send (approval-chart §3) and owns the
+# message; then the specialists (§1), Engineering and Finance; the CFO last, as the final
+# sign-off. Anyone who rejects stops the send.
+[[approvals]]
+tool = "send_to_customer"
+approver = "Sales"
+label = "Any message to a customer"
+because = "approval-chart §3: sending anything to the customer always needs a person"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "Engineering"
+label = "Uptime over 99.9%"
+arg = "uptime_pct"
+above = 99.9
+because = "approval-chart §1: uptime above 99.9%, up to 99.95%, needs Engineering"
+
+[[approvals]]
+tool = "send_to_customer"
+approver = "Finance"
+label = "Payment beyond Net 45"
+arg = "payment_days"
+above = 45
+because = "approval-chart §1: Net 60 needs Finance"
+
 [[approvals]]
 tool = "send_to_customer"
 approver = "CFO"
@@ -127,25 +151,3 @@ label = "Liability cap over 12 months"
 arg = "liability_cap_months"
 above = 12
 because = "approval-chart §1: a liability cap up to 24 months needs the CFO"
-
-[[approvals]]
-tool = "send_to_customer"
-approver = "Finance"
-label = "Payment beyond Net 45"
-arg = "payment_days"
-above = 45
-because = "approval-chart §1: Net 60 needs Finance"
-
-[[approvals]]
-tool = "send_to_customer"
-approver = "Engineering"
-label = "Uptime over 99.9%"
-arg = "uptime_pct"
-above = 99.9
-because = "approval-chart §1: uptime above 99.9%, up to 99.95%, needs Engineering"
-
-[[approvals]]
-tool = "send_to_customer"
-approver = "Sales"
-label = "Any message to a customer"
-because = "approval-chart §3: sending anything to the customer always needs a person"

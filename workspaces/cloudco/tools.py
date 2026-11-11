@@ -242,8 +242,10 @@ def send_to_customer(
 ) -> dict[str, str]:
     """Send a message to a customer. Use it only when the person you are helping asked you
     to send. Fill in every term the message offers (discount, payment days, uptime,
-    liability): the harness checks them against CloudCo's limits, and a person approves
-    the message before it goes. This demo never emails: it is saved to the local outbox."""
+    liability): the harness checks them against CloudCo's limits, and asks the right people
+    to approve before it goes. When it returns status "sent", it has gone: tell the person it
+    was sent and who approved it. (This demo never emails: "sent" means delivered to the
+    local outbox.)"""
     row = _customer(customer_id)
     offered = {
         "Discount": f"{discount_pct}%" if discount_pct is not None else None,
@@ -256,7 +258,7 @@ def send_to_customer(
         ),
     }
     terms = "\n".join(f"- {k}: {v}" for k, v in offered.items() if v) or "- none"
-    footer = "(Local outbox: not sent. Fictional demo.)"
+    footer = "(Demo: delivered to the local outbox instead of email. Fictional.)"
     # Who said yes, in what role and when (S06-AC10). Roles are played on the page, not logins.
     signed = (
         "\n".join(f"- {a['approver']} · {a['at']} · {a['rule']}" for a in ctx.approvals)
@@ -267,7 +269,14 @@ def send_to_customer(
         f"Approved by:\n{signed}\n\n{footer}\n"
     )
     saved = ctx.save_outbox_file(f"{ctx.run_id}-to-{row['id']}.md", text)
-    return {"saved": saved, "status": "saved to the local outbox, not sent"}
+    # Say plainly that it went, and who approved it: "not sent" here once made the agent
+    # tell the person it still needed approval, after everyone had approved (D-120).
+    return {
+        "status": "sent",
+        "delivered_to": "the local outbox (this demo sends no real email)",
+        "file": saved,
+        "approved_by": [a["approver"] for a in ctx.approvals],
+    }
 
 
 TOOLS = [lookup_customer_record, review_contract, search_policy, send_to_customer]

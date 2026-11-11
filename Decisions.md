@@ -946,3 +946,11 @@
 - **Instead of:** waiting forever; a polite Stop only; a stream tied to one page
 - **Because:** a long run on a paid judge must never fail silently or be impossible to stop
 - **Cost:** a slow but healthy judge call over 2 min counts as Not Scored; the server keeps one eval's events in memory
+
+### D-120 · Approvals go from the sender up; the send tool says it sent and who approved
+✅ Accepted · S10 · your report ("after CFO approval it asked Engineering and Sales: reverse order"; "after all the approvals it gave a generic response")
+- **Found (2026-11-12, chat):** a counter-proposal send asked CFO → Engineering → Sales (CloudCo's list was "specialists first, Sales last"). After all three approved, the tool replied "saved to the local outbox, not sent" and named no one, so the agent told you it "hasn't gone out yet, because a person has to approve it first".
+- **Chose:** CloudCo's `[[approvals]]` in order from the sender up: **Sales → Engineering → Finance → CFO** (the CFO's sign-off last); anyone who rejects stops the send. `send_to_customer` returns `status: "sent"`, where it went ("the local outbox; this demo sends no real email") and `approved_by`; its description tells the agent to say it was sent and who approved.
+- **Instead of:** specialists first, Sales last; a "not sent" status
+- **Because:** a person reads approvals as an escalation, owner first and most senior last; and the agent can only report what the tool tells it
+- **Cost:** none in the harness (CloudCo's data and tool only); the eval test that scripts "CFO rejects" now sees Sales approve first
