@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S10 · Evals built (10/11 🟨), waiting for your check and your first live `make eval` (your call: "focus on building evals first") · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S11 · Plan and Verify approved (🟦), build waits on S10 · S10 · Evals built (10/11 🟨), waiting for your check and your first live `make eval` (your call: "focus on building evals first") · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -31,6 +31,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals (built next, after S07) | 🟨 | 10/11 | 0/11 | 1 |
+| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟦 | 0/12 | 0/12 | 1 |
 
 ## Checks
 
@@ -228,6 +229,23 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC10 | Run button: dialog with estimate and what happens if Gemini runs out, live progress, Stop, one eval at a time; only the fixed command | 🧪 👀 | 🟨 | `test_server_evals.py::test_s10_ac10_*` (5): only `python -m evals.run` with checked cases, runs, priced model; Stop; one at a time · Chrome 2026-11-11: a live 2-case run filled rows and stopped on the 429 with a named reason |
 | AC11 | Live: a full eval (16 × 3) finishes; ≥ 14 of 16 cases pass | 🔑 👀 | 🟦 |  |
 
+### S11 · Plan and Verify
+
+| ID | Check | How | Status | Evidence |
+|---|---|---|---|---|
+| AC1 | `update_plan` stores the list in run state and emits `plan_updated`; helpers don't get it | 🧪 | 🟦 |  |
+| AC2 | The plan is saved as steps; Resume and replay rebuild it | 🧪 | 🟦 |  |
+| AC3 | Trimming never stubs the newest plan result | 🧪 | 🟦 |  |
+| AC4 | An answer with open items gets one reminder; the second time it finishes, the plan shown incomplete | 🧪 | 🟦 |  |
+| AC5 | Skipped needs a note, or the tool returns an error | 🧪 | 🟦 |  |
+| AC6 | VERIFY runs the workspace's checks after the draft, before `run_finished` | 🧪 | 🟦 |  |
+| AC7 | A failed check sends the failures back once; a second failure → the answer plus "Not verified" | 🧪 | 🟦 |  |
+| AC8 | CloudCo's four checks, each with a pass and a fail case | 🧪 | 🟦 |  |
+| AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 | 🟦 |  |
+| AC10 | Pane: Plan & Verify section with check switches; a switched-off check doesn't run | 🧪 👀 | 🟦 |  |
+| AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 | 🟦 |  |
+| AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 | 🟦 |  |
+
 ## Product goals
 
 | ID | Goal | Status |
@@ -308,3 +326,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | The eval with a Claude Sonnet judge stopped at the $0.50 cap after 7 of 9 tests ($0.57). Your call: the cap is now $3 (D-113 changed). |
 | 2026-11-12 | A Sonnet-judged eval froze 20+ min (no time limit on judge calls; Stop only between tests; a reload lost the run). D-119: time limits, a Stop that always works, pages follow a running eval, stall warning. You ended the stuck process. 383 offline tests, coverage 91%. |
 | 2026-11-12 | Your chat report: approvals asked CFO first and Sales last, and after all approved the agent said it still needed approval. D-120: Sales → Engineering → Finance → CFO; the send tool says "sent" and who approved. 384 offline tests. |
+| 2026-11-12 | Your report: Fable says task decomposition and self-verification are missing. You approved the S11 · Plan and Verify brief (model decides when to plan; pane + chat; code checks only). S11-AC1–AC12 → 🟦. Choices D-121–D-128. Build waits on S10: verify or waive it. |

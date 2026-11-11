@@ -954,3 +954,59 @@
 - **Instead of:** specialists first, Sales last; a "not sent" status
 - **Because:** a person reads approvals as an escalation, owner first and most senior last; and the agent can only report what the tool tells it
 - **Cost:** none in the harness (CloudCo's data and tool only); the eval test that scripts "CFO rejects" now sees Sales approve first
+
+### D-121 · The model decides when a task needs a plan
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** the model, from `update_plan`'s description ("for tasks with 3 or more distinct parts"); the harness enforces the stop rule only once a plan exists
+- **Instead of:** a classifier call before the loop; a skill that declares `plan: true`
+- **Because:** no extra call on every run; the same rule Claude Code's todo list uses
+- **Cost:** a small model may plan a light question; the eval case `light-question-no-plan` catches it
+
+### D-122 · One plan tool that rewrites the whole list
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** `update_plan(items)`: each item has text, status (open · doing · done · skipped) and a note (needed for skipped); the loop intercepts it like `ask_human`
+- **Instead of:** `write_plan` + `update_plan`
+- **Because:** one tool to explain; status changes ride along with real tool calls in the same reply
+- **Cost:** the list is resent on every update (a few dozen tokens)
+
+### D-123 · Keep the plan in view by pinning it in trimming
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** pruning never stubs the newest `update_plan` result
+- **Instead of:** rewriting the system prompt each turn; adding a note at the end of every turn
+- **Because:** the prompt stays fixed (prompt caching, S02-AC8) and nothing invented enters the history
+- **Cost:** the plan sits where it was written, not at the end
+
+### D-124 · Stop rule: one reminder, then finish
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** an answer with open items gets one note back ("2 items still open: … finish them or mark them skipped with a reason"); the second time the run finishes with the plan shown incomplete
+- **Instead of:** a hard block; no rule
+- **Because:** never loops; a skip must give a reason
+- **Cost:** a stubborn model can finish with open items (shown on the page)
+
+### D-125 · Answer checks live in the workspace
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** the workspace's `checks.py` defines checks; the harness runs them and adds one of its own ("plan complete")
+- **Instead of:** checks inside the harness
+- **Because:** the architecture rule: `src/agentic_harness/` knows no domain
+- **Cost:** each workspace writes its own checks
+
+### D-126 · Code checks only, for now
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** CloudCo's four plain-code checks: Every Change Covered, Citations Exist, Right Approver (from the same `[[approvals]]`/`[[rules]]` tables the gate uses), No False "Sent"
+- **Instead of:** adding a Flash-Lite check that flags unsupported claims
+- **Because:** free, exact, never flaky
+- **Cost:** free-text claims aren't checked; a model check can come later
+
+### D-127 · A failed check gets one retry, then the answer shows the failure
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** failures go back to the model once as a harness note (marked outside the step, so Gemini sees a normal step); a second failure → the answer goes out with a "Not verified" card
+- **Instead of:** showing failures only; retrying until it passes
+- **Because:** you always get an answer, and know when to doubt it
+- **Cost:** one more round on a failure
+
+### D-128 · Plan and Verify on the pane and in the chat
+✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
+- **Chose:** a Plan & Verify section after Agentic Loop (rules, check switches, retries) plus live To-Do and Checks cards in the chat
+- **Instead of:** the pane only; two rows under Agentic Loop
+- **Because:** the pane says what the harness will do; the chat shows what it did
+- **Cost:** one more pane section
