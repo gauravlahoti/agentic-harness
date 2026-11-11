@@ -343,4 +343,9 @@ def test_s10_ac6_plan_names_the_agents_fallback(
     assert main(["--plan", "--json", "--cases", "off-topic", "--model", model]) == 0
     plan = json.loads(capsys.readouterr().out)
     assert plan["fallback_agent"] == fallback
+    assert plan["judge"] == "gemini-3.5-flash-lite"  # the default judge (D-111)
+    # a Claude judge, picked in the dialog: no fallback, it is already the paid choice
+    assert main(["--plan", "--json", "--cases", "off-topic", "--judge", "claude-haiku-5-5"]) == 0
+    picked = json.loads(capsys.readouterr().out)
+    assert (picked["judge"], picked["fallback_judge"]) == ("claude-haiku-5-5", None)
     assert "test-claude" not in json.dumps(plan)

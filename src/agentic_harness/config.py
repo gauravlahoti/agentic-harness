@@ -28,6 +28,7 @@ DEFAULT_MODEL = "gemini-3.8-flash"  # D-07; model names live in config only
 ANTHROPIC_KEY_NAME = "ANTHROPIC_API_KEY"
 CLAUDE_PREFIX = "claude-"
 CLAUDE_SMALL_MODEL = "claude-haiku-5-5"  # a Claude run's helper, checks and titles (D-103)
+EVAL_JUDGE_MODEL = "gemini-3.5-flash-lite"  # the evals' default judge: most free quota (D-111)
 MISSING_ANTHROPIC_KEY = "No Claude key. Add ANTHROPIC_API_KEY to .env, then restart."
 DEFAULT_ENV_FILE = Path(".env")
 

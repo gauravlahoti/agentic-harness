@@ -105,6 +105,9 @@ def test_s10_ac10_run_needs_the_page_and_checks_every_input(tmp_path: Path) -> N
     bad_model = web.post("/api/evals/run", json={"model": "gpt-9"}, headers=PAGE)
     assert bad_model.status_code == 400
     assert "No price" in bad_model.json()["detail"]
+    bad_judge = web.post("/api/evals/run", json={"judge": "gpt-9"}, headers=PAGE)
+    assert bad_judge.status_code == 400
+    assert "No price" in bad_judge.json()["detail"]
     bad_case = web.post("/api/evals/run", json={"cases": ["--out=/etc"]}, headers=PAGE)
     assert bad_case.status_code == 400
     assert "Not a case ID" in bad_case.json()["detail"]
@@ -114,7 +117,12 @@ def test_s10_ac10_run_starts_only_the_fixed_command_and_streams(tmp_path: Path) 
     root = project(tmp_path)
     response = client(root).post(
         "/api/evals/run",
-        json={"cases": ["off-topic", "find-changes"], "runs": 3, "model": "gemini-3.5-flash-lite"},
+        json={
+            "cases": ["off-topic", "find-changes"],
+            "runs": 3,
+            "model": "gemini-3.5-flash-lite",
+            "judge": "gemini-3.6-flash",
+        },
         headers=PAGE,
     )
     assert response.status_code == 200
@@ -131,6 +139,8 @@ def test_s10_ac10_run_starts_only_the_fixed_command_and_streams(tmp_path: Path) 
         "3",
         "--model",
         "gemini-3.5-flash-lite",
+        "--judge",
+        "gemini-3.6-flash",
         "--cases",
         "off-topic,find-changes",
     ]
@@ -142,6 +152,7 @@ def test_s10_ac10_plan_runs_the_same_command_with_plan(tmp_path: Path) -> None:
     assert body["type"] == "plan"
     assert body["args"][-1] == "--plan"
     assert "gemini-3.8-flash" in body["args"]  # the default model when none is picked
+    assert body["args"][body["args"].index("--judge") + 1] == "gemini-3.5-flash-lite"  # D-111
 
 
 def test_s10_ac10_no_workspace_or_no_cases(tmp_path: Path) -> None:
@@ -161,6 +172,7 @@ async def test_s10_ac10_stop_ends_the_eval_and_one_runs_at_a_time(tmp_path: Path
         cases=["slow"],
         runs=1,
         model="m",
+        judge="m",
         models=["m"],
     )
     process = EvalProcess()

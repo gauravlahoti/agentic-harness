@@ -23,14 +23,23 @@
       <select class="model-pick agent-pick" id="agent-pick" name="agent"><button type="button"><selectedcontent></selectedcontent></button></select>
     </div>
     <p class="agent-desc" id="agent-desc" hidden></p>
-    <div class="profile-box" id="profile-box" hidden>
-      <label class="visually-hidden" for="profile">Profile</label>
-      <select class="profile-pick" id="profile" name="profile" hidden tabindex="-1" aria-hidden="true"></select>
-    </div>
+    <section class="profiles side-group" id="profiles" data-group="profiles" aria-labelledby="profiles-title" hidden>
+      <div class="work-head">
+        <h2 id="profiles-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="profiles-body">Profiles <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
+      </div>
+      <div class="side-body" id="profiles-body">
+        <div class="side-inner">
+          <div class="profile-box" id="profile-box" hidden>
+            <label class="visually-hidden" for="profile">Profile</label>
+            <select class="profile-pick" id="profile" name="profile" hidden tabindex="-1" aria-hidden="true"></select>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="work side-group" id="work" data-group="work" aria-labelledby="work-title" hidden>
       <div class="work-head">
-        <h2 id="work-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="work-body">Your work <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
-        <button type="button" class="work-new" id="new-task">New</button>
+        <h2 id="work-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="work-body">Chats <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
+        <button type="button" class="work-new" id="new-task">New conversation</button>
       </div>
       <div class="side-body" id="work-body">
         <div class="side-inner">
@@ -41,7 +50,7 @@
     </section>
     <section class="views side-group" data-group="views" aria-labelledby="views-title">
       <div class="work-head">
-        <h2 id="views-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="views-body">Views <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
+        <h2 id="views-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="views-body">Workspace <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
       </div>
       <div class="side-body" id="views-body">
         <div class="side-inner">
@@ -169,7 +178,14 @@
               <label><input type="radio" name="runs" value="1" checked> 1</label>
               <label><input type="radio" name="runs" value="3"> 3 (pass only if all 3 pass)</label>
             </fieldset>
-            <label class="evals-model-pick">Agent model <select id="evals-model"></select></label>
+            <div class="evals-models">
+              <label class="evals-model-pick"><span>Agent</span>
+                <select class="model-pick evals-pick" id="evals-model"><button type="button"><selectedcontent></selectedcontent></button></select>
+              </label>
+              <label class="evals-model-pick"><span>Judge</span>
+                <select class="model-pick evals-pick" id="evals-judge"><button type="button"><selectedcontent></selectedcontent></button></select>
+              </label>
+            </div>
           </div>
           <p class="evals-estimate" id="evals-estimate" aria-live="polite"></p>
           <div class="evals-dialog-actions">

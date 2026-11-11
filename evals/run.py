@@ -45,6 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cases", default="", help="comma-separated case IDs (default: all)")
     parser.add_argument("--runs", type=int, choices=RUNS, default=1)
     parser.add_argument("--model", default="", help="the agent's model (default: HARNESS_MODEL)")
+    parser.add_argument("--judge", default=JUDGE_MODEL, help=f"the judge's model ({JUDGE_MODEL})")
     parser.add_argument("--cap", type=float, default=DEFAULT_CAP_USD, help="USD for the eval")
     parser.add_argument("--json", action="store_true", help="one JSON event per line")
     parser.add_argument("--plan", action="store_true", help="say what would run; run nothing")
@@ -71,10 +72,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     settings = config.load_settings()
     model = args.model or settings.model
-    fallback = FALLBACK_JUDGE if settings.has_anthropic_key else None
-    # A Claude agent has no fallback: it is already the paid choice (D-116).
-    claude_agent = model.startswith(config.CLAUDE_PREFIX)
-    agent_fallback = FALLBACK_AGENT if fallback and not claude_agent else None
+
+    # Claude Haiku takes over when Gemini runs out, only with a Claude key; a model that is
+    # already Claude has no fallback: it is the paid choice (D-111, D-116).
+    def fallback_for(name: str, to: str) -> str | None:
+        if not settings.has_anthropic_key or name.startswith(config.CLAUDE_PREFIX):
+            return None
+        return to
+
+    judge_model = args.judge
+    fallback = fallback_for(judge_model, FALLBACK_JUDGE)
+    agent_fallback = fallback_for(model, FALLBACK_AGENT)
     if args.plan:
         est = estimate(cases, args.runs)
         emit(
@@ -93,12 +101,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ],
                 "runs": args.runs,
                 "model": model,
-                "judge": JUDGE_MODEL,
+                "judge": judge_model,
                 "fallback_judge": fallback,
                 "fallback_agent": agent_fallback,
                 "cap_usd": args.cap,
                 "estimate": est,
-                "cost": cost_range(est, model, fallback, load_prices()),
+                "cost": cost_range(
+                    est, model, judge_model, agent_fallback or fallback, load_prices()
+                ),
             }
         )
         return 0
@@ -124,10 +134,11 @@ async def _run(
         return make_model(replace(settings, model=name))
 
     try:
-        prices.for_model(model)
-        factory(model)  # no key for this model → say so now, not after the first case
+        for name in (model, args.judge):
+            prices.for_model(name)
+            factory(name)  # no key for this model → say so now, not after the first case
         judge = Judge(
-            factory(JUDGE_MODEL),
+            factory(args.judge),
             prices,
             fallback=(lambda: factory(fallback)) if fallback else None,
         )

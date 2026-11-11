@@ -246,6 +246,7 @@ function setUpProfilePicker(ws) {
   for (const old of pick.querySelectorAll("option")) old.remove();
   for (const old of box.querySelectorAll(".profile-switch")) old.remove();
   box.hidden = !ws.profiles?.length;
+  $("profiles").hidden = box.hidden; // the heading goes with the cards
   if (box.hidden) return;
   for (const profile of ws.profiles) {
     const option = el("option", null, profile.label);
@@ -1318,7 +1319,7 @@ function renderPane() {
   seeAll.href = "#memory";
   const memory = paneSection("memory", "Memory", m.notes_on ? `${plural(m.notes.length, "fact")} kept` : "this conversation only", [
     subhead("Short-term", "this conversation"),
-    el("p", "pane-note", "Each task resends the conversation so far, so the agent remembers it. Open one from Your work to carry on."),
+    el("p", "pane-note", "Each task resends the conversation so far, so the agent remembers it. Open one from Chats to carry on."),
     subhead("Long-term", "facts across conversations"),
     !m.notes_on
       ? el("p", "pane-note", "This agent doesn't keep facts between conversations.")
@@ -1703,7 +1704,7 @@ function costLabel(models, paid) {
   return claude ? "cost · Claude, paid" : "cost · Gemini free tier";
 }
 
-function hero({ passed, failed, total, headline, sub, tiles, agent, judge, when }) {
+function hero({ passed, failed, total, headline, sub, tiles, agent, judge }) {
   const box = el("div", "evals-hero");
   const words = el("div", "hero-words");
   words.append(el("h2", "hero-headline", headline), el("p", "hero-sub", sub));
@@ -1711,7 +1712,7 @@ function hero({ passed, failed, total, headline, sub, tiles, agent, judge, when 
   row.append(...tiles);
   words.append(row);
   const foot = el("dl", "hero-foot");
-  for (const [name, value] of [["Agent", agent], ["Judge", judge], ["Run", when]]) {
+  for (const [name, value] of [["Agent", agent], ["Judge", judge]]) {
     if (!value) continue;
     const item = el("div");
     item.append(el("dt", null, name), el("dd", null, value));
@@ -1744,7 +1745,6 @@ function renderEvalSummary() {
         ],
         agent: modelPath(live.firstAgent, live.agent),
         judge: modelPath(live.firstJudge, live.judge),
-        when: "now",
       }),
     );
   }
@@ -1784,7 +1784,6 @@ function renderEvalSummary() {
       ],
       agent: modelPath(agentFirst, agentNow),
       judge: modelPath(r.judge.first, r.judge.now),
-      when: r.started,
     }),
   );
   // No banner for a stop: the headline says it; the reason is one hover away.
@@ -1991,17 +1990,31 @@ const pickedRuns = () => Number($("evals-form").elements.runs.value);
 
 async function fetchPlan(cases) {
   const query = new URLSearchParams({ cases: cases.join(","), runs: pickedRuns(), model: $("evals-model").value });
+  if ($("evals-judge").value) query.set("judge", $("evals-judge").value);
   const response = await fetch(`/api/evals/plan?${query}`);
   if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
   return response.json();
 }
 
+// The same animated menu as the chat's model pill: provider mark + name, check on the pick.
+function fillModelPick(pick, models) {
+  for (const old of pick.querySelectorAll("option")) old.remove(); // keep the trigger <button>
+  for (const id of models) {
+    const option = el("option");
+    option.value = id;
+    option.append(fromTemplate(id.startsWith("claude-") ? "tpl-claude" : "tpl-spark"), el("span", null, modelLabel(id)));
+    pick.append(option);
+  }
+}
+
 async function openEvalDialog() {
   const models = health?.models ?? [];
-  const pick = $("evals-model");
-  pick.replaceChildren(...models.map((m) => Object.assign(el("option", null, modelLabel(m)), { value: m })));
-  // Claude is paid: never the eval's agent unless picked here (D-104).
-  pick.value = [$("model").value, health?.model].find((m) => m && !m.startsWith("claude-")) ?? models.find((m) => !m.startsWith("claude-")) ?? models[0];
+  const gemini = (m) => m && !m.startsWith("claude-");
+  fillModelPick($("evals-model"), models);
+  fillModelPick($("evals-judge"), models);
+  // Claude is paid: never the eval's agent or judge unless picked here (D-104).
+  $("evals-model").value = [$("model").value, health?.model].find(gemini) ?? models.find(gemini) ?? models[0];
+  $("evals-judge").value = "";
   let plan;
   try {
     plan = await fetchPlan([]);
@@ -2010,6 +2023,7 @@ async function openEvalDialog() {
     showEvalProblem(`Can't start: ${error.message}`);
     return;
   }
+  $("evals-judge").value = plan.judge; // the default judge comes from the server (D-111)
   const list = $("evals-case-list");
   list.replaceChildren();
   let group = "";
@@ -2032,7 +2046,7 @@ function showEstimate(plan) {
   $("evals-start").disabled = n === 0;
   if (!n) return void (est.textContent = "Pick at least one case.");
   est.replaceChildren(
-    el("span", null, `≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · judge ${modelLabel(plan.judge)} · cap $${plan.cap_usd.toFixed(2)}`),
+    el("span", null, `≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · cap $${plan.cap_usd.toFixed(2)}`),
     el("strong", "evals-estimate-cost", costToYou(plan)),
   );
 }
@@ -2069,7 +2083,7 @@ function liveRow(caseId) {
   return evals.live?.cases.find((c) => c.id === caseId);
 }
 
-async function startEval(cases, runs, model) {
+async function startEval(cases, runs, model, judge) {
   evals.running = true;
   $("evals-run").disabled = true;
   $("evals-live").hidden = false;
@@ -2084,7 +2098,7 @@ async function startEval(cases, runs, model) {
     const response = await fetch("/api/evals/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ cases, runs, model }),
+      body: JSON.stringify({ cases, runs, model, judge }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) {
@@ -2159,6 +2173,7 @@ async function startEval(cases, runs, model) {
 $("evals-run").addEventListener("click", openEvalDialog);
 $("evals-case-list").addEventListener("change", refreshEstimate);
 $("evals-model").addEventListener("change", refreshEstimate);
+$("evals-judge").addEventListener("change", refreshEstimate);
 for (const radio of document.querySelectorAll('#evals-form input[name="runs"]')) radio.addEventListener("change", refreshEstimate);
 $("evals-core").addEventListener("click", () => {
   for (const box of $("evals-case-list").querySelectorAll("input")) box.checked = box.dataset.core === "1";
@@ -2173,7 +2188,7 @@ $("evals-none").addEventListener("click", () => {
   refreshEstimate();
 });
 $("evals-dialog").addEventListener("close", () => {
-  if ($("evals-dialog").returnValue === "start") startEval(pickedCases(), pickedRuns(), $("evals-model").value);
+  if ($("evals-dialog").returnValue === "start") startEval(pickedCases(), pickedRuns(), $("evals-model").value, $("evals-judge").value);
 });
 $("evals-stop").addEventListener("click", async () => {
   $("evals-stop").disabled = true;
@@ -2181,7 +2196,7 @@ $("evals-stop").addEventListener("click", async () => {
   await fetch("/api/evals/stop", { method: "POST", headers: PAGE_HEADER });
 });
 
-// ── Sidebar groups fold (Your work, Views); each one's state is kept per browser ─
+// ── Sidebar groups fold (Profiles, Chats, Workspace); each one's state is kept per browser ─
 for (const group of document.querySelectorAll(".side-group")) {
   const toggle = group.querySelector(".side-toggle");
   const key = `side-collapsed-${group.dataset.group}`;

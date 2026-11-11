@@ -6,8 +6,9 @@ never imports them. It does two things only:
 - **reads** the result files the evals write (``<memory>/evals/<id>.json``) and the
   metric catalog (``evals/catalog.json``);
 - **starts one fixed command**, ``python -m evals.run --json …``, the same way the Checks
-  panel starts pytest. The page can pick cases (IDs only), runs (1 or 3) and a priced model,
-  each checked here; it can never add a flag or a path. Its lines stream back as NDJSON.
+  panel starts pytest. The page can pick cases (IDs only), runs (1 or 3), and a priced model
+  for the agent and for the judge, each checked here; it can never add a flag or a path.
+  Its lines stream back as NDJSON.
 
 An eval costs quota or money, so only one runs at a time, and Stop sends it SIGTERM: the
 eval finishes the run it is on, saves what it has, and says "Stopped by you".
@@ -22,6 +23,10 @@ import sys
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
+
+from agentic_harness.config import EVAL_JUDGE_MODEL
+
+EVAL_JUDGE = EVAL_JUDGE_MODEL  # the judge when the page picks none (D-111)
 
 CASE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,59}$")
 RESULT_ID = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{6}$")
@@ -92,18 +97,20 @@ def command(
     cases: Sequence[str],
     runs: int,
     model: str,
+    judge: str,
     models: Sequence[str],
     plan: bool = False,
 ) -> list[str]:
     """The one command the page may start, with every input checked."""
     if runs not in RUNS:
         raise EvalError("Runs must be 1 or 3.")
-    if model not in models:
-        raise EvalError(f"No price for {model!r}; pick a model from the menu.")
+    for picked in (model, judge):
+        if picked not in models:
+            raise EvalError(f"No price for {picked!r}; pick a model from the menu.")
     if bad := [c for c in cases if not CASE_ID.match(c)]:
         raise EvalError(f"Not a case ID: {bad[0]!r}.")
     args = [sys.executable, "-m", "evals.run", "--json", "--suite", str(suite), "--out", str(out)]
-    args += ["--runs", str(runs), "--model", model]
+    args += ["--runs", str(runs), "--model", model, "--judge", judge]
     if cases:
         args += ["--cases", ",".join(cases)]
     if plan:

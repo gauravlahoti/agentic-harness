@@ -10,11 +10,11 @@ Does not: run or score anything.
 from collections.abc import Sequence
 from typing import Any
 
-from agentic_harness.config import CLAUDE_PREFIX, CLAUDE_SMALL_MODEL
+from agentic_harness.config import CLAUDE_PREFIX, CLAUDE_SMALL_MODEL, EVAL_JUDGE_MODEL
 from agentic_harness.pricing import Prices
 from evals.cases import Case
 
-JUDGE_MODEL = "gemini-3.5-flash-lite"  # free tier, the most quota (D-111)
+JUDGE_MODEL = EVAL_JUDGE_MODEL  # the default; the Run dialog can pick another (D-111)
 FALLBACK_JUDGE = CLAUDE_SMALL_MODEL  # only with a Claude key; the person pays (D-104)
 FALLBACK_AGENT = CLAUDE_SMALL_MODEL  # the agent, when Gemini runs out mid-eval (D-116)
 DEFAULT_CAP_USD = 0.50  # an eval's own money limit, agent + judge (S10-AC6)
@@ -46,12 +46,13 @@ def judge_calls(case: Case) -> int:
 
 
 def cost_range(
-    est: dict[str, Any], model: str, fallback: str | None, prices: Prices
+    est: dict[str, Any], model: str, judge: str, fallback: str | None, prices: Prices
 ) -> dict[str, float]:
     """What the person pays, at least and at most (USD).
 
-    Gemini's free tier bills nothing, so a Gemini eval costs $0 while the quota lasts. At
-    most, the fallback (Claude Haiku) does every agent turn and every judge call (D-116).
+    Gemini's free tier bills nothing, so a Gemini eval costs $0 while the quota lasts; a
+    Claude agent or judge is paid from the first call. At most, the fallback (Claude Haiku)
+    does every Gemini agent turn and judge call (D-116).
     """
 
     def each(name: str, tokens: tuple[int, int]) -> float:
@@ -61,10 +62,17 @@ def cost_range(
     def agent(name: str) -> float:
         return float(est["agent_runs"]) * each(name, AGENT_TURN_TOKENS)
 
-    low = agent(model) if model.startswith(CLAUDE_PREFIX) else 0.0  # a Claude agent always pays
-    high = low
-    if fallback:
-        high = (low or agent(fallback)) + est["judge_calls"] * each(fallback, JUDGE_CALL_TOKENS)
+    def judging(name: str) -> float:
+        return float(est["judge_calls"]) * each(name, JUDGE_CALL_TOKENS)
+
+    def paid(name: str) -> bool:
+        return name.startswith(CLAUDE_PREFIX)
+
+    low_agent = agent(model) if paid(model) else 0.0
+    low_judge = judging(judge) if paid(judge) else 0.0
+    high_agent = low_agent or (agent(fallback) if fallback else 0.0)
+    high_judge = low_judge or (judging(fallback) if fallback else 0.0)
+    low, high = low_agent + low_judge, high_agent + high_judge
     return {"low": round(low, 4), "high": round(high, 4)}
 
 

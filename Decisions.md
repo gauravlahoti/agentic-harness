@@ -877,6 +877,7 @@
 - **Instead of:** DeepEval's own `GeminiModel` (its own key handling and retry policy), or Claude only
 - **Because:** one key path (`config.py`), no hidden retries (D-42), real costs, and the eval still finishes when Gemini's free quota runs out
 - **Cost:** Haiku costs a few cents per eval; two judges can score differently
+- **Changed 2026-11-12** (your request): the Run dialog picks the judge as well as the agent, in the same animated menu. Gemini 3.5 Flash-Lite stays the default (`EVAL_JUDGE_MODEL` in `config.py`); a Claude judge is paid from the first call and has no fallback
 
 ### D-112 · A case passes only if all 3 runs pass
 ✅ Accepted · S10

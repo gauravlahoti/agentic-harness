@@ -49,6 +49,7 @@ from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.evals import (
+    EVAL_JUDGE,
     EvalError,
     EvalProcess,
     catalog,
@@ -108,11 +109,12 @@ class ApprovalAnswer(BaseModel):
 
 
 class EvalRequest(BaseModel):
-    """The Run dialog's choices: case IDs, 1 or 3 runs, a priced model (S10-AC10)."""
+    """The Run dialog's choices: case IDs, 1 or 3 runs, priced agent and judge models."""
 
     cases: list[Annotated[str, Field(max_length=60)]] = Field(default_factory=list, max_length=100)
     runs: Literal[1, 3] = 1
     model: str | None = Field(default=None, max_length=100)
+    judge: str | None = Field(default=None, max_length=100)
 
 
 class RunRequest(BaseModel):
@@ -362,7 +364,7 @@ def create_app(
 
     @app.get("/api/evals/plan")
     async def evals_plan(
-        cases: str = "", runs: int = 1, model: str | None = None
+        cases: str = "", runs: int = 1, model: str | None = None, judge: str | None = None
     ) -> dict[str, object]:
         try:
             args = command(
@@ -371,6 +373,7 @@ def create_app(
                 cases=[c for c in cases.split(",") if c][:100],
                 runs=runs,
                 model=model or settings.model,
+                judge=judge or EVAL_JUDGE,
                 models=priced_models,
                 plan=True,
             )
@@ -401,6 +404,7 @@ def create_app(
                 cases=body.cases,
                 runs=body.runs,
                 model=body.model or settings.model,
+                judge=body.judge or EVAL_JUDGE,
                 models=priced_models,
             )
         except EvalError as error:

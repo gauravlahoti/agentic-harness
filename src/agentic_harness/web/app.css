@@ -1193,6 +1193,7 @@ body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane
 .side-inner { min-height: 0; overflow: hidden; }
 .side-group.collapsed .side-body { grid-template-rows: 0fr; opacity: 0; }
 .views { margin: 4px 0 10px; }
+.profiles .profile-box { margin: 8px 0 14px; }
 .views nav[aria-label="Sections"] { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .side-body, .side-chev { transition: none; } }
 .work-new {
@@ -1651,8 +1652,10 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .case-pick-turns { margin-left: auto; color: var(--muted); font-size: 11.5px; }
 .evals-dialog-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
 .evals-runs label { margin-right: 14px; font-size: 13px; }
-.evals-model-pick { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
-.evals-model-pick select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-weight: 400; }
+.evals-models { display: flex; flex-wrap: wrap; gap: 14px; }
+.evals-model-pick { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+/* The dialog's menus open downward (the chat's pill opens upward from the bottom). */
+.evals-pick::picker(select) { position-area: block-end span-inline-end; transform-origin: top left; }
 .evals-estimate-cost { display: block; margin-top: 4px; color: var(--text); font-weight: 600; }
 .evals-estimate { margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--skip) 10%, transparent); color: var(--text-soft); font-size: 13px; }
 .evals-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }

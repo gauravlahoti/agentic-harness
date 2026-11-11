@@ -142,14 +142,18 @@ def test_s10_ac6_cost_to_you_is_a_range_free_tier_to_all_claude() -> None:
 
     prices = load_prices()
     est = {"agent_runs": 10, "judge_calls": 100}
-    gemini = cost_range(est, "gemini-3.8-flash", "claude-haiku-5-5", prices)
+    flash, lite, haiku_id = "gemini-3.8-flash", "gemini-3.5-flash-lite", "claude-haiku-5-5"
+    gemini = cost_range(est, flash, lite, haiku_id, prices)
     assert gemini["low"] == 0.0  # the free tier bills nothing
     # 10 turns x (15k in, 1.5k out) + 100 calls x (3k in, 400 out), at Haiku's price
     haiku = 10 * (15_000 * 0.10 + 1_500 * 0.50) / 1e6 + 100 * (3_000 * 0.10 + 400 * 0.50) / 1e6
     assert gemini["high"] == pytest.approx(haiku, abs=1e-4)
-    assert cost_range(est, "gemini-3.8-flash", None, prices) == {"low": 0.0, "high": 0.0}
-    claude = cost_range(est, "claude-haiku-5-5", "claude-haiku-5-5", prices)
+    no_key = cost_range(est, "gemini-3.8-flash", "gemini-3.5-flash-lite", None, prices)
+    assert no_key == {"low": 0.0, "high": 0.0}
+    claude = cost_range(est, haiku_id, lite, haiku_id, prices)
     assert claude["low"] > 0  # a Claude agent is paid from the first turn
+    judge = cost_range(est, "gemini-3.8-flash", "claude-haiku-5-5", None, prices)
+    assert judge["low"] == judge["high"] > 0  # a Claude judge is paid for every call
 
 
 async def test_s10_ac6_the_judge_keeps_what_each_model_cost() -> None:
