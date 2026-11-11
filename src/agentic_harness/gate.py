@@ -37,7 +37,7 @@ FLAG_PATTERNS = (
 # The harness's own tools: reading a skill and handing a job to a helper. A profile's list
 # is about the workspace's tools; these are how the agent works at all, so they stay open.
 # (Found live in S05: the list hid them, and the agent could no longer read skills or delegate.)
-CORE_TOOLS = ("load_skill", "delegate_task", "ask_human", "save_note")
+CORE_TOOLS = ("load_skill", "delegate_task", "ask_human", "save_note", "update_plan")
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agentic_harness.model import ModelClient, Step
+from agentic_harness.planning import PLAN_TOOL
 
 OUTPUT_LIMIT_CHARS = 10_000
 STUB_START = "[cleared to save space"
@@ -75,9 +76,14 @@ def cut_output(text: str, limit: int = OUTPUT_LIMIT_CHARS) -> str:
 
 
 def prune(steps: Sequence[Step], keep_recent: int) -> tuple[list[Step], int]:
-    """Old tool results become one-line stubs. Nothing else changes, nothing is removed."""
+    """Old tool results become one-line stubs, except the newest plan (S11-AC3). Nothing else
+    changes, nothing is removed."""
     positions = [i for i, s in enumerate(steps) if s.get("type") == "function_result"]
     old = positions[: max(0, len(positions) - keep_recent)]
+    # The newest plan stays whole: it is how the agent keeps track in a long run (D-123).
+    plans = [i for i in positions if steps[i].get("name") == PLAN_TOOL]
+    if plans:
+        old = [i for i in old if i != plans[-1]]
     calls = {s.get("id"): s for s in steps if s.get("type") == "function_call"}
     out = list(steps)
     cleared = 0

@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S11 · Plan and Verify approved (🟦), build waits on S10 · S10 · Evals built (10/11 🟨), waiting for your check and your first live `make eval` (your call: "focus on building evals first") · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S11 · Plan and Verify: building · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -30,8 +30,8 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S07](spec/stages/S07-memory.md) | Memory | 🟨 | 10/11 | 0/11 | 2 |
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
-| [S10](spec/stages/S10-evals.md) | Evals (built next, after S07) | 🟨 | 10/11 | 0/11 | 1 |
-| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟦 | 0/12 | 0/12 | 1 |
+| [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
+| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟦 building | 0/12 | 0/12 | 1 |
 
 ## Checks
 
@@ -217,16 +217,16 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | 16 golden cases load and validate; a bad case names its field | 🧪 | 🟨 | `tests/evals/test_cases.py::test_s10_ac1_*` (13): 16 cases, 5 conversations; a bad field is named |
-| AC2 | Each case runs through `create_harness` with a scripted approver, its own memory folder and trace folder; multi-turn cases resend the history | 🧪 | 🟨 | `tests/evals/test_runner.py::test_s10_ac2_*` (4): real `create_harness`, scripted CFO reject, history resent, off-topic refused; sends land in the eval's workspace copy, never the real outbox |
-| AC3 | Replay: a saved trace (with a sub-agent) becomes DeepEval spans and test cases with zero model calls | 🧪 | 🟨 | `test_replay_and_checks.py::test_s10_ac3_*` (4): a saved Claude Haiku run with the clause-reviewer becomes a nested trace + test cases; zero model calls (spikes 1 and 2 also checked with the network blocked) |
-| AC4 | The 3 code metrics score pass and fail cases correctly on recorded traces | 🧪 | 🟨 | `test_replay_and_checks.py::test_s10_ac4_*` (5): tool correctness, guardrails (blocked, rejected, flagged, scope, across turns) and required words, pass and fail |
-| AC5 | The 9 judged metrics run through DeepEval with our judge; Gemini 429/503 → Claude Haiku, named per score; no usable judge → a clear stop | 🧪 | 🟨 | `test_judge_and_scoring.py::test_s10_ac5_*` (6): 9 DeepEval metrics run with the judge; Gemini 429 → Claude Haiku for the rest, named per score; no key or a 400 → the eval stops |
-| AC6 | 3 runs per case, pass only if all 3 pass; the eval's own budget cap stops it with a named reason; Gemini out of quota → the agent moves to Claude Haiku (D-116) | 🧪 | 🟨 | `test_runner.py::test_s10_ac6_*` (8): pass^3; the cap, Stop and judge failures stop it with a named reason; a Gemini 429 hands the agent to Haiku and reruns that run; Haiku out too → plain stop reason; the plan names the fallback only with a Claude key and a Gemini agent |
-| AC7 | Result JSON saved; telemetry off; DeepEval reads no `.env`; no key in any result or trace | 🧪 | 🟨 | `test_runner.py::test_s10_ac7_*` (4): result JSON with the catalog, key replaced by `***`; a subprocess shows telemetry off and `.env` not read; CLI plan and bad cases |
-| AC8 | No test calls Gemini or Anthropic; `make check` passes with coverage back to 85% | 🧪 | 🟨 | `make check`: 354 tests, coverage 91.2% (gate 85%); stand-in agent and judge only, no Gemini or Anthropic call |
-| AC9 | Evals page: summary, metrics table (Metric · What it checks · Score), case rows that open to runs and reasons, past evals; baseline test passes | 🧪 👀 | 🟨 | `test_server_evals.py::test_s10_ac9_*` (2) + `test_page_baseline.py::test_s10_ac9_ac10_*` · Chrome on :8000 with the 2026-11-11 live result: summary card, 12-row metrics table, opened case with tool calls and per-metric reasons, past evals |
-| AC10 | Run button: dialog with estimate and what happens if Gemini runs out, live progress, Stop, one eval at a time; only the fixed command | 🧪 👀 | 🟨 | `test_server_evals.py::test_s10_ac10_*` (5): only `python -m evals.run` with checked cases, runs, priced model; Stop; one at a time · Chrome 2026-11-11: a live 2-case run filled rows and stopped on the 429 with a named reason |
+| AC1 | 16 golden cases load and validate; a bad case names its field | 🧪 | ✅ | `tests/evals/test_cases.py::test_s10_ac1_*` (13): 16 cases, 5 conversations; a bad field is named |
+| AC2 | Each case runs through `create_harness` with a scripted approver, its own memory folder and trace folder; multi-turn cases resend the history | 🧪 | ✅ | `tests/evals/test_runner.py::test_s10_ac2_*` (4): real `create_harness`, scripted CFO reject, history resent, off-topic refused; sends land in the eval's workspace copy, never the real outbox |
+| AC3 | Replay: a saved trace (with a sub-agent) becomes DeepEval spans and test cases with zero model calls | 🧪 | ✅ | `test_replay_and_checks.py::test_s10_ac3_*` (4): a saved Claude Haiku run with the clause-reviewer becomes a nested trace + test cases; zero model calls (spikes 1 and 2 also checked with the network blocked) |
+| AC4 | The 3 code metrics score pass and fail cases correctly on recorded traces | 🧪 | ✅ | `test_replay_and_checks.py::test_s10_ac4_*` (5): tool correctness, guardrails (blocked, rejected, flagged, scope, across turns) and required words, pass and fail |
+| AC5 | The 9 judged metrics run through DeepEval with our judge; Gemini 429/503 → Claude Haiku, named per score; no usable judge → a clear stop | 🧪 | ✅ | `test_judge_and_scoring.py::test_s10_ac5_*` (6): 9 DeepEval metrics run with the judge; Gemini 429 → Claude Haiku for the rest, named per score; no key or a 400 → the eval stops |
+| AC6 | 3 runs per case, pass only if all 3 pass; the eval's own budget cap stops it with a named reason; Gemini out of quota → the agent moves to Claude Haiku (D-116) | 🧪 | ✅ | `test_runner.py::test_s10_ac6_*` (8): pass^3; the cap, Stop and judge failures stop it with a named reason; a Gemini 429 hands the agent to Haiku and reruns that run; Haiku out too → plain stop reason; the plan names the fallback only with a Claude key and a Gemini agent |
+| AC7 | Result JSON saved; telemetry off; DeepEval reads no `.env`; no key in any result or trace | 🧪 | ✅ | `test_runner.py::test_s10_ac7_*` (4): result JSON with the catalog, key replaced by `***`; a subprocess shows telemetry off and `.env` not read; CLI plan and bad cases |
+| AC8 | No test calls Gemini or Anthropic; `make check` passes with coverage back to 85% | 🧪 | ✅ | `make check`: 354 tests, coverage 91.2% (gate 85%); stand-in agent and judge only, no Gemini or Anthropic call |
+| AC9 | Evals page: summary, metrics table (Metric · What it checks · Score), case rows that open to runs and reasons, past evals; baseline test passes | 🧪 👀 | ✅ | `test_server_evals.py::test_s10_ac9_*` (2) + `test_page_baseline.py::test_s10_ac9_ac10_*` · Chrome on :8000 with the 2026-11-11 live result: summary card, 12-row metrics table, opened case with tool calls and per-metric reasons, past evals |
+| AC10 | Run button: dialog with estimate and what happens if Gemini runs out, live progress, Stop, one eval at a time; only the fixed command | 🧪 👀 | ✅ | `test_server_evals.py::test_s10_ac10_*` (5): only `python -m evals.run` with checked cases, runs, priced model; Stop; one at a time · Chrome 2026-11-11: a live 2-case run filled rows and stopped on the 429 with a named reason |
 | AC11 | Live: a full eval (16 × 3) finishes; ≥ 14 of 16 cases pass | 🔑 👀 | 🟦 |  |
 
 ### S11 · Plan and Verify
@@ -327,3 +327,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | A Sonnet-judged eval froze 20+ min (no time limit on judge calls; Stop only between tests; a reload lost the run). D-119: time limits, a Stop that always works, pages follow a running eval, stall warning. You ended the stuck process. 383 offline tests, coverage 91%. |
 | 2026-11-12 | Your chat report: approvals asked CFO first and Sales last, and after all approved the agent said it still needed approval. D-120: Sales → Engineering → Finance → CFO; the send tool says "sent" and who approved. 384 offline tests. |
 | 2026-11-12 | Your report: Fable says task decomposition and self-verification are missing. You approved the S11 · Plan and Verify brief (model decides when to plan; pane + chat; code checks only). S11-AC1–AC12 → 🟦. Choices D-121–D-128. Build waits on S10: verify or waive it. |
+| 2026-11-12 | You verified S10 ("S10 is good, build S11"): S10-AC1–AC10 → ✅; AC11 (live 16 × 3) stays 🟦. S11 build started. |
+| 2026-11-12 | S11 harness core built (tests first): `planning.py` (update_plan), `verify.py` (checks, Plan Complete, one retry), loop VERIFY step, trimming pins the newest plan, gate opens update_plan. `tests/unit/test_plan_verify.py` 15/15; 399 offline tests pass. Not yet: wiring in `create_harness`/workspace, CloudCo `checks.py`, pane and chat cards, eval cases. S11 checks stay 🟦 until the rest is in. |

@@ -9,6 +9,7 @@ one of these lines:
         steps += reply.steps                   # exactly as received
         if reply has no function calls: done
         steps += [run each tool, in order]     # results go back together
+    (S11) a drafted answer is checked first; a failure goes back once (VERIFY)
 
 Gemini has no "tool_use" stop reason: a reply asks for tools by containing
 ``function_call`` steps (status ``requires_action``, seen live).
@@ -30,11 +31,13 @@ from agentic_harness.events import Event, EventBus, Listener
 from agentic_harness.gate import ApprovalRequest, Gate
 from agentic_harness.limits import Budget, Limits
 from agentic_harness.model import ModelClient, ModelError, Step
+from agentic_harness.planning import PLAN_TOOL, Item, PlanError, read_items, show
 from agentic_harness.pricing import Prices
 from agentic_harness.scope import Scope, ScopeCheck
 from agentic_harness.tools import Tool, ToolContext
 from agentic_harness.tools.registry import call_tool
 from agentic_harness.trimming import Summarize, Window, estimate_tokens, fit
+from agentic_harness.verify import NOTE_PREFIX, Call, Check, Record, feedback, run_checks
 
 # Domain-free on purpose: the workspace adds who the agent is (S02).
 # Measured live (D-30): "use the tools when they help" made a small model call tools it
@@ -67,7 +70,15 @@ def last_exchange(history: Sequence[Step]) -> str:
     def text(step: Step) -> str:
         return "".join(p.get("text", "") for p in step.get("content", []) if isinstance(p, dict))
 
-    asked = next((text(s) for s in reversed(history) if s.get("type") == "user_input"), "")
+    # A harness note (S11) sits where the person's words do; it is not what they asked.
+    asked = next(
+        (
+            text(s)
+            for s in reversed(history)
+            if s.get("type") == "user_input" and not text(s).startswith(NOTE_PREFIX)
+        ),
+        "",
+    )
     said = next((text(s) for s in reversed(history) if s.get("type") == "model_output"), "")
     if not asked and not said:
         return ""
@@ -84,6 +95,7 @@ class RunResult:
     model_calls: int
     usd: float
     seconds: float
+    verified: bool | None = None  # None: no check applied (S11)
 
 
 def user_input(text: str) -> Step:
@@ -110,6 +122,8 @@ class Harness:
         window: Window | None = None,
         summarizer: Summarize | None = None,
         profile: str | None = None,
+        checks: Sequence[Check] = (),
+        retries: int = 1,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -119,6 +133,7 @@ class Harness:
         self.scope, self.scope_check = scope, scope_check  # stay on the job (D-81)
         self.window, self.summarizer = window, summarizer  # forget on purpose (S07, D-93)
         self.profile = profile  # who is asking; tools may filter by it (D-106)
+        self.checks, self.retries = tuple(checks), retries  # VERIFY (S11, D-127)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -173,7 +188,11 @@ class Harness:
             off=self.off,
         )
 
+        checked: dict[str, Any] | None = None  # the last VERIFY round, for the page
+        rounds = 0  # how many drafts were checked
+
         def finish(outcome: Outcome, reason: str, answer: str = "") -> RunResult:
+            verified = checked["passed"] if checked else None
             result = RunResult(
                 run.id,
                 outcome,
@@ -183,6 +202,7 @@ class Harness:
                 budget.steps,
                 budget.usd,
                 round(budget.elapsed(), 3),
+                verified,
             )
             run.emit(
                 "run_finished",
@@ -192,6 +212,8 @@ class Harness:
                 model_calls=budget.steps,
                 usd=budget.usd,
                 seconds=result.seconds,
+                plan=[i.to_dict() for i in run.plan] if run.plan is not None else None,
+                checks=checked,
             )
             return result
 
@@ -264,7 +286,32 @@ class Harness:
             if reply.status == "incomplete":
                 return finish("stopped", "output_limit", reply.text)
             if reply.status == "completed" and not calls:
-                return finish("completed", "answered", reply.text)
+                # VERIFY (S11): check the draft before the person sees it.
+                verdicts = run_checks(self.checks, reply.text, run.record(self.profile))
+                if not verdicts:
+                    return finish("completed", "answered", reply.text)
+                rounds += 1
+                failures = [r for r in verdicts if r.status == "failed"]
+                retrying = bool(failures) and rounds <= self.retries
+                checked = {
+                    "passed": not failures,
+                    "rounds": rounds,
+                    "results": [r.to_dict() for r in verdicts],
+                }
+                run.emit(
+                    "verify_finished",
+                    round=rounds,
+                    passed=not failures,
+                    retrying=retrying,
+                    results=checked["results"],
+                    draft=reply.text if retrying else "",
+                )
+                if not retrying:
+                    return finish("completed", "answered", reply.text)
+                note = user_input(feedback(failures))  # one retry, with the reasons (D-127)
+                steps.append(note)
+                save([note])
+                continue
             if reply.status not in ("completed", "requires_action") or not calls:
                 # Anything we don't understand ends the run loudly, never a silent loop.
                 return finish("failed", f"unexpected_status: {reply.status}")
@@ -337,6 +384,8 @@ class Harness:
                         + (f": {note}" if note else ".")
                     )
                     is_error = True
+                elif name == PLAN_TOOL:
+                    output, is_error = self._update_plan(run, arguments)  # D-122
                 elif name == "ask_human":
                     # The model asked a person a question: the loop waits for the answer (D-89).
                     output = await self._question(run, call_id or "", arguments, budget)
@@ -383,6 +432,17 @@ class Harness:
         if is_error:
             result_step["is_error"] = True
         return result_step
+
+    def _update_plan(self, run: "_Run", arguments: dict[str, Any]) -> tuple[str, bool]:
+        """Keep the newest plan in run state; send the whole list back (S11-AC1)."""
+        try:
+            items = read_items(arguments)
+        except PlanError as error:
+            return str(error), True
+        run.plan = items
+        done = sum(i.status in ("done", "skipped") for i in items)
+        run.emit("plan_updated", items=[i.to_dict() for i in items], done=done, total=len(items))
+        return show(items), False
 
     async def _pause(
         self, run: "_Run", request: ApprovalRequest, budget: Budget, **shown: Any
@@ -453,14 +513,39 @@ def _take_cost(summarizer: Summarize | None) -> float:
 
 
 class _Run:
-    """Numbers the events of one run and sends them to the listeners."""
+    """Numbers the events of one run and sends them to the listeners.
+
+    It also keeps the run's state that VERIFY reads (S11): the plan, and every tool call
+    with its result, the helpers' too (their events pass through here, D-63).
+    """
 
     def __init__(self, bus: EventBus) -> None:
         self.id = time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
         self._bus = bus
         self._seq = 0
+        self.plan: list[Item] | None = None
+        self.calls: list[Call] = []
+        self._started: dict[tuple[str, str], tuple[str, dict[str, Any]]] = {}
+
+    def record(self, profile: str | None = None) -> Record:
+        plan = tuple(self.plan) if self.plan is not None else None
+        return Record(tuple(self.calls), plan, profile)
 
     def emit(self, type_: str, **data: Any) -> None:
+        key = (str(data.get("agent_id", "")), str(data.get("call_id", "")))
+        if type_ == "tool_started":
+            self._started[key] = (str(data.get("name", "")), dict(data.get("arguments") or {}))
+        elif type_ == "tool_finished":
+            name, arguments = self._started.pop(key, (str(data.get("name", "")), {}))
+            self.calls.append(
+                Call(
+                    name,
+                    arguments,
+                    str(data.get("output", "")),
+                    bool(data.get("is_error")),
+                    str(data.get("agent", "")),
+                )
+            )
         self._seq += 1
         self._bus.emit(
             Event(type=type_, run_id=self.id, seq=self._seq, time=time.time(), data=data)
