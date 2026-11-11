@@ -59,6 +59,7 @@
             <a class="nav-item" href="#agent" data-view="agent">Agent</a>
             <a class="nav-item" href="#memory" data-view="memory">Memory</a>
             <a class="nav-item" href="#evals" data-view="evals">Evals</a>
+            <a class="nav-item" href="#golden" data-view="golden">Golden Dataset</a>
             <a class="nav-item" href="#checks" data-view="checks">Checks</a>
           </nav>
         </div>
@@ -196,6 +197,23 @@
           </div>
         </form>
       </dialog>
+    </section>
+
+    <!-- ── Golden Dataset (S10): the eval cases themselves, nothing scored ── -->
+    <section class="view view-golden" id="view-golden" aria-labelledby="golden-heading" hidden>
+      <header class="page-header golden-head">
+        <div>
+          <h1 id="golden-heading">Golden Dataset</h1>
+          <p class="golden-sub" id="golden-sub"></p>
+        </div>
+        <div class="golden-filter" role="group" aria-label="Show">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-filter="single" aria-pressed="false">Single Turn</button>
+          <button type="button" data-filter="multi" aria-pressed="false">Multi-Turn</button>
+          <button type="button" data-filter="core" aria-pressed="false">Core</button>
+        </div>
+      </header>
+      <div class="golden-list" id="golden-list"></div>
     </section>
 
     <section class="view view-checks" id="view-checks" aria-labelledby="checks-heading" hidden>

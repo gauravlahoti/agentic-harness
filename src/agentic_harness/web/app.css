@@ -1380,7 +1380,8 @@ nav[aria-label="Sections"] {
 }
 nav[aria-label="Sections"]:has([data-view="memory"][aria-current]) { --i: 1; --c: var(--part-memory); }
 nav[aria-label="Sections"]:has([data-view="evals"][aria-current]) { --i: 2; --c: var(--part-guard); }
-nav[aria-label="Sections"]:has([data-view="checks"][aria-current]) { --i: 3; --c: var(--pass); }
+nav[aria-label="Sections"]:has([data-view="golden"][aria-current]) { --i: 3; --c: var(--skip); }
+nav[aria-label="Sections"]:has([data-view="checks"][aria-current]) { --i: 4; --c: var(--pass); }
 .nav-thumb {
   position: absolute;
   inset: 4px 4px auto 4px;
@@ -1407,6 +1408,7 @@ nav[aria-label="Sections"] .nav-item {
 }
 nav[aria-label="Sections"] .nav-item[data-view="memory"] { --dot: var(--part-memory); }
 nav[aria-label="Sections"] .nav-item[data-view="evals"] { --dot: var(--part-guard); }
+nav[aria-label="Sections"] .nav-item[data-view="golden"] { --dot: var(--skip); }
 nav[aria-label="Sections"] .nav-item[data-view="checks"] { --dot: var(--pass); }
 nav[aria-label="Sections"] .nav-item::before {
   content: "";
@@ -1675,3 +1677,44 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 @media (prefers-reduced-motion: reduce) {
   .chip-fill { transition: none; }
 }
+
+/* ── Golden Dataset (S10): the eval cases as cards, grouped; nothing scored here ── */
+main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
+.golden-head { align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+.golden-sub { margin: 6px 0 0; color: var(--text-soft); font-size: 14px; max-width: 62ch; }
+.golden-filter { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.golden-filter button { padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+.golden-filter button:hover { color: var(--text); }
+.golden-filter button[aria-pressed="true"] { background: color-mix(in srgb, var(--skip) 14%, var(--surface)); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
+.golden-filter button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.golden-group-title { margin: 28px 0 10px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.golden-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.golden-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, translate 0.2s ease;
+}
+.golden-card:hover { border-color: color-mix(in srgb, var(--skip) 40%, var(--line)); box-shadow: 0 10px 28px -16px rgb(0 0 0 / 0.25); translate: 0 -1px; }
+.golden-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.golden-tags { display: flex; gap: 4px; }
+.golden-tag { padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--text-soft); font-size: 11px; }
+.golden-tag.core { border-color: color-mix(in srgb, var(--skip) 45%, var(--line)); color: var(--skip); }
+.golden-chat { display: grid; gap: 6px; }
+.golden-ask { justify-self: end; max-width: 92%; margin: 0; padding: 7px 12px; border-radius: 14px 14px 4px 14px; background: var(--bubble); font-size: 13.5px; line-height: 1.45; }
+.golden-expected { padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--pass) 8%, transparent); }
+.golden-expected p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
+.golden-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.golden-row { display: grid; gap: 4px; }
+.golden-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.golden-chip { padding: 2px 8px; border-radius: 7px; background: color-mix(in srgb, var(--line) 55%, transparent); font-size: 12px; }
+.golden-chip.tool { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--part-actions); background: color-mix(in srgb, var(--part-actions) 10%, transparent); }
+.golden-chip.good { color: var(--pass); background: color-mix(in srgb, var(--pass) 10%, transparent); }
+.golden-chip.bad { color: var(--fail); background: color-mix(in srgb, var(--fail) 9%, transparent); }
+.golden-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .golden-card, .golden-filter button { transition: none; } }

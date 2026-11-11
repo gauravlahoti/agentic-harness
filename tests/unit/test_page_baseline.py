@@ -119,6 +119,8 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
     assert 'id="evals-judge"' in HTML  # the judge is picked too, in the same animated menu
     assert 'id="evals-next"' in HTML  # both menus sit on the summary card, for the next run
     assert "Tests Ready to Run" in JS  # no verdict until an eval is run or opened
+    assert 'data-view="golden"' in HTML  # the golden dataset, on its own page
+    assert 'id="view-golden"' in HTML
     for heading in (">Profiles <", ">Chats <", ">Workspace <"):  # foldable sidebar groups
         assert heading in HTML
     assert "Cost to you" in JS  # what Claude may cost, before Start

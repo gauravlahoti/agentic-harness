@@ -8,6 +8,10 @@ const $ = (id) => document.getElementById(id);
 
 // ── Health: smoke row + what the Agent view can offer ───────────────────────
 let health = null;
+// The Evals and Golden Dataset pages' state; declared up here because showView() may
+// open either page before the rest of the file has run.
+const evals = { index: null, result: null, live: null, running: false, suite: [] };
+let goldenFilter = "all"; // Golden Dataset: all, single, multi or core
 
 async function loadHealth() {
   const server = $("smoke-server");
@@ -29,12 +33,13 @@ async function loadHealth() {
 
 // ── Views: Agent, Memory, Evals and Checks, chosen by the URL hash ─────────────────────────
 function showView() {
-  const view = { "#checks": "checks", "#memory": "memory", "#evals": "evals" }[location.hash] ?? "agent";
-  for (const name of ["agent", "memory", "evals", "checks"]) {
+  const view = { "#checks": "checks", "#memory": "memory", "#evals": "evals", "#golden": "golden" }[location.hash] ?? "agent";
+  for (const name of ["agent", "memory", "evals", "golden", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }
   if (view === "memory") loadFacts();
   if (view === "evals") loadEvals();
+  if (view === "golden") loadGolden();
   for (const link of document.querySelectorAll(".nav-item")) {
     if (link.dataset.view === view) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -1583,7 +1588,6 @@ async function loadFacts() {
 
 // ── Evals view (S10): summary, metrics, cases, past evals, Run ───────────────
 // The server only reads result files and starts one fixed command (D-113, D-115).
-const evals = { index: null, result: null, live: null, running: false, suite: [] };
 
 const duration = (s) => (s >= 60 ? `${Math.floor(s / 60)} m ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
 const metricInfo = (id) => evals.index?.catalog?.metrics?.[id] ?? { name: id, kind: "judge", threshold: 0 };
@@ -2006,6 +2010,94 @@ function renderEvalHistory() {
       return li;
     }),
   );
+}
+
+// ── Golden Dataset: each case as written, what "right" means, nothing scored ─
+
+async function loadGolden() {
+  if (!evals.suite.length) {
+    const plan = await fetch("/api/evals/plan").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (plan?.type === "plan") {
+      evals.suite = plan.cases;
+      evals.defaultJudge = plan.judge;
+    }
+  }
+  renderGolden();
+}
+
+// A labelled row of chips ("Must Say: 2.1 3.2 …"); an empty list shows nothing.
+function chipRow(label, items, tone = "") {
+  if (!items?.length) return null;
+  const row = el("div", "golden-row");
+  row.append(el("span", "golden-label", label));
+  const chips = el("div", "golden-chips");
+  for (const item of items) chips.append(el("span", `golden-chip ${tone}`, item));
+  row.append(chips);
+  return row;
+}
+
+function goldenCard(c) {
+  const card = el("article", "golden-card");
+  const head = el("header", "golden-card-head");
+  head.append(el("span", "golden-id", c.id));
+  const tags = el("span", "golden-tags");
+  tags.append(el("span", "golden-tag", labelFor(c.profile)));
+  if (c.turns.length > 1) tags.append(el("span", "golden-tag", `${c.turns.length} Turns`));
+  if (c.core) tags.append(el("span", "golden-tag core", "Core"));
+  head.append(tags);
+  const chat = el("div", "golden-chat");
+  for (const turn of c.turns) chat.append(el("p", "golden-ask", turn));
+  const expected = el("div", "golden-expected");
+  expected.append(el("span", "golden-label", "Right Answer"), el("p", null, c.expected_outcome));
+  // A tool with required arguments shows once, with them: tool(name="value")
+  const withArgs = (tool) => c.key_args[tool] ? `${tool}(${Object.entries(c.key_args[tool]).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ")})` : tool;
+  const tools = [...new Set([...c.expected_tools, ...Object.keys(c.key_args)])].map(withArgs);
+  const asks = Object.entries(c.approvals).map(([role, answer]) => `${role} ${answer === "approve" ? "approves" : "rejects"}`);
+  const rules = [
+    chipRow("Must Use Tools", tools, "tool"),
+    chipRow("Must Say", c.must_include, "good"),
+    chipRow("Must Never Say", c.must_not_include, "bad"),
+    chipRow("Must Never Go Through", c.never_call, "bad"),
+    chipRow("Must Ask", c.expect_approval),
+    chipRow("Scripted Answers", asks),
+    chipRow("Rule Must Fire", c.expect_blocked, "bad"),
+    chipRow("Must Flag", c.expect_flagged ? ["Instruction aimed at AI"] : [], "bad"),
+    chipRow("Scope", c.scope === "out" ? ["Refused as off-topic"] : [], "bad"),
+  ].filter(Boolean);
+  card.append(head, chat, expected, ...rules);
+  return card;
+}
+
+function renderGolden() {
+  const cases = evals.suite;
+  const single = cases.filter((c) => c.turns.length === 1).length;
+  $("golden-sub").textContent = cases.length
+    ? `${cases.length} conversations with known right answers: ${single} single-turn, ${cases.length - single} multi-turn, ${cases.filter((c) => c.core).length} in the core set.`
+    : "No golden cases for this agent.";
+  const keep = {
+    all: () => true,
+    single: (c) => c.turns.length === 1,
+    multi: (c) => c.turns.length > 1,
+    core: (c) => c.core,
+  }[goldenFilter];
+  const shown = cases.filter(keep);
+  const groups = [...new Set(shown.map((c) => c.group))];
+  $("golden-list").replaceChildren(
+    ...groups.flatMap((g) => {
+      const inGroup = shown.filter((c) => c.group === g);
+      const grid = el("div", "golden-grid");
+      grid.append(...inGroup.map(goldenCard));
+      return [el("h2", "golden-group-title", `${g} · ${inGroup.length}`), grid];
+    }),
+  );
+}
+
+for (const button of document.querySelectorAll(".golden-filter button")) {
+  button.addEventListener("click", () => {
+    goldenFilter = button.dataset.filter;
+    for (const b of document.querySelectorAll(".golden-filter button")) b.setAttribute("aria-pressed", String(b === button));
+    renderGolden();
+  });
 }
 
 // ── Run dialog: pick cases, runs and model; see the estimate; then start ────

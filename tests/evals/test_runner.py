@@ -283,6 +283,11 @@ def test_s10_ac7_cli_plan_and_bad_cases(capsys: pytest.CaptureFixture[str]) -> N
     assert [c["id"] for c in plan["cases"]] == ["off-topic", "find-changes"]
     assert plan["estimate"]["agent_runs"] == 6
     assert [c["core"] for c in plan["cases"]] == [True, True]  # the dialog's default set
+    # the Golden Dataset page shows every field of a case
+    tools = ["lookup_customer_record", "delegate_task", "review_contract"]
+    assert plan["cases"][1]["expected_tools"] == tools
+    assert plan["cases"][1]["must_include"] == ["2.1", "3.2", "4.1", "6.1", "9.2"]
+    assert plan["cases"][0]["scope"] == "out"
     assert main(["--plan", "--json", "--cases", "nope"]) == 2
     assert "nope" in capsys.readouterr().out
 

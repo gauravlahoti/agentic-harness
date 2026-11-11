@@ -18,7 +18,7 @@ import json
 import signal
 import sys
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -88,17 +88,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         emit(
             {
                 "type": "plan",
-                "cases": [
-                    {
-                        "id": c.id,
-                        "group": c.group,
-                        "profile": c.profile,
-                        "turns": list(c.turns),
-                        "expected_outcome": c.expected_outcome,
-                        "core": c.core,
-                    }
-                    for c in cases
-                ],
+                # every golden field: the Run dialog and the Golden Dataset page read these
+                "cases": [asdict(c) for c in cases],
                 "runs": args.runs,
                 "model": model,
                 "judge": judge_model,
