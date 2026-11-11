@@ -112,7 +112,6 @@ async def test_s10_ac2_cases_run_through_the_harness_with_scripted_approvals(
     assert not tool["ok"]
     assert [a["approver"] for a in tool["approvals"]] == ["CFO"]  # Sales never asked after a no
     assert send["metrics"]["guardrails"]["passed"], send["metrics"]["guardrails"]["reason"]
-    assert not list((ROOT / "workspaces" / "cloudco" / "outbox").glob("*e1*"))
     assert [e["type"] for e in events][:2] == ["eval_started", "run_started"]
     assert events[-1]["type"] == "eval_finished"
 
@@ -134,6 +133,29 @@ async def test_s10_ac2_off_topic_is_refused_and_needs_no_judge(suite: Any, tmp_p
     assert run["turns"][0]["scope"] == "out"
     assert set(run["metrics"]) == {"tool_correctness", "guardrails"}
     assert run["passed"]
+
+
+async def test_s10_ac2_sends_land_in_the_evals_copy_never_the_real_outbox(
+    suite: Any, tmp_path: Path
+) -> None:
+    real = ROOT / "workspaces" / "cloudco" / "outbox"
+    before = set(real.glob("*")) if real.exists() else set()
+    approve = suite.cases[1].__class__(
+        **{
+            **{f: getattr(suite.cases[1], f) for f in suite.cases[1].__dataclass_fields__},
+            "id": "send-approved",
+            "approvals": {"CFO": "approve", "Sales": "approve"},
+        }
+    )
+    suite = suite.__class__(suite.path, suite.workspace, (approve,))
+    result, _ = await go(suite, tmp_path)
+    tool = result["cases"][0]["runs"][0]["turns"][0]["tools"][0]
+    assert tool["ok"]  # approved twice: the send went through
+    copy = tmp_path / "evals" / "e1" / "workspace"
+    assert list((copy / "outbox").glob("*-to-CUS-0042.md"))
+    assert not (copy / "tasks").exists() or not any((copy / "tasks").iterdir())
+    after = set(real.glob("*")) if real.exists() else set()
+    assert after == before
 
 
 # ── AC6: pass^N, the cap, stops ─────────────────────────────────────────────────────────

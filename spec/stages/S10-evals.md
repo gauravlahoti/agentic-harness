@@ -88,7 +88,7 @@ evals/cases/cloudco.toml ──► evals/run.py ──► the same harness as th
 - `expected_outcome` (for the judge);
 - `must_include` (the last answer) and `must_not_include` (every answer);
 - `never_call`, `scope` (`in` / `out`) and `expect_approval` (roles), plus scripted `approvals` (role → approve / reject);
-- `expect_blocked` (rule IDs) and a step / $ budget.
+- `expect_blocked` (rule IDs) and `expect_flagged`.
 
 A case passes when every metric that applies passes. It runs 3 times and counts only if all 3 pass (D-112).
 
@@ -143,3 +143,9 @@ The sidebar gets an **Evals** entry, added to what's already there.
 ## Changes
 
 - 2026-11-11 · Created at your request after the DeepEval review. You chose: own stage built next, Gemini judge with Claude Haiku fallback, a Run button, 12 metrics, and a dedicated `evals/` folder. Your report of the refused follow-up became case `follow-up-in-scope` (left unfixed for now, so the eval shows it). D-108–D-115.
+- 2026-11-11 · Built. Three refinements found while building:
+  1. DeepEval's metrics are called one by one (`metric.a_measure`) on a trace dict built from our events, not through `@observe` + `evals_iterator`. A second spike showed it works for all 9 judged metrics, and it leaves no DeepEval global state and no `.deepeval/` files. Each score maps to one judge (D-110, refined).
+  2. Each eval runs on a copy of the workspace, so an approved send in an eval lands in the eval's folder, never the real `outbox/`. Found by the page check: stand-in runs wrote 4 files there, now removed.
+  3. DeepEval's auto-loaded pytest plugin is switched off (`-p no:deepeval`): it would start before our privacy switches.
+
+  The per-case step / $ budget was dropped: Step efficiency judges wasted steps, and the eval's cap limits money.

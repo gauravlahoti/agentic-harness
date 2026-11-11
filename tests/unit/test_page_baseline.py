@@ -96,3 +96,21 @@ def test_s05_ac12_approval_card_scrolls_above_the_input_box() -> None:
 def test_s05_ac14_scope_guard_on_the_page() -> None:
     assert '"scope_checked"' in JS
     assert "Outside scope" in JS
+
+
+def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
+    assert 'data-view="evals"' in HTML  # a sidebar entry, added next to the others
+    assert 'id="view-evals"' in HTML
+    assert 'id="evals-dialog"' in HTML  # Run opens an in-page dialog, never a browser pop-up
+    for piece in (
+        "/api/evals",
+        "/api/evals/plan",
+        "/api/evals/run",
+        "/api/evals/stop",
+        "showModal",
+    ):
+        assert piece in JS, f"S10 piece missing from app.js: {piece}"
+    for rule in (".eval-cat", ".metric-chip", ".evals-grid", ".evals-dialog"):
+        assert rule in CSS, f"S10 style missing from app.css: {rule}"
+    assert "confirm(" not in JS
+    assert "alert(" not in JS

@@ -27,13 +27,14 @@ async function loadHealth() {
   setUpAgent();
 }
 
-// ── Views: Agent and Checks, chosen by the URL hash ─────────────────────────
+// ── Views: Agent, Memory, Evals and Checks, chosen by the URL hash ─────────────────────────
 function showView() {
-  const view = { "#checks": "checks", "#memory": "memory" }[location.hash] ?? "agent";
-  for (const name of ["agent", "memory", "checks"]) {
+  const view = { "#checks": "checks", "#memory": "memory", "#evals": "evals" }[location.hash] ?? "agent";
+  for (const name of ["agent", "memory", "evals", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }
   if (view === "memory") loadFacts();
+  if (view === "evals") loadEvals();
   for (const link of document.querySelectorAll(".nav-item")) {
     if (link.dataset.view === view) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -1578,3 +1579,482 @@ async function loadFacts() {
     }),
   );
 }
+
+// ── Evals view (S10): DeepEval's categories, cases × metrics, history, Run ──────
+// The server only reads result files and starts one fixed command (D-113, D-115).
+// Grid columns: every metric we score, in the catalog's order, with a short header.
+const EVAL_COLUMNS = [
+  ["tool_correctness", "Tools"],
+  ["argument_correctness", "Args"],
+  ["plan_adherence", "Plan"],
+  ["task_completion", "Task"],
+  ["step_efficiency", "Steps"],
+  ["guardrails", "Rules"],
+  ["turn_faithfulness", "Faithful"],
+  ["knowledge_retention", "Memory"],
+  ["conversation_completeness", "Complete"],
+  ["role_adherence", "Role"],
+  ["topic_adherence", "Topic"],
+  ["guardrails_turns", "Rules ×turns"],
+];
+const evals = { index: null, result: null, live: null, running: false };
+
+const duration = (s) => (s >= 60 ? `${Math.floor(s / 60)} m ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
+const metricInfo = (id) => evals.index?.catalog?.metrics?.[id] ?? { name: id, kind: "judge", threshold: 0 };
+
+async function loadEvals(select) {
+  try {
+    const response = await fetch("/api/evals");
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    evals.index = await response.json();
+  } catch (error) {
+    $("evals-summary").textContent = `Couldn't load evals: ${error.message}`;
+    return;
+  }
+  const id = select ?? evals.result?.id ?? evals.index.results[0]?.id;
+  evals.result = null;
+  if (id) {
+    const response = await fetch(`/api/evals/${encodeURIComponent(id)}`);
+    if (response.ok) evals.result = await response.json();
+  }
+  $("evals-run").disabled = !evals.index.has_cases || evals.running || evals.index.running;
+  renderEvals();
+}
+
+function renderEvals() {
+  renderEvalSummary();
+  renderCategories();
+  renderEvalGrid();
+  renderEvalHistory();
+}
+
+function renderEvalSummary() {
+  const line = $("evals-summary");
+  const r = evals.result;
+  line.className = "evals-summary";
+  if (evals.live) {
+    const runs = evals.live.cases.length * evals.live.runs;
+    const done = evals.live.cases.reduce((n, c) => n + (Object.values(c.metrics)[0]?.runs ?? 0), 0);
+    const failed = evals.live.cases.filter((c) => c.status === "failed").length;
+    return void (line.textContent = `Running · ${done} of ${runs} runs done · ${failed} cases failed so far`);
+  }
+  if (!evals.index?.has_cases) return void (line.textContent = "No eval cases for this agent.");
+  if (!r) return void (line.textContent = "No evals yet.");
+  const judge = r.judge.switched ? `${modelLabel(r.judge.first)} → ${modelLabel(r.judge.now)}` : modelLabel(r.judge.first);
+  const parts = [
+    `${r.summary.passed}/${r.summary.cases} cases passed`,
+    r.runs > 1 ? `all ${r.runs} runs` : "1 run",
+    `agent ${modelLabel(r.model)}`,
+    `judge ${judge}`,
+    `$${r.usd.total.toFixed(4)}`,
+    duration(r.seconds),
+  ];
+  const older = evals.index.results[evals.index.results.findIndex((x) => x.id === r.id) + 1];
+  if (older?.summary) {
+    const change = r.summary.passed - older.summary.passed;
+    parts.push(change > 0 ? `▲${change} since last` : change < 0 ? `▼${-change} since last` : "same as last");
+  }
+  line.textContent = parts.join(" · ");
+  if (r.status === "stopped") {
+    line.classList.add("stopped");
+    line.append(el("span", "evals-stop-reason", `Stopped early: ${r.stop_reason}`));
+  }
+}
+
+// Per metric: the mean score and runs passed, from the saved result or the live eval.
+function metricTotals() {
+  if (!evals.live) return evals.result?.metrics ?? {};
+  const totals = {};
+  for (const c of evals.live.cases) {
+    for (const [id, m] of Object.entries(c.metrics)) {
+      const t = (totals[id] ??= { sum: 0, scored: 0, passed: 0, runs: 0 });
+      t.sum += m.sum;
+      t.scored += m.scored;
+      t.passed += m.passed;
+      t.runs += m.runs;
+    }
+  }
+  for (const t of Object.values(totals)) t.score = t.scored ? t.sum / t.scored : null;
+  return totals;
+}
+
+function renderCategories() {
+  const catalog = evals.index?.catalog;
+  if (!catalog) return void $("evals-tables").replaceChildren();
+  const totals = metricTotals();
+  $("evals-tables").replaceChildren(
+    ...catalog.tables.map((table) => {
+      const t = el("table", "eval-cat");
+      const caption = el("caption", null, table.title);
+      caption.append(el("span", "eval-cat-sub", ` · ${table.subtitle}`));
+      const head = el("tr");
+      for (const name of table.columns) {
+        const th = el("th", null, name);
+        th.scope = "col";
+        head.append(th);
+      }
+      const body = el("tbody");
+      for (const row of table.rows) {
+        const tr = el("tr", row.metrics.length ? null : "eval-cat-skipped");
+        const name = el("th", null, row.name);
+        name.scope = "row";
+        if (row.ours) name.append(el("span", "eval-ours", "ours"));
+        tr.append(name, el("td", "eval-does", row.does));
+        if (table.columns.includes("Scope")) tr.append(el("td", "eval-scope", row.scope ?? ""));
+        const cell = el("td", "eval-chips");
+        for (const id of row.metrics) cell.append(metricChip(id, totals[id]));
+        for (const skipped of row.skipped) {
+          const chip = el("span", "metric-chip skipped");
+          chip.append(el("span", "chip-name", skipped.deepeval), el("span", "chip-why", `Not covered: ${skipped.why}`));
+          cell.append(chip);
+        }
+        tr.append(cell);
+        body.append(tr);
+      }
+      t.append(caption, el("thead"), body);
+      t.tHead.append(head);
+      return t;
+    }),
+  );
+}
+
+function metricChip(id, total) {
+  const info = metricInfo(id);
+  const chip = el("button", `metric-chip kind-${info.kind}`);
+  chip.type = "button";
+  const score = total?.score;
+  if (total?.runs) chip.classList.add(total.passed === total.runs ? "pass" : "fail");
+  const top = el("span", "chip-top");
+  top.append(el("span", "chip-name", info.name), el("span", "chip-score", score == null ? "–" : score.toFixed(2)));
+  const bar = el("span", "chip-bar");
+  const fill = el("span", "chip-fill");
+  fill.style.width = `${Math.round((score ?? 0) * 100)}%`;
+  bar.append(fill);
+  const sub = info.deepeval === "ours" ? "ours · code" : `${info.deepeval}${info.kind === "code" ? " · code" : ""}`;
+  const meta = el("span", "chip-meta", total?.runs ? `${sub} · ${total.passed}/${total.runs} runs passed` : sub);
+  chip.append(top, bar, meta);
+  chip.addEventListener("click", () => showMetric(id));
+  return chip;
+}
+
+// One row per case: from the live eval while it runs, else from the saved result.
+function evalRows() {
+  if (evals.live) return evals.live.cases;
+  return (evals.result?.cases ?? []).map((c) => ({
+    id: c.id,
+    profile: c.profile,
+    group: c.group,
+    status: c.status,
+    metrics: Object.fromEntries(
+      Object.entries(c.metrics).map(([id, m]) => [id, { score: m.score, passed: m.passed, runs: m.runs }]),
+    ),
+  }));
+}
+
+function renderEvalGrid() {
+  const grid = $("evals-grid");
+  const rows = evalRows();
+  if (!rows.length) return void grid.replaceChildren();
+  const head = el("tr");
+  for (const [text, title] of [["Case"], ...EVAL_COLUMNS.map(([id, short]) => [short, metricInfo(id).name]), ["Result"]]) {
+    const th = el("th", null, text);
+    th.scope = "col";
+    if (title) th.title = title;
+    head.append(th);
+  }
+  const thead = el("thead");
+  thead.append(head);
+  const body = el("tbody");
+  for (const row of rows) {
+    const tr = el("tr", `status-${row.status}`);
+    const name = el("th");
+    name.scope = "row";
+    const open = el("button", "case-link", row.id);
+    open.type = "button";
+    open.addEventListener("click", () => showCase(row.id));
+    name.append(open, el("span", "case-group", `${labelFor(row.profile)} · ${row.group}`));
+    tr.append(name);
+    for (const [id] of EVAL_COLUMNS) {
+      const m = row.metrics[id];
+      const td = el("td", "eval-cell");
+      if (m?.runs) {
+        const ok = m.passed === m.runs;
+        const code = metricInfo(id).kind === "code";
+        const cell = el("button", `cell ${ok ? "pass" : "fail"}`, code || m.score == null ? (ok ? "✓" : "✗") : m.score.toFixed(2));
+        cell.type = "button";
+        cell.title = `${metricInfo(id).name}: ${ok ? "passed" : "failed"}${m.runs > 1 ? ` (${m.passed}/${m.runs} runs)` : ""}`;
+        cell.addEventListener("click", () => showCell(row.id, id));
+        td.append(cell);
+      } else {
+        td.append(el("span", "cell none", "·"));
+      }
+      tr.append(td);
+    }
+    const marks = { passed: "✓ passed", failed: "✗ failed", incomplete: "… incomplete", running: "running…", waiting: "waiting" };
+    tr.append(el("td", "case-status", marks[row.status] ?? row.status));
+    body.append(tr);
+  }
+  grid.replaceChildren(thead, body);
+}
+
+function renderEvalHistory() {
+  const list = $("evals-history");
+  const results = evals.index?.results ?? [];
+  if (!results.length) return void list.replaceChildren(el("li", "evals-empty", "Nothing yet."));
+  list.replaceChildren(
+    ...results.map((r) => {
+      const li = el("li");
+      const pick = el("button", "history-item");
+      pick.type = "button";
+      if (r.id === evals.result?.id) pick.setAttribute("aria-current", "true");
+      pick.append(
+        el("span", "history-date", r.started ?? r.id),
+        el("span", "history-score", r.summary ? `${r.summary.passed}/${r.summary.cases}` : "–"),
+        el("span", "history-meta", `${modelLabel(r.model ?? "")} · ${r.runs}× · $${(r.usd?.total ?? 0).toFixed(4)}${r.status === "stopped" ? " · stopped" : ""}`),
+      );
+      pick.addEventListener("click", () => loadEvals(r.id));
+      li.append(pick);
+      return li;
+    }),
+  );
+}
+
+// ── Details: a metric across cases, one cell, or one case's runs ─────────────
+function openDetail(title, subtitle) {
+  const panel = $("evals-detail");
+  const head = el("header", "detail-head");
+  const text = el("div");
+  text.append(el("h2", null, title));
+  if (subtitle) text.append(el("p", "detail-sub", subtitle));
+  const close = el("button", "detail-close", "Close");
+  close.type = "button";
+  close.addEventListener("click", () => (panel.hidden = true));
+  head.append(text, close);
+  panel.replaceChildren(head);
+  panel.hidden = false;
+  panel.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  panel.focus({ preventScroll: true });
+  return panel;
+}
+
+const savedCase = (id) => evals.result?.cases.find((c) => c.id === id);
+
+function scoreLine(m) {
+  const line = el("p", `detail-score ${m.passed ? "pass" : "fail"}`);
+  const score = m.score == null ? "" : ` · ${m.score.toFixed(2)}`;
+  const judge = m.judge?.length ? ` · judged by ${m.judge.map(modelLabel).join(", ")}` : " · checked in code";
+  line.textContent = `${m.passed ? "✓ passed" : "✗ failed"}${score}${judge}`;
+  return line;
+}
+
+function showMetric(id) {
+  const info = metricInfo(id);
+  const panel = openDetail(info.name, `${info.deepeval === "ours" ? "Our own check" : info.deepeval} · ${info.kind === "code" ? "checked in code" : "judged by a model"} · passes at ${info.threshold}`);
+  panel.append(el("p", "detail-measures", info.measures ?? ""));
+  for (const c of evals.result?.cases ?? []) {
+    const runs = c.runs.filter((r) => r.metrics[id]);
+    if (!runs.length) continue;
+    const block = el("section", "detail-block");
+    block.append(el("h3", null, c.id));
+    const shown = runs.find((r) => !r.metrics[id].passed) ?? runs[0]; // a failure says more
+    block.append(scoreLine(shown.metrics[id]), el("p", "detail-reason", shown.metrics[id].reason || shown.metrics[id].error));
+    panel.append(block);
+  }
+}
+
+function showCell(caseId, id) {
+  const c = savedCase(caseId);
+  const panel = openDetail(`${caseId} · ${metricInfo(id).name}`, c?.expected_outcome);
+  for (const run of c?.runs ?? []) {
+    const m = run.metrics[id];
+    if (!m) continue;
+    const block = el("section", "detail-block");
+    block.append(el("h3", null, `Run ${run.run}`), scoreLine(m), el("p", "detail-reason", m.reason || m.error));
+    panel.append(block);
+  }
+}
+
+function showCase(caseId) {
+  const c = savedCase(caseId);
+  if (!c) return;
+  const panel = openDetail(caseId, `${c.group} · ${labelFor(c.profile)} · expected: ${c.expected_outcome}`);
+  for (const run of c.runs) {
+    const block = el("section", "detail-block");
+    block.append(el("h3", null, `Run ${run.run} · ${run.passed ? "✓ passed" : "✗ failed"} · $${run.usd.toFixed(4)}`));
+    for (const turn of run.turns) {
+      block.append(el("p", "detail-task", turn.task));
+      const tools = el("ul", "detail-tools");
+      for (const t of turn.tools) {
+        const how = t.blocked ? `blocked: ${t.blocked}` : t.approvals.length ? t.approvals.map((a) => `${a.approver} ${a.approved === "yes" ? "approved" : "rejected"}`).join(", ") : t.ok ? "ok" : "error";
+        tools.append(el("li", t.ok ? "ok" : "bad", `${t.agent ? `${t.agent} → ` : ""}${t.name} · ${how}`));
+      }
+      if (turn.scope === "out") tools.append(el("li", "bad", "refused by the scope guard"));
+      block.append(tools, el("p", "detail-answer", turn.answer || "(no answer)"));
+    }
+    const failed = Object.entries(run.metrics).filter(([, m]) => !m.passed);
+    if (failed.length) block.append(el("p", "detail-failed", `Failed: ${failed.map(([id]) => metricInfo(id).name).join(", ")}`));
+    panel.append(block);
+  }
+}
+
+// ── Run dialog: pick cases, runs and model; see the estimate; then start ────
+let planTimer = 0;
+
+function pickedCases() {
+  return [...$("evals-case-list").querySelectorAll("input:checked")].map((box) => box.value);
+}
+const pickedRuns = () => Number($("evals-form").elements.runs.value);
+
+async function fetchPlan(cases) {
+  const query = new URLSearchParams({ cases: cases.join(","), runs: pickedRuns(), model: $("evals-model").value });
+  const response = await fetch(`/api/evals/plan?${query}`);
+  if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+  return response.json();
+}
+
+async function openEvalDialog() {
+  const models = health?.models ?? [];
+  const pick = $("evals-model");
+  pick.replaceChildren(...models.map((m) => Object.assign(el("option", null, modelLabel(m)), { value: m })));
+  pick.value = $("model").value || health?.model || models[0];
+  let plan;
+  try {
+    plan = await fetchPlan([]);
+    if (plan.type !== "plan") throw new Error(plan.message ?? "No plan.");
+  } catch (error) {
+    $("evals-summary").textContent = `Can't start: ${error.message}`;
+    return;
+  }
+  const list = $("evals-case-list");
+  list.replaceChildren();
+  let group = "";
+  for (const c of plan.cases) {
+    if (c.group !== group) list.append(el("p", "case-pick-group", (group = c.group)));
+    const label = el("label", "case-pick");
+    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: c.id, checked: true });
+    label.append(box, el("span", null, c.id), el("span", "case-pick-turns", c.turns.length > 1 ? `${c.turns.length} turns` : ""));
+    list.append(label);
+  }
+  showEstimate(plan);
+  $("evals-dialog").returnValue = ""; // Esc or Cancel must never reuse an old "start"
+  $("evals-dialog").showModal();
+}
+
+function showEstimate(plan) {
+  const est = $("evals-estimate");
+  const n = pickedCases().length;
+  $("evals-start").disabled = n === 0;
+  if (!n) return void (est.textContent = "Pick at least one case.");
+  const judge = plan.fallback_judge ? `${modelLabel(plan.judge)}, then ${modelLabel(plan.fallback_judge)} if Gemini runs out` : modelLabel(plan.judge);
+  est.textContent = `≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · judge ${judge} · cap $${plan.cap_usd.toFixed(2)}`;
+}
+
+function refreshEstimate() {
+  clearTimeout(planTimer);
+  const cases = pickedCases();
+  if (!cases.length) return showEstimate({});
+  planTimer = setTimeout(async () => {
+    try {
+      showEstimate(await fetchPlan(cases));
+    } catch (error) {
+      $("evals-estimate").textContent = error.message;
+    }
+  }, 250);
+}
+
+// ── A live eval: rows fill in as runs finish ──────────────────────────────────
+function liveRow(caseId) {
+  return evals.live?.cases.find((c) => c.id === caseId);
+}
+
+async function startEval(cases, runs, model) {
+  evals.running = true;
+  $("evals-run").disabled = true;
+  $("evals-live").hidden = false;
+  $("evals-stop").disabled = false;
+  const progress = $("evals-progress");
+  const text = $("evals-live-text");
+  progress.value = 0;
+  text.textContent = "Starting…";
+  let saved = null;
+  let finished = null;
+  try {
+    const response = await fetch("/api/evals/run", {
+      method: "POST",
+      headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
+      body: JSON.stringify({ cases, runs, model }),
+    });
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    for await (const ev of readLines(response)) {
+      if (ev.type === "eval_started") {
+        progress.max = Math.max(ev.cases.length * ev.runs, 1);
+        evals.live = { runs: ev.runs, cases: ev.cases.map((c) => ({ ...c, status: "waiting", metrics: {} })) };
+        renderEvals();
+      } else if (ev.type === "run_started") {
+        const row = liveRow(ev.case);
+        if (row) row.status = "running";
+        text.textContent = `${ev.case} · run ${ev.run} of ${evals.live.runs}`;
+        renderEvalGrid();
+      } else if (ev.type === "run_finished") {
+        const row = liveRow(ev.case);
+        if (row) {
+          for (const [id, m] of Object.entries(ev.metrics)) {
+            const t = (row.metrics[id] ??= { sum: 0, scored: 0, passed: 0, runs: 0, score: null });
+            if (m.score != null) {
+              t.sum += m.score;
+              t.scored += 1;
+            }
+            t.passed += m.passed ? 1 : 0;
+            t.runs += 1;
+            t.score = t.scored ? t.sum / t.scored : null;
+          }
+          const done = Object.values(row.metrics)[0]?.runs ?? 0;
+          row.status = !ev.passed ? "failed" : done >= evals.live.runs ? "passed" : "running";
+        }
+        progress.value += 1;
+        text.textContent = `${ev.case} · run ${ev.run} ${ev.passed ? "passed" : "failed"} · $${ev.spent_usd.toFixed(4)} spent`;
+        renderEvalSummary();
+        renderCategories();
+        renderEvalGrid();
+      } else if (ev.type === "eval_finished") {
+        finished = ev;
+      } else if (ev.type === "saved") {
+        saved = ev.id;
+      } else if (ev.type === "error") {
+        throw new Error(ev.message);
+      }
+    }
+  } catch (error) {
+    $("evals-summary").textContent = `✗ ${error.message}`;
+    $("evals-summary").className = "evals-summary stopped";
+  } finally {
+    evals.running = false;
+    evals.live = null;
+    $("evals-live").hidden = true;
+    await loadEvals(saved ?? undefined); // also turns Run back on
+    if (!finished) announce("Eval ended.");
+    else if (finished.status === "stopped") announce(`Eval stopped: ${finished.stop_reason}`);
+    else announce(`Eval finished: ${finished.summary.passed} of ${finished.summary.cases} cases passed.`);
+  }
+}
+
+$("evals-run").addEventListener("click", openEvalDialog);
+$("evals-case-list").addEventListener("change", refreshEstimate);
+$("evals-model").addEventListener("change", refreshEstimate);
+for (const radio of document.querySelectorAll('#evals-form input[name="runs"]')) radio.addEventListener("change", refreshEstimate);
+$("evals-all").addEventListener("click", () => {
+  for (const box of $("evals-case-list").querySelectorAll("input")) box.checked = true;
+  refreshEstimate();
+});
+$("evals-none").addEventListener("click", () => {
+  for (const box of $("evals-case-list").querySelectorAll("input")) box.checked = false;
+  refreshEstimate();
+});
+$("evals-dialog").addEventListener("close", () => {
+  if ($("evals-dialog").returnValue === "start") startEval(pickedCases(), pickedRuns(), $("evals-model").value);
+});
+$("evals-stop").addEventListener("click", async () => {
+  $("evals-stop").disabled = true;
+  $("evals-live-text").textContent = "Stopping after this run…";
+  await fetch("/api/evals/stop", { method: "POST", headers: PAGE_HEADER });
+});

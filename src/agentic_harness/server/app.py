@@ -48,6 +48,16 @@ from agentic_harness.model import ModelClient, make_model
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from agentic_harness.server.approvals import Approvals
 from agentic_harness.server.checks import run_checks
+from agentic_harness.server.evals import (
+    EvalError,
+    EvalProcess,
+    catalog,
+    command,
+    list_results,
+    plan,
+    read_result,
+    suite_path,
+)
 from agentic_harness.server.runs import stream_run
 from agentic_harness.workspace import LOGO_TYPES, Workspace, WorkspaceError
 
@@ -95,6 +105,14 @@ class ApprovalAnswer(BaseModel):
     call_id: str = Field(min_length=1, max_length=200)
     approved: bool
     note: str = Field(default="", max_length=500)
+
+
+class EvalRequest(BaseModel):
+    """The Run dialog's choices: case IDs, 1 or 3 runs, a priced model (S10-AC10)."""
+
+    cases: list[Annotated[str, Field(max_length=60)]] = Field(default_factory=list, max_length=100)
+    runs: Literal[1, 3] = 1
+    model: str | None = Field(default=None, max_length=100)
 
 
 class RunRequest(BaseModel):
@@ -319,6 +337,86 @@ def create_app(
                 app.state.checks_running = False
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+    # ── Evals (S10): read results; start or stop the one fixed eval command ──────────
+    evals_folder = memory_root / "evals"
+    evals = EvalProcess()
+
+    def eval_suite() -> Path:
+        if workspace is None:
+            raise HTTPException(409, "No workspace loaded. Start with: serve --workspace PATH")
+        suite = suite_path(project_root, workspace.name)
+        if not suite.is_file():
+            raise HTTPException(404, f"No eval cases for this agent ({suite.name}).")
+        return suite
+
+    @app.get("/api/evals")
+    async def evals_index() -> dict[str, object]:
+        has_cases = workspace is not None and suite_path(project_root, workspace.name).is_file()
+        return {
+            "results": list_results(evals_folder),
+            "catalog": catalog(project_root),
+            "running": evals.running,
+            "has_cases": has_cases,
+        }
+
+    @app.get("/api/evals/plan")
+    async def evals_plan(
+        cases: str = "", runs: int = 1, model: str | None = None
+    ) -> dict[str, object]:
+        try:
+            args = command(
+                eval_suite(),
+                evals_folder,
+                cases=[c for c in cases.split(",") if c][:100],
+                runs=runs,
+                model=model or settings.model,
+                models=priced_models,
+                plan=True,
+            )
+        except EvalError as error:
+            raise HTTPException(400, str(error)) from None
+        return await plan(project_root, args)
+
+    @app.get("/api/evals/{eval_id}")
+    async def evals_result(eval_id: str) -> dict[str, object]:
+        try:
+            result = read_result(evals_folder, eval_id)
+        except EvalError as error:
+            raise HTTPException(400, str(error)) from None
+        if result is None:
+            raise HTTPException(404, "No such eval.")
+        return result
+
+    @app.post("/api/evals/run")
+    async def evals_run(request: Request, body: EvalRequest) -> StreamingResponse:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        if evals.running:
+            raise HTTPException(409, "An eval is already running.")
+        try:
+            args = command(
+                eval_suite(),
+                evals_folder,
+                cases=body.cases,
+                runs=body.runs,
+                model=body.model or settings.model,
+                models=priced_models,
+            )
+        except EvalError as error:
+            raise HTTPException(400, str(error)) from None
+
+        async def lines() -> AsyncIterator[str]:
+            async for event in evals.stream(project_root, args):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+
+        return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+    @app.post("/api/evals/stop")
+    async def evals_stop(request: Request) -> dict[str, bool]:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        return {"stopping": evals.stop()}
 
     @app.post("/api/run")
     async def run(request: Request, body: RunRequest) -> StreamingResponse:

@@ -2,11 +2,13 @@
 
 Part of the evals. For each run of each case:
 
-1. **Run the agent** with ``create_harness``, exactly as the page does, with three
+1. **Run the agent** with ``create_harness``, exactly as the page does, with four
    differences:
    - a scripted approver answers each ⏸ from the case;
    - each run gets its own memory folder, so notes from one run never leak into another;
-   - the runs aren't saved as conversations, so they never show in Your work.
+   - the runs aren't saved as conversations, so they never show in Your work;
+   - the agent works in a copy of the workspace, so a draft or an approved "send" lands in
+     the eval's folder, never in the real ``outbox/``.
 
    A conversation resends its history each turn, like the page.
 2. **Read** each turn's saved trace (``evals/traces.py``).
@@ -31,6 +33,7 @@ Does not: write files (``evals/report.py`` does) or choose models (the caller do
 
 import asyncio
 import secrets as random
+import shutil
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -158,6 +161,16 @@ def turn_record(view: RunView) -> dict[str, Any]:
     }
 
 
+RUN_OUTPUT = ("outbox", "tasks", "__pycache__", ".*")  # what a run writes; not copied
+
+
+def copy_workspace(source: Path, folder: Path) -> Path:
+    """The workspace's files (config, tools, data, skills) without anything runs wrote."""
+    target = folder / "workspace"
+    shutil.copytree(source, target, ignore=shutil.ignore_patterns(*RUN_OUTPUT), dirs_exist_ok=True)
+    return target
+
+
 def new_id() -> str:
     return time.strftime("%Y%m%d-%H%M%S") + "-" + random.token_hex(3)
 
@@ -175,9 +188,9 @@ async def run_eval(
     eval_id: str | None = None,
 ) -> dict[str, Any]:
     """Run and score every picked case ``options.runs`` times; return the result (a dict)."""
-    workspace = Workspace.load(suite.workspace)
     cases = suite.pick(options.cases)
     eval_id = eval_id or new_id()
+    workspace = Workspace.load(copy_workspace(suite.workspace, folder / eval_id))
     tally = Tally()
     role = {p.id: role_of(workspace, p.id) for p in workspace.profiles}
     topics = topics_of(workspace)

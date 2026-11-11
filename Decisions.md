@@ -869,6 +869,7 @@
 - **Instead of:** `@observe` inside the harness core, or plain test cases (TaskCompletion, StepEfficiency and PlanAdherence "MUST be used in the `evals_iterator` or `observe` decorator")
 - **Because:** the harness core stays free of DeepEval, and a saved run can be re-scored for judge cost only
 - **Cost:** a replay layer to explain
+- **Changed 2026-11-11:** each metric is called directly (`a_measure`) on a test case carrying the trace dict built from our events, instead of `@observe` spans inside `evals_iterator`; same trace shape, no DeepEval global state or files, and each score names its own judge
 
 ### D-111 · The judge goes through our own model clients: Gemini Flash-Lite, then Claude Haiku
 ✅ Accepted · S10 · your pick ("Gemini with fallback as Claude Haiku")

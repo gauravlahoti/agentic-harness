@@ -36,8 +36,10 @@
       <p class="work-empty" id="work-empty">Your conversations appear here, named by topic.</p>
     </section>
     <nav aria-label="Sections">
+      <span class="nav-thumb" aria-hidden="true"></span>
       <a class="nav-item" href="#agent" data-view="agent">Agent</a>
       <a class="nav-item" href="#memory" data-view="memory">Memory</a>
+      <a class="nav-item" href="#evals" data-view="evals">Evals</a>
       <a class="nav-item" href="#checks" data-view="checks">Checks</a>
     </nav>
     <div class="sidebar-foot">
@@ -115,6 +117,58 @@
         <p class="memory-intro">Long-term memory: facts the agent chose to keep across conversations, one list per profile. Each new task starts with its profile's facts in the agent's instructions. Forget one and it is gone from the next task on.</p>
       </header>
       <div class="memory-grid" id="memory-grid"></div>
+    </section>
+
+    <!-- ── Evals view (S10): DeepEval's categories, cases × metrics, history, Run ── -->
+    <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
+      <header class="page-header evals-head">
+        <div>
+          <h1 id="evals-heading">Evals</h1>
+          <p class="evals-summary" id="evals-summary" role="status"></p>
+        </div>
+        <button type="button" id="evals-run" class="primary">Run evals</button>
+      </header>
+
+      <div class="evals-live" id="evals-live" hidden>
+        <progress id="evals-progress" max="1" value="0" aria-label="Eval progress"></progress>
+        <span class="evals-live-text" id="evals-live-text" aria-live="polite"></span>
+        <button type="button" class="evals-stop" id="evals-stop">Stop</button>
+      </div>
+
+      <div class="evals-tables" id="evals-tables"></div>
+
+      <div class="evals-detail" id="evals-detail" tabindex="-1" hidden></div>
+
+      <h2 class="evals-sub" id="evals-cases-title">Cases</h2>
+      <div class="evals-grid-wrap" role="region" aria-labelledby="evals-cases-title" tabindex="0">
+        <table class="evals-grid" id="evals-grid"></table>
+      </div>
+
+      <h2 class="evals-sub">History</h2>
+      <ol class="evals-history" id="evals-history"></ol>
+
+      <dialog class="evals-dialog" id="evals-dialog" aria-labelledby="evals-dialog-title">
+        <form method="dialog" id="evals-form">
+          <h2 id="evals-dialog-title">Run evals</h2>
+          <fieldset class="evals-cases-pick">
+            <legend>Cases <button type="button" class="evals-link" id="evals-all">All</button> <button type="button" class="evals-link" id="evals-none">None</button></legend>
+            <div class="evals-case-list" id="evals-case-list"></div>
+          </fieldset>
+          <div class="evals-dialog-row">
+            <fieldset class="evals-runs">
+              <legend>Runs per case</legend>
+              <label><input type="radio" name="runs" value="1" checked> 1</label>
+              <label><input type="radio" name="runs" value="3"> 3 (pass only if all 3 pass)</label>
+            </fieldset>
+            <label class="evals-model-pick">Agent model <select id="evals-model"></select></label>
+          </div>
+          <p class="evals-estimate" id="evals-estimate" aria-live="polite"></p>
+          <div class="evals-dialog-actions">
+            <button type="submit" value="cancel" class="evals-cancel" formnovalidate>Cancel</button>
+            <button type="submit" value="start" class="primary" id="evals-start">Start</button>
+          </div>
+        </form>
+      </dialog>
     </section>
 
     <section class="view view-checks" id="view-checks" aria-labelledby="checks-heading" hidden>

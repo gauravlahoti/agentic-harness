@@ -1333,10 +1333,273 @@ body.resizing iframe { pointer-events: none; }
 .pane-link { display: inline-block; margin: 6px 4px 2px; color: var(--accent); font-size: 12.5px; text-decoration: none; }
 .pane-link:hover { text-decoration: underline; }
 .view-memory .page-header { display: block; }
-/* Agent · Memory · Checks on one line, even at the narrowest sidebar. */
-nav[aria-label="Sections"] { display: flex; flex-wrap: nowrap; gap: 2px; }
-nav[aria-label="Sections"] .nav-item { padding: 6px 9px; white-space: nowrap; }
+/* Sections nav: one row per page and a thumb that glides to the current one, like the
+   profile switcher above it. Each page keeps its harness colour as a small dot (no icons).
+   The current page is chosen in CSS (:has), so no script moves the thumb. */
+nav[aria-label="Sections"] {
+  --h: 38px;
+  --gap: 2px;
+  --i: 0;
+  --c: var(--part-context);
+  position: relative;
+  display: grid;
+  gap: var(--gap);
+  margin-top: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 3%, var(--surface));
+  isolation: isolate;
+}
+nav[aria-label="Sections"]:has([data-view="memory"][aria-current]) { --i: 1; --c: var(--part-memory); }
+nav[aria-label="Sections"]:has([data-view="evals"][aria-current]) { --i: 2; --c: var(--part-guard); }
+nav[aria-label="Sections"]:has([data-view="checks"][aria-current]) { --i: 3; --c: var(--pass); }
+.nav-thumb {
+  position: absolute;
+  inset: 4px 4px auto 4px;
+  height: var(--h);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 22px -12px color-mix(in srgb, var(--c) 70%, transparent);
+  outline: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--line));
+  transform: translateY(calc(var(--i) * (var(--h) + var(--gap))));
+  z-index: -1;
+}
+nav[aria-label="Sections"] .nav-item {
+  --dot: var(--part-context);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: var(--h);
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+nav[aria-label="Sections"] .nav-item[data-view="memory"] { --dot: var(--part-memory); }
+nav[aria-label="Sections"] .nav-item[data-view="evals"] { --dot: var(--part-guard); }
+nav[aria-label="Sections"] .nav-item[data-view="checks"] { --dot: var(--pass); }
+nav[aria-label="Sections"] .nav-item::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot);
+  opacity: 0.45;
+}
+nav[aria-label="Sections"] .nav-item[aria-current="page"] { background: none; color: var(--text); font-weight: 650; }
+nav[aria-label="Sections"] .nav-item[aria-current="page"]::before {
+  opacity: 1;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 20%, transparent);
+}
+nav[aria-label="Sections"] .nav-item:not([aria-current]):hover { color: var(--text); background: color-mix(in srgb, var(--text) 4%, transparent); }
+nav[aria-label="Sections"] .nav-item:not([aria-current]):hover::before { opacity: 0.8; }
+nav[aria-label="Sections"] .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (prefers-reduced-motion: no-preference) {
+  .nav-thumb { transition: transform 0.5s cubic-bezier(0.34, 1.45, 0.5, 1), outline-color 0.3s, box-shadow 0.3s; }
+  nav[aria-label="Sections"] .nav-item { transition: color 0.25s, background 0.2s; }
+  nav[aria-label="Sections"] .nav-item::before { transition: opacity 0.25s, box-shadow 0.35s; }
+  nav[aria-label="Sections"] .nav-item[aria-current="page"]::before { animation: nav-pop 0.45s cubic-bezier(0.34, 1.6, 0.5, 1); }
+}
+@keyframes nav-pop {
+  from { transform: scale(0.4); }
+}
 .claude-glyph { color: #c4683f; }
 /* A hand-off to a sub-agent: same colour as tools, its own tag. */
 .part-sub-agent .act-text { color: var(--part-actions); }
 .part-sub-agent .act-tag { color: var(--part-actions); border-color: color-mix(in srgb, var(--part-actions) 35%, transparent); }
+
+/* ── Evals view (S10): DeepEval's categories, cases × metrics, history, Run ── */
+.evals-head { align-items: flex-start; }
+/* The grid has 12 metric columns: the Evals page gets a wider main column. */
+main:has(> #view-evals:not([hidden])) { max-width: 1280px; }
+.evals-summary { margin: 6px 0 0; color: var(--text-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.evals-summary.stopped { color: var(--skip); }
+.evals-stop-reason { display: block; margin-top: 2px; font-size: 13px; }
+.evals-sub { margin: 28px 0 10px; font-size: 15px; }
+
+.evals-live[hidden] { display: none; }
+.evals-live {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.evals-live progress { grid-column: 1 / -1; }
+.evals-live-text { color: var(--text-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.evals-stop, .evals-cancel, .detail-close {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.evals-stop:hover { border-color: var(--fail); color: var(--fail); }
+
+/* The two category tables, laid out like DeepEval's guide. */
+.evals-tables { display: grid; gap: 18px; margin-top: 20px; }
+.eval-cat {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+  font-size: 13.5px;
+}
+.eval-cat caption { caption-side: top; text-align: left; padding: 0 2px 8px; font-weight: 700; font-size: 15px; }
+.eval-cat-sub { color: var(--muted); font-weight: 400; }
+.eval-cat th, .eval-cat td { padding: 10px 12px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+.eval-cat thead th { border-top: 0; background: color-mix(in srgb, var(--line) 45%, transparent); color: var(--muted); font-size: 12px; font-weight: 600; }
+.eval-cat tbody th { width: 14%; font-weight: 600; }
+.eval-does { width: 24%; color: var(--text-soft); }
+.eval-scope { width: 10%; color: var(--muted); }
+.eval-ours {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--part-guard) 16%, transparent);
+  color: var(--part-guard);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+.eval-cat-skipped th, .eval-cat-skipped .eval-does { color: var(--muted); }
+.eval-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.metric-chip {
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.metric-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+button.metric-chip:focus-visible, .cell:focus-visible, .case-link:focus-visible, .history-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; font-size: 13px; }
+.chip-score { font-variant-numeric: tabular-nums; }
+.metric-chip.pass .chip-score { color: var(--pass); }
+.metric-chip.fail .chip-score { color: var(--fail); }
+.chip-bar { height: 4px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.chip-fill { display: block; height: 100%; border-radius: inherit; background: var(--part-context); transition: width 0.4s ease; }
+.kind-code .chip-fill { background: var(--part-guard); }
+.metric-chip.fail .chip-fill { background: var(--fail); }
+.chip-meta { color: var(--muted); font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.metric-chip.skipped { cursor: default; border-style: dashed; background: none; color: var(--muted); min-width: 0; max-width: 340px; }
+.metric-chip.skipped .chip-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.chip-why { font-size: 12px; }
+
+/* Cases × metrics. Scrolls sideways on narrow screens; the case column stays put. */
+.evals-grid-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.evals-grid-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.evals-grid { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.evals-grid th, .evals-grid td { padding: 7px 4px; border-top: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.evals-grid thead th { border-top: 0; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.evals-grid tbody th { position: sticky; left: 0; z-index: 1; text-align: left; background: var(--surface); }
+.case-link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.case-link:hover { color: var(--accent); }
+.case-group { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
+.cell { min-width: 40px; padding: 2px 5px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; }
+.cell.pass { background: color-mix(in srgb, var(--pass) 13%, transparent); color: var(--pass); }
+.cell.fail { background: color-mix(in srgb, var(--fail) 14%, transparent); color: var(--fail); font-weight: 600; }
+.cell.none { color: var(--line); }
+.case-status { text-align: left; font-size: 12px; }
+.status-passed .case-status { color: var(--pass); }
+.status-failed .case-status { color: var(--fail); }
+.status-running .case-status { color: var(--accent); }
+.status-waiting .case-status, .status-incomplete .case-status { color: var(--muted); }
+
+/* A metric, a cell, or a case, opened. */
+.evals-detail {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 12px;
+  background: var(--surface);
+}
+.evals-detail:focus { outline: none; }
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.detail-sub, .detail-measures { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.detail-measures { color: var(--text-soft); }
+.detail-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.detail-block h3 { margin: 0 0 4px; font-size: 13.5px; }
+.detail-score { margin: 0; font-size: 12.5px; font-weight: 600; }
+.detail-score.pass { color: var(--pass); }
+.detail-score.fail { color: var(--fail); }
+.detail-reason, .detail-answer { margin: 6px 0 0; font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail-task { margin: 10px 0 4px; padding: 6px 10px; border-radius: 10px; background: var(--bubble); font-size: 13px; justify-self: end; }
+.detail-tools { margin: 4px 0; padding-left: 18px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.detail-tools .ok { color: var(--part-actions); }
+.detail-tools .bad { color: var(--fail); }
+.detail-failed { margin: 8px 0 0; color: var(--fail); font-size: 12.5px; }
+
+.evals-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.evals-empty { color: var(--muted); font-size: 13px; }
+.history-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.history-item[aria-current="true"] { border-color: var(--accent); }
+.history-date { color: var(--muted); font-variant-numeric: tabular-nums; }
+.history-score { font-weight: 700; }
+.history-meta { color: var(--muted); }
+
+/* The Run dialog: native <dialog> (focus trapped, Esc closes). */
+.evals-dialog {
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.45);
+}
+.evals-dialog::backdrop { background: rgb(0 0 0 / 0.35); }
+.evals-dialog fieldset { margin: 14px 0 0; padding: 0; border: 0; }
+.evals-dialog legend { padding: 0; font-weight: 600; font-size: 13.5px; }
+.evals-link { margin-left: 8px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 400; cursor: pointer; }
+.evals-case-list { max-height: 260px; overflow-y: auto; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.case-pick-group { margin: 8px 0 2px; color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.case-pick { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 13px; }
+.case-pick-turns { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+.evals-dialog-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.evals-runs label { margin-right: 14px; font-size: 13px; }
+.evals-model-pick { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.evals-model-pick select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-weight: 400; }
+.evals-estimate { margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--skip) 10%, transparent); color: var(--text-soft); font-size: 13px; }
+.evals-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-fill { transition: none; }
+}
