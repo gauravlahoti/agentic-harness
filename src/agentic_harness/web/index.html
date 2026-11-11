@@ -27,21 +27,34 @@
       <label class="visually-hidden" for="profile">Profile</label>
       <select class="profile-pick" id="profile" name="profile" hidden tabindex="-1" aria-hidden="true"></select>
     </div>
-    <section class="work" id="work" aria-labelledby="work-title" hidden>
+    <section class="work side-group" id="work" data-group="work" aria-labelledby="work-title" hidden>
       <div class="work-head">
-        <h2 id="work-title">Your work</h2>
+        <h2 id="work-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="work-body">Your work <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
         <button type="button" class="work-new" id="new-task">New</button>
       </div>
-      <ul class="work-list" id="work-list"></ul>
-      <p class="work-empty" id="work-empty">Your conversations appear here, named by topic.</p>
+      <div class="side-body" id="work-body">
+        <div class="side-inner">
+          <ul class="work-list" id="work-list"></ul>
+          <p class="work-empty" id="work-empty">Your conversations appear here, named by topic.</p>
+        </div>
+      </div>
     </section>
-    <nav aria-label="Sections">
-      <span class="nav-thumb" aria-hidden="true"></span>
-      <a class="nav-item" href="#agent" data-view="agent">Agent</a>
-      <a class="nav-item" href="#memory" data-view="memory">Memory</a>
-      <a class="nav-item" href="#evals" data-view="evals">Evals</a>
-      <a class="nav-item" href="#checks" data-view="checks">Checks</a>
-    </nav>
+    <section class="views side-group" data-group="views" aria-labelledby="views-title">
+      <div class="work-head">
+        <h2 id="views-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="views-body">Views <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
+      </div>
+      <div class="side-body" id="views-body">
+        <div class="side-inner">
+          <nav aria-label="Sections">
+            <span class="nav-thumb" aria-hidden="true"></span>
+            <a class="nav-item" href="#agent" data-view="agent">Agent</a>
+            <a class="nav-item" href="#memory" data-view="memory">Memory</a>
+            <a class="nav-item" href="#evals" data-view="evals">Evals</a>
+            <a class="nav-item" href="#checks" data-view="checks">Checks</a>
+          </nav>
+        </div>
+      </div>
+    </section>
     <div class="sidebar-foot">
       <p class="version"><span class="powered">agentic-harness</span> <span id="version"></span></p>
       <button type="button" class="theme-toggle" id="theme-toggle">

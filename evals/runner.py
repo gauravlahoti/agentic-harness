@@ -304,6 +304,7 @@ async def run_eval(
                     "usd": record["usd"],
                     "spent_usd": round(spent(), 6),
                     "paid_usd": round(paid(tally, judge), 6),
+                    "judge": judge.current,  # the page shows when the judge moves to Claude
                 }
             )
             if tally.stop:

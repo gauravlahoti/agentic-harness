@@ -1625,75 +1625,170 @@ function showEvalProblem(text) {
   $("evals-summary").replaceChildren(el("p", "evals-stopped", text));
 }
 
-// ── Summary: one big number, then a few labelled facts ──────────────────────
-function bigStat(value, label, cls = "") {
-  const stat = el("div", `evals-score ${cls}`);
-  stat.append(el("strong", null, value), el("span", null, label));
-  return stat;
+// ── Summary: a hero anyone can read: a ring, one sentence, three numbers ─────
+const SVG = "http://www.w3.org/2000/svg";
+
+// A ring split into passed (green), failed (red) and not finished (grey).
+function passRing(passed, failed, total) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 120 120");
+  svg.setAttribute("class", "hero-ring");
+  svg.setAttribute("aria-hidden", "true");
+  const r = 52;
+  const round = 2 * Math.PI * r;
+  let start = 0;
+  const arc = (count, cls) => {
+    if (cls !== "ring-track" && !count) return; // a zero arc would still draw a round dot
+    const c = document.createElementNS(SVG, "circle");
+    c.setAttribute("cx", "60");
+    c.setAttribute("cy", "60");
+    c.setAttribute("r", String(r));
+    c.setAttribute("class", cls);
+    if (cls !== "ring-track") {
+      const len = total ? (count / total) * round : 0;
+      c.style.setProperty("--len", `${len}`);
+      c.style.strokeDasharray = `${len} ${round}`;
+      c.style.strokeDashoffset = `${-start}`;
+      start += len;
+    }
+    svg.append(c);
+  };
+  arc(0, "ring-track");
+  arc(passed, "ring-pass");
+  arc(failed, "ring-fail");
+  const pct = document.createElementNS(SVG, "text");
+  pct.setAttribute("x", "60");
+  pct.setAttribute("y", "60");
+  pct.setAttribute("class", "ring-pct");
+  pct.textContent = total ? `${Math.round((passed / total) * 100)}%` : "–";
+  svg.append(pct);
+  return svg;
 }
 
-// What the person paid: Claude's part. Gemini on the free tier bills nothing (D-116).
-function costStat(paid, total) {
-  if (paid == null) return bigStat(`$${(total ?? 0).toFixed(4)}`, "cost");
-  return bigStat(`$${paid.toFixed(paid ? 4 : 0)}`, paid ? "paid for Claude · Gemini on free tier" : "paid · Gemini on free tier", "cost");
+function tile(value, label, tone = "") {
+  const t = el("div", `hero-tile ${tone}`);
+  t.append(el("strong", null, value), el("span", null, label));
+  return t;
+}
+
+// A stop reason in a few words; older results kept the raw error.
+function plainStop(reason) {
+  if (/429|quota/i.test(reason)) {
+    const when = reason.match(/retry in (\d[\dhms.]*)/i)?.[1] ?? reason.match(/resets in (\d[\dhms.]*)/)?.[1];
+    return `Gemini's free daily quota ran out${when ? ` (it resets in ${when})` : ""}, so some tests didn't finish.`;
+  }
+  if (/503|busy/i.test(reason)) return "Gemini was busy, so some tests didn't finish.";
+  return reason;
 }
 
 // Results saved before D-116 have no "paid": all-Gemini ones cost the person nothing.
 const usedClaude = (r) => [r.model, r.agent?.now, r.judge?.first, r.judge?.now].some((m) => m?.startsWith("claude-"));
+const usdText = (usd) => (usd === 0 ? "$0" : usd < 0.01 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`);
 
-function summaryCard(value, label, ok, facts, cost) {
-  const score = el("div", "evals-stats");
-  score.append(bigStat(value, label, ok == null ? "" : ok ? "pass" : "fail"), cost);
-  const list = el("dl", "evals-facts");
-  for (const [name, text] of facts) {
-    if (!text) continue;
-    const item = el("div");
-    item.append(el("dt", null, name), el("dd", null, text));
-    list.append(item);
-  }
-  const card = el("div", "evals-card");
-  card.append(score, list);
-  return card;
+// Safety: the share of runs where every rule held (both guardrail metrics).
+function safety(metrics) {
+  const parts = ["guardrails", "guardrails_turns"].map((id) => metrics?.[id]).filter((m) => m?.runs);
+  const runs = parts.reduce((n, m) => n + m.runs, 0);
+  return runs ? parts.reduce((n, m) => n + m.passed, 0) / runs : null;
 }
 
 // "Gemini 3.8 Flash → Claude Haiku 5.5" when a model ran out mid-eval.
-const modelPath = (who) => (who.now && who.now !== who.first ? `${modelLabel(who.first)} → ${modelLabel(who.now)}` : modelLabel(who.first));
+const modelPath = (first, now) => (now && now !== first ? `${modelLabel(first)} → ${modelLabel(now)}` : modelLabel(first));
+
+// Who pays: Claude is paid; Gemini here runs on the free tier. Read from the models used.
+function costLabel(models, paid) {
+  const claude = models.some((m) => m?.startsWith("claude-"));
+  const gemini = models.some((m) => m?.startsWith("gemini-"));
+  if (claude && gemini) return paid ? "cost · Claude paid, Gemini free tier" : "cost · Gemini free tier";
+  return claude ? "cost · Claude, paid" : "cost · Gemini free tier";
+}
+
+function hero({ passed, failed, total, headline, sub, tiles, agent, judge, when }) {
+  const box = el("div", "evals-hero");
+  const words = el("div", "hero-words");
+  words.append(el("h2", "hero-headline", headline), el("p", "hero-sub", sub));
+  const row = el("div", "hero-tiles");
+  row.append(...tiles);
+  words.append(row);
+  const foot = el("dl", "hero-foot");
+  for (const [name, value] of [["Agent", agent], ["Judge", judge], ["Run", when]]) {
+    if (!value) continue;
+    const item = el("div");
+    item.append(el("dt", null, name), el("dd", null, value));
+    foot.append(item);
+  }
+  box.append(passRing(passed, failed, total), words, foot);
+  return box;
+}
 
 function renderEvalSummary() {
   const box = $("evals-summary");
   const live = evals.live;
   if (live) {
-    const total = live.cases.length * live.runs;
-    const done = live.cases.reduce((n, c) => n + c.done, 0);
+    const total = live.cases.length;
+    const passed = live.cases.filter((c) => c.status === "passed").length;
     const failed = live.cases.filter((c) => c.status === "failed").length;
+    const runs = live.cases.reduce((n, c) => n + c.done, 0);
+    const s = safety(metricTotals());
     return void box.replaceChildren(
-      summaryCard(
-        `${done}/${total}`,
-        "runs done",
-        null,
-        [
-          ["Agent", modelLabel(live.agent)],
-          ["Failed so far", String(failed)],
+      hero({
+        passed,
+        failed,
+        total,
+        headline: `Testing the agent… ${passed + failed} of ${total} tests done`,
+        sub: `${runs} of ${total * live.runs} runs finished. Each test is a conversation with a known right answer.`,
+        tiles: [
+          tile(`${passed + failed} / ${total}`, "tests completed"),
+          tile(s == null ? "–" : `${Math.round(s * 100)}%`, "safety rules held", s === 1 ? "good" : s == null ? "" : "bad"),
+          tile(usdText(live.paid ?? 0), `${costLabel([live.agent, live.judge], live.paid)} · so far`),
         ],
-        costStat(live.paid, live.spent),
-      ),
+        agent: modelPath(live.firstAgent, live.agent),
+        judge: modelPath(live.firstJudge, live.judge),
+        when: "now",
+      }),
     );
   }
   if (!evals.index?.has_cases) return void box.replaceChildren(el("p", "evals-note", "No eval cases for this agent."));
   const r = evals.result;
   if (!r) return void box.replaceChildren(el("p", "evals-note", "No evals yet."));
+  const { passed, failed, incomplete, cases } = r.summary;
+  const s = safety(r.metrics);
+  const paid = r.usd.paid ?? (usedClaude(r) ? r.usd.total : 0);
   const older = evals.index.results[evals.index.results.findIndex((x) => x.id === r.id) + 1];
-  const change = older?.summary ? r.summary.passed - older.summary.passed : null;
-  const card = summaryCard(`${r.summary.passed}/${r.summary.cases}`, "cases passed", r.summary.passed === r.summary.cases, [
-    ["Agent", modelPath(r.agent ?? { first: r.model })],
-    ["Judge", modelPath(r.judge)],
-    ["Not finished", r.summary.incomplete ? String(r.summary.incomplete) : ""],
-    ["Runs", r.runs > 1 ? `${r.runs} per case, all must pass` : "1 per case"],
-    ["Time", duration(r.seconds)],
-    ["Since last", change == null ? "" : change > 0 ? `▲ ${change}` : change < 0 ? `▼ ${-change}` : "same"],
-  ], costStat(r.usd.paid ?? (usedClaude(r) ? null : 0), r.usd.total));
-  box.replaceChildren(card);
-  if (r.status === "stopped") box.append(el("p", "evals-stopped", `Stopped early: ${r.stop_reason}`));
+  const change = older?.summary ? passed - older.summary.passed : 0;
+  const headline =
+    r.status === "stopped" && incomplete
+      ? `Stopped early: ${passed} of ${cases} tests passed`
+      : passed === cases
+        ? `The agent passed all ${cases} tests`
+        : `The agent passed ${passed} of ${cases} tests`;
+  const sub = [
+    `${cases} conversations with known right answers, ${r.runs > 1 ? `each run ${r.runs} times (all must pass)` : "each run once"}, scored on 12 metrics.`,
+    change ? ` ${change > 0 ? "▲" : "▼"} ${Math.abs(change)} since the last eval.` : "",
+  ].join("");
+  const agentFirst = r.agent?.first ?? r.model;
+  const agentNow = r.agent?.now ?? r.model;
+  const models = [agentFirst, agentNow, r.judge.first, r.judge.now];
+  box.replaceChildren(
+    hero({
+      passed,
+      failed,
+      total: cases,
+      headline,
+      sub,
+      tiles: [
+        tile(`${passed + failed} / ${cases}`, "tests completed", incomplete ? "" : "good"),
+        tile(s == null ? "–" : `${Math.round(s * 100)}%`, "safety rules held", s === 1 ? "good" : s == null ? "" : "bad"),
+        tile(usdText(paid), costLabel(models, paid)),
+        tile(duration(r.seconds), "to run"),
+      ],
+      agent: modelPath(agentFirst, agentNow),
+      judge: modelPath(r.judge.first, r.judge.now),
+      when: r.started,
+    }),
+  );
+  // No banner for a stop: the headline says it; the reason is one hover away.
+  if (r.status === "stopped") box.querySelector(".hero-headline").title = plainStop(r.stop_reason);
 }
 
 // ── Metrics: the 12 we score, in DeepEval's groups ───────────────────────────
@@ -1998,6 +2093,9 @@ async function startEval(cases, runs, model) {
         evals.live = {
           runs: ev.runs,
           agent: ev.model,
+          firstAgent: ev.model,
+          judge: ev.judge,
+          firstJudge: ev.judge,
           spent: 0,
           paid: 0,
           cases: ev.cases.map((c) => ({ ...c, status: "waiting", done: 0, missed: new Set(), metrics: {} })),
@@ -2031,6 +2129,7 @@ async function startEval(cases, runs, model) {
         }
         evals.live.spent = ev.spent_usd;
         evals.live.paid = ev.paid_usd ?? null;
+        if (ev.judge) evals.live.judge = ev.judge;
         progress.value += 1;
         text.textContent = `${ev.case} · run ${ev.run} ${ev.passed ? "passed" : "failed"}`;
         renderEvalSummary();
@@ -2081,3 +2180,28 @@ $("evals-stop").addEventListener("click", async () => {
   $("evals-live-text").textContent = "Stopping after this run…";
   await fetch("/api/evals/stop", { method: "POST", headers: PAGE_HEADER });
 });
+
+// ── Sidebar groups fold (Your work, Views); each one's state is kept per browser ─
+for (const group of document.querySelectorAll(".side-group")) {
+  const toggle = group.querySelector(".side-toggle");
+  const key = `side-collapsed-${group.dataset.group}`;
+  const set = (collapsed) => {
+    group.classList.toggle("collapsed", collapsed);
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    group.querySelector(".side-body").inert = collapsed; // folded links can't take focus
+  };
+  try {
+    set(localStorage.getItem(key) === "1");
+  } catch {
+    set(false); // storage blocked: start open
+  }
+  toggle.addEventListener("click", () => {
+    const collapsed = !group.classList.contains("collapsed");
+    set(collapsed);
+    try {
+      localStorage.setItem(key, collapsed ? "1" : "0");
+    } catch {
+      // not remembered; it still folds
+    }
+  });
+}
