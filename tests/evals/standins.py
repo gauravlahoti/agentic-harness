@@ -54,9 +54,10 @@ class Scripted:
 class Agent:
     """Drives the real loop: scope check → one tool call → an answer."""
 
-    def __init__(self, name: str, fail: str = "") -> None:
+    def __init__(self, name: str, fail: str = "", only: str = "") -> None:
         self.name = name
-        self.fail = fail  # raise this as a ModelError on every agent call
+        # raise ``fail`` as a ModelError on every agent call, for models named ``only…``
+        self.fail = fail if name.startswith(only) else ""
 
     async def create(self, system: str, steps: Sequence[Any], tools: Sequence[Any]) -> ModelReply:
         last = steps[-1]
@@ -85,8 +86,8 @@ class Agent:
         return text_reply("ShopCo (CUS-0042): the account owner is Priya Raman (Sales).")
 
 
-def factory(fail: str = "") -> Any:
-    return lambda name: Agent(name, fail)
+def factory(fail: str = "", only: str = "") -> Any:
+    return lambda name: Agent(name, fail, only)
 
 
 def fill(kind: Any) -> Any:

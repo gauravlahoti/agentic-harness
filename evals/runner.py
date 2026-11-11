@@ -17,9 +17,13 @@ Part of the evals. For each run of each case:
 A run passes when every metric that applies passes; a case passes only if all its runs pass
 (pass^N, D-112).
 
+**When Gemini runs out** (a 429 or 503), the agent moves to Claude Haiku for the rest of
+the eval and the run that hit it starts again, if a Claude key is set (D-116). The judge does
+the same on its own (D-111).
+
 **The eval stops, with a named reason, when:**
 - its own cap is spent;
-- the agent's model is out of quota;
+- the agent's model is out of quota and nothing can take over;
 - no judge can answer;
 - the person presses Stop.
 
@@ -32,6 +36,7 @@ Does not: write files (``evals/report.py`` does) or choose models (the caller do
 """
 
 import asyncio
+import re
 import secrets as random
 import shutil
 import time
@@ -65,13 +70,28 @@ class Options:
     cases: list[str] | None = None  # None: every case
     runs: int = 1
     max_usd: float = DEFAULT_CAP_USD
+    fallback: str | None = None  # the agent's model when the first runs out (D-116)
 
 
 @dataclass(slots=True)
 class Tally:
+    agent: str  # the agent's model now
     agent_usd: float = 0.0
+    switched: str = ""  # why the agent moved to the fallback, if it did
     stop: str = ""  # why the eval stopped early; "" while it runs
     started: float = field(default_factory=time.time)
+
+
+RETRY = re.compile(r"retry in (\d[\dhms.]*)", re.IGNORECASE)
+
+
+def out_of_quota(model: str, reason: str, fallback: str | None) -> str:
+    """A stop reason in plain words; the raw error stays in the run's trace."""
+    what = "busy" if "503" in reason else "out of quota"
+    if model == fallback:
+        return f"{model} is {what} too."
+    when = f" (it resets in {m.group(1)})" if (m := RETRY.search(reason)) else ""
+    return f"{model} is {what}{when}, and there's no Claude key to take over."
 
 
 def scripted_approver(case: Case) -> Approver:
@@ -191,7 +211,7 @@ async def run_eval(
     cases = suite.pick(options.cases)
     eval_id = eval_id or new_id()
     workspace = Workspace.load(copy_workspace(suite.workspace, folder / eval_id))
-    tally = Tally()
+    tally = Tally(agent=options.model)
     role = {p.id: role_of(workspace, p.id) for p in workspace.profiles}
     topics = topics_of(workspace)
     emit(
@@ -199,7 +219,13 @@ async def run_eval(
             "type": "eval_started",
             "id": eval_id,
             "cases": [
-                {"id": c.id, "group": c.group, "profile": c.profile, "turns": len(c.turns)}
+                {
+                    "id": c.id,
+                    "group": c.group,
+                    "profile": c.profile,
+                    "turns": len(c.turns),
+                    "ask": c.turns[0],  # the page shows the question, not just the ID
+                }
                 for c in cases
             ],
             "runs": options.runs,
@@ -215,7 +241,8 @@ async def run_eval(
         return tally.agent_usd + judge.usd
 
     for case in cases:
-        for number in range(1, options.runs + 1):
+        number = 1
+        while number <= options.runs:
             if stop is not None and stop.is_set():
                 tally.stop = "Stopped by you."
             elif spent() >= options.max_usd:
@@ -227,7 +254,7 @@ async def run_eval(
                 case,
                 number,
                 workspace=workspace,
-                model=options.model,
+                model=tally.agent,
                 factory=factory,
                 folder=folder / eval_id,
                 secrets=secrets,
@@ -236,7 +263,14 @@ async def run_eval(
             scores: list[Score] = code_scores(case, views)
             failed = next((v for v in views if v.outcome == "failed"), None)
             if failed and BUSY.search(failed.reason):
-                tally.stop = f"The agent's model is out of quota or busy: {failed.reason[:200]}"
+                if options.fallback and tally.agent != options.fallback:
+                    # Same run again on the fallback; the half-run never counts (D-116).
+                    what = "busy" if "503" in failed.reason else "out of quota"
+                    tally.switched = f"{tally.agent} → {options.fallback}: {tally.agent} was {what}"
+                    emit({"type": "agent_switched", "from": tally.agent, "to": options.fallback})
+                    tally.agent = options.fallback
+                    continue
+                tally.stop = out_of_quota(tally.agent, failed.reason, options.fallback)
             else:
                 try:
                     scores += await judged_scores(
@@ -246,6 +280,7 @@ async def run_eval(
                     tally.stop = str(error)
             record: dict[str, Any] = {
                 "run": number,
+                "model": tally.agent,
                 "passed": not tally.stop and all(s.passed for s in scores),
                 "complete": not tally.stop,
                 "turns": [turn_record(v) for v in views],
@@ -269,6 +304,7 @@ async def run_eval(
             )
             if tally.stop:
                 break
+            number += 1
         if tally.stop:
             break
 
@@ -328,6 +364,7 @@ def build_result(
         "status": "stopped" if tally.stop else "finished",
         "stop_reason": tally.stop,
         "model": options.model,
+        "agent": {"first": options.model, "now": tally.agent, "switched": tally.switched},
         "runs": options.runs,
         "cap_usd": options.max_usd,
         "judge": {

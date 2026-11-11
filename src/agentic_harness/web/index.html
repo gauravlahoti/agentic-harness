@@ -119,15 +119,14 @@
       <div class="memory-grid" id="memory-grid"></div>
     </section>
 
-    <!-- ── Evals view (S10): DeepEval's categories, cases × metrics, history, Run ── -->
+    <!-- ── Evals view (S10): summary, metrics, cases, past evals, Run ── -->
     <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
       <header class="page-header evals-head">
-        <div>
-          <h1 id="evals-heading">Evals</h1>
-          <p class="evals-summary" id="evals-summary" role="status"></p>
-        </div>
+        <h1 id="evals-heading">Evals</h1>
         <button type="button" id="evals-run" class="primary">Run evals</button>
       </header>
+
+      <div class="evals-summary" id="evals-summary" role="status"></div>
 
       <div class="evals-live" id="evals-live" hidden>
         <progress id="evals-progress" max="1" value="0" aria-label="Eval progress"></progress>
@@ -135,16 +134,13 @@
         <button type="button" class="evals-stop" id="evals-stop">Stop</button>
       </div>
 
-      <div class="evals-tables" id="evals-tables"></div>
+      <h2 class="evals-sub" id="evals-metrics-title">Metrics</h2>
+      <table class="evals-metrics" id="evals-metrics" aria-labelledby="evals-metrics-title"></table>
 
-      <div class="evals-detail" id="evals-detail" tabindex="-1" hidden></div>
+      <h2 class="evals-sub">Cases</h2>
+      <div class="evals-cases" id="evals-cases"></div>
 
-      <h2 class="evals-sub" id="evals-cases-title">Cases</h2>
-      <div class="evals-grid-wrap" role="region" aria-labelledby="evals-cases-title" tabindex="0">
-        <table class="evals-grid" id="evals-grid"></table>
-      </div>
-
-      <h2 class="evals-sub">History</h2>
+      <h2 class="evals-sub">Past evals</h2>
       <ol class="evals-history" id="evals-history"></ol>
 
       <dialog class="evals-dialog" id="evals-dialog" aria-labelledby="evals-dialog-title">

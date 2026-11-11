@@ -26,7 +26,7 @@ from agentic_harness import config
 from agentic_harness.model import ModelClient, make_model
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from evals.cases import CaseError, load_suite
-from evals.plan import DEFAULT_CAP_USD, FALLBACK_JUDGE, JUDGE_MODEL, RUNS, estimate
+from evals.plan import DEFAULT_CAP_USD, FALLBACK_AGENT, FALLBACK_JUDGE, JUDGE_MODEL, RUNS, estimate
 
 DEFAULT_SUITE = Path("evals") / "cases" / "cloudco.toml"
 
@@ -64,6 +64,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     settings = config.load_settings()
     model = args.model or settings.model
     fallback = FALLBACK_JUDGE if settings.has_anthropic_key else None
+    # A Claude agent has no fallback: it is already the paid choice (D-116).
+    claude_agent = model.startswith(config.CLAUDE_PREFIX)
+    agent_fallback = FALLBACK_AGENT if fallback and not claude_agent else None
     if args.plan:
         emit(
             {
@@ -76,12 +79,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "model": model,
                 "judge": JUDGE_MODEL,
                 "fallback_judge": fallback,
+                "fallback_agent": agent_fallback,
                 "cap_usd": args.cap,
                 "estimate": estimate(cases, args.runs),
             }
         )
         return 0
-    return asyncio.run(_run(args, suite, model, fallback, settings, emit))
+    return asyncio.run(_run(args, suite, model, fallback, agent_fallback, settings, emit))
 
 
 async def _run(
@@ -89,6 +93,7 @@ async def _run(
     suite: Any,
     model: str,
     fallback: str | None,
+    agent_fallback: str | None,
     settings: config.Settings,
     emit: Any,
 ) -> int:
@@ -125,6 +130,7 @@ async def _run(
             cases=[c for c in args.cases.split(",") if c] or None,
             runs=args.runs,
             max_usd=args.cap,
+            fallback=agent_fallback,
         ),
         factory=factory,
         judge=judge,

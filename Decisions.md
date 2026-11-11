@@ -905,3 +905,10 @@
 - **Instead of:** `src/agentic_harness/evals/`
 - **Because:** the harness never imports DeepEval; a workspace's cases sit next to the code that runs them
 - **Cost:** one more top-level folder to lint, type-check and cover
+
+### D-116 · When Gemini runs out mid-eval, the agent moves to Claude Haiku
+✅ Accepted · S10 · your request ("if Gemini is out of free tier, fall back to Claude Haiku; evals should not break")
+- **Chose:** on a 429 or 503 the eval's agent switches to Claude Haiku 5.5 for the rest of the eval, and the run that hit it starts again (a half-run never counts). Only with `ANTHROPIC_API_KEY`; a Claude agent has no fallback. The result names both models; the Run dialog says what happens if Gemini runs out. Same rule as the judge (D-111)
+- **Instead of:** stopping the eval (before), or retrying Gemini later
+- **Because:** a 16 × 3 eval needs more calls than one day of free quota; the person started the eval, so the paid fallback is theirs (D-104)
+- **Cost:** Haiku agent runs cost cents each; the eval's $0.50 cap still stops it with a named reason. Runs before and after the switch used different models

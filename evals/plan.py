@@ -15,6 +15,7 @@ from evals.cases import Case
 
 JUDGE_MODEL = "gemini-3.5-flash-lite"  # free tier, the most quota (D-111)
 FALLBACK_JUDGE = CLAUDE_SMALL_MODEL  # only with a Claude key; the person pays (D-104)
+FALLBACK_AGENT = CLAUDE_SMALL_MODEL  # the agent, when Gemini runs out mid-eval (D-116)
 DEFAULT_CAP_USD = 0.50  # an eval's own money limit, agent + judge (S10-AC6)
 RUNS = (1, 3)  # 1 while building; 3 for pass^3 (D-112)
 

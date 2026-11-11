@@ -80,6 +80,7 @@ async def go(suite: Any, tmp_path: Path, **kw: Any) -> tuple[dict[str, Any], lis
         cases=kw.pop("cases", None),
         runs=kw.pop("runs", 1),
         max_usd=kw.pop("max_usd", 0.5),
+        fallback=kw.pop("fallback", None),
     )
     result = await run_eval(
         suite,
@@ -184,13 +185,57 @@ async def test_s10_ac6_stop_quota_and_judge_failures_end_it(suite: Any, tmp_path
     stop.set()
     stopped, _ = await go(suite, tmp_path, stop=stop)
     assert stopped["stop_reason"] == "Stopped by you."
-    busy, _ = await go(suite, tmp_path, factory=factory(fail="Gemini 429: quota exceeded"))
-    assert "out of quota" in busy["stop_reason"]
+    busy, _ = await go(
+        suite, tmp_path, factory=factory(fail="Gemini 429: quota exceeded. Please retry in 2h6m50s")
+    )
+    # plain words, not the raw error: which model, when it resets, why nothing took over
+    assert busy["stop_reason"] == (
+        "gemini-3.8-flash is out of quota (it resets in 2h6m50s), "
+        "and there's no Claude key to take over."
+    )
     judged, _ = await go(
         suite, tmp_path, cases=["lookup"], judge=StandInJudge(JudgeUnavailableError("no judge"))
     )
     assert judged["stop_reason"] == "no judge"
     assert judged["cases"][0]["status"] == "incomplete"
+
+
+async def test_s10_ac6_gemini_out_of_quota_hands_the_agent_to_claude_haiku(
+    suite: Any, tmp_path: Path
+) -> None:
+    """D-116: the eval doesn't break when Gemini's free tier runs out; Haiku takes over."""
+    result, events = await go(
+        suite,
+        tmp_path,
+        cases=["lookup"],
+        runs=3,
+        factory=factory(fail="Gemini 429: quota exceeded", only="gemini"),
+        fallback="claude-haiku-5-5",
+    )
+    assert result["status"] == "finished"
+    assert result["stop_reason"] == ""
+    assert result["agent"]["first"] == MODEL
+    assert result["agent"]["now"] == "claude-haiku-5-5"
+    assert "out of quota" in result["agent"]["switched"]
+    assert result["cases"][0]["status"] == "passed"
+    # the run that hit the 429 runs again on Haiku: still exactly 3 runs, all on Haiku
+    assert [r["model"] for r in result["cases"][0]["runs"]] == ["claude-haiku-5-5"] * 3
+    assert [r["run"] for r in result["cases"][0]["runs"]] == [1, 2, 3]
+    switched = [e for e in events if e["type"] == "agent_switched"]
+    assert len(switched) == 1  # once, then it stays on Haiku
+    assert switched[0]["to"] == "claude-haiku-5-5"
+
+
+async def test_s10_ac6_claude_out_of_quota_too_stops_the_eval(suite: Any, tmp_path: Path) -> None:
+    result, _ = await go(
+        suite,
+        tmp_path,
+        cases=["lookup"],
+        factory=factory(fail="429: rate limited"),
+        fallback="claude-haiku-5-5",
+    )
+    assert result["status"] == "stopped"
+    assert result["stop_reason"] == "claude-haiku-5-5 is out of quota too."
 
 
 # ── AC7: the result file, no key, no telemetry, no .env ─────────────────────────────────
@@ -267,3 +312,31 @@ def test_s10_ac7_terminal_lines_read_plainly() -> None:
     assert line({"type": "saved", "path": "x.json"}) == "Result: x.json"
     assert line({"type": "error", "message": "no key"}) == "✗ no key"
     assert line({"type": "run_started", "case": "lookup", "run": 2}) == "  … lookup run 2"
+
+
+@pytest.mark.parametrize(
+    ("claude_key", "model", "fallback"),
+    [
+        (True, "gemini-3.8-flash", "claude-haiku-5-5"),  # Gemini runs out → Haiku (D-116)
+        (False, "gemini-3.8-flash", None),  # no Claude key: nothing to fall back to
+        (True, "claude-sonnet-5-5", None),  # already a paid Claude run
+    ],
+)
+def test_s10_ac6_plan_names_the_agents_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    claude_key: bool,
+    model: str,
+    fallback: str | None,
+) -> None:
+    from agentic_harness import config
+
+    settings = config.Settings(
+        api_key=config.Secret("test-gemini"),
+        anthropic_key=config.Secret("test-claude") if claude_key else None,
+    )
+    monkeypatch.setattr(config, "load_settings", lambda: settings)
+    assert main(["--plan", "--json", "--cases", "off-topic", "--model", model]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["fallback_agent"] == fallback
+    assert "test-claude" not in json.dumps(plan)

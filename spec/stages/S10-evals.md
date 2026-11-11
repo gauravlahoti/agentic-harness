@@ -58,7 +58,7 @@ evals/cases/cloudco.toml ──► evals/run.py ──► the same harness as th
 - **Everything lives in `evals/`** (D-115). `src/agentic_harness/` never imports it, and never imports DeepEval.
 - **The page's Run button starts one fixed command** (`python -m evals.run`), the same way the Checks panel starts pytest, and streams its lines.
 - **The server only reads the result files.**
-- **The judge goes through our own model clients** (D-111). A small `DeepEvalBaseLLM` wraps `make_model`, so it gets the same key handling, no hidden retries (D-42) and `pricing.toml` costs. A 429 or 503 from Gemini switches the rest of the eval to Claude Haiku, and only if `ANTHROPIC_API_KEY` is set. Every score names its judge.
+- **The judge goes through our own model clients** (D-111). A small `DeepEvalBaseLLM` wraps `make_model`, so it gets the same key handling, no hidden retries (D-42) and `pricing.toml` costs. A 429 or 503 from Gemini switches the rest of the eval to Claude Haiku, and only if `ANTHROPIC_API_KEY` is set. Every score names its judge. The agent does the same (D-116): the run that hit the 429 starts again on Claude Haiku.
 - **Privacy:** `DEEPEVAL_TELEMETRY_OPT_OUT=1` and `DEEPEVAL_DISABLE_DOTENV=1`, and nothing goes to Confident AI. DeepEval's own files go into the git-ignored results folder.
 
 ## The golden cases (16, `evals/cases/cloudco.toml`, made up)
@@ -98,9 +98,9 @@ The sidebar gets an **Evals** entry, added to what's already there.
 
 **The page shows, from top to bottom:**
 - **Summary line:** cases passed, judge(s), cost, time, and the change since the last eval.
-- **Two category tables**, as above: each metric is a chip with its average score and a pass bar, and the skipped metrics are greyed with their reason.
-- **Cases × metrics grid:** a cell opens the judge's reason; a case opens its runs (answer, tool calls, cost).
-- **History.**
+- **Metrics table:** Metric · What it checks · Score, for the 12 metrics we score only, grouped as DeepEval groups them. The score shows the mean, a bar with the pass mark, and runs passed.
+- **Cases:** one row each: status, the question asked, and the metrics it missed. A row opens to the expected outcome and each run: question, tool calls, answer, every metric with its reason.
+- **Past evals.**
 
 **Run button:**
 - It opens an in-page dialog with the cases, runs (1 or 3), agent model, judge, estimated calls and the budget cap.
@@ -115,10 +115,10 @@ The sidebar gets an **Evals** entry, added to what's already there.
 | S10-AC3 | Replay: a saved trace (with a sub-agent) becomes DeepEval spans and test cases (tools, arguments, outputs, retrieval context) with zero model calls | 🧪 |
 | S10-AC4 | The 3 code metrics score pass and fail cases correctly on recorded traces | 🧪 |
 | S10-AC5 | The 9 judged metrics run through DeepEval with our judge; Gemini 429/503 → Claude Haiku for the rest, named per score; no usable judge → the eval stops with a clear reason | 🧪 |
-| S10-AC6 | 3 runs per case, pass only if all 3 pass; the eval's own budget cap stops it with a named reason | 🧪 |
+| S10-AC6 | 3 runs per case, pass only if all 3 pass; the eval's own budget cap stops it with a named reason; Gemini out of quota → the agent moves to Claude Haiku (D-116) | 🧪 |
 | S10-AC7 | Result JSON saved; telemetry off; DeepEval reads no `.env`; no key in any result or trace | 🧪 |
 | S10-AC8 | No test calls Gemini or Anthropic (recorded traces + stand-in judge); `make check` passes with coverage back to 85% (D-33) | 🧪 |
-| S10-AC9 | Evals page: summary, category tables (covered + greyed), grid with reasons, history; `test_page_baseline.py` still passes | 🧪 👀 |
+| S10-AC9 | Evals page: summary, metrics table (Metric · What it checks · Score), case rows that open to runs and reasons, past evals; `test_page_baseline.py` still passes | 🧪 👀 |
 | S10-AC10 | Run button: dialog with estimate, live progress, Stop, one eval at a time; the server starts only the fixed command | 🧪 👀 |
 | S10-AC11 | Live: a full eval (16 × 3) finishes; ≥ 14 of 16 cases pass | 🔑 👀 |
 
@@ -149,3 +149,4 @@ The sidebar gets an **Evals** entry, added to what's already there.
   3. DeepEval's auto-loaded pytest plugin is switched off (`-p no:deepeval`): it would start before our privacy switches.
 
   The per-case step / $ budget was dropped: Step efficiency judges wasted steps, and the eval's cap limits money.
+- 2026-11-12 · Your feedback after the first live run. (1) Gemini's free tier ran out and the eval stopped: now the agent moves to Claude Haiku too, and the run restarts on it (D-116). Stop reasons are plain words ("gemini-3.8-flash is out of quota (it resets in 2h6m50s), and there's no Claude key to take over."). (2) "The UI looks clumsy": the two category tables, chips, greyed skipped metrics and the 12-column grid are replaced by one Metrics table (Metric · What it checks · Score) and case rows you open. The skipped metrics stay in `evals/catalog.json` and this spec, not on the page. AC6, AC9, AC10 reset to 📝, then back to 🟨 with tests.

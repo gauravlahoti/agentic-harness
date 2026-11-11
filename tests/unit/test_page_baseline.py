@@ -110,7 +110,14 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
         "showModal",
     ):
         assert piece in JS, f"S10 piece missing from app.js: {piece}"
-    for rule in (".eval-cat", ".metric-chip", ".evals-grid", ".evals-dialog"):
+    # one metrics table (Metric · What it checks · Score), case rows that open, past evals
+    for piece in ('id="evals-metrics"', 'id="evals-cases"', 'id="evals-history"'):
+        assert piece in HTML, f"S10 piece missing from index.html: {piece}"
+    assert '"Metric", "What it checks", "Score"' in JS
+    assert "agent_switched" in JS  # the live view says when Claude Haiku takes over (D-116)
+    for rule in (".evals-metrics", ".case-row", ".evals-card", ".evals-dialog"):
         assert rule in CSS, f"S10 style missing from app.css: {rule}"
+    for gone in (".metric-chip", ".evals-grid", "Not covered:"):  # the clumsy parts, removed
+        assert gone not in CSS + JS
     assert "confirm(" not in JS
     assert "alert(" not in JS
