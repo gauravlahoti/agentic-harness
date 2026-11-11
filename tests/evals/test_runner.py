@@ -224,6 +224,11 @@ async def test_s10_ac6_gemini_out_of_quota_hands_the_agent_to_claude_haiku(
     # what the person pays: the Haiku runs; the half-run on Gemini's free tier costs them nothing
     assert result["usd"]["paid"] > 0
     assert result["usd"]["paid"] <= result["usd"]["total"]
+    # D-117: each turn saves its tokens, so the next projection uses real averages
+    turn = result["cases"][0]["runs"][0]["turns"][0]
+    assert turn["replies"] >= 1
+    assert turn["tokens_in"] > 0
+    assert set(result["judge"]) >= {"calls", "tokens_in", "tokens_out"}
     switched = [e for e in events if e["type"] == "agent_switched"]
     assert len(switched) == 1  # once, then it stays on Haiku
     assert switched[0]["to"] == "claude-haiku-5-5"

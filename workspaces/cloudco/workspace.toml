@@ -7,6 +7,9 @@ owner = "CloudCo"
 description = "Checks contract changes against CloudCo's terms and says who must approve."
 logo = "logo.svg"  # a made-up mark, shown at the top of the page
 
+# Every name, number and contract here is invented: the page tags it "Synthetic Data".
+synthetic_data = true
+
 # The agent may pause to ask the person a question when something it needs is missing (D-89).
 ask_human = true
 

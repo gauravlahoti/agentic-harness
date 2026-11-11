@@ -72,6 +72,7 @@ class Workspace:
     window: Window | None = None  # the working window, if the workspace sets one (D-94)
     summary_model: str = ""  # the small model that summarizes older turns (D-93)
     notes: bool = False  # the agent may keep notes between tasks (D-92)
+    synthetic_data: bool = False  # its data is made up: the page tags it "Synthetic Data"
     title_model: str = ""  # the small model that titles a conversation (D-91); "" = the scope's
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
     scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
@@ -119,6 +120,7 @@ class Workspace:
             if isinstance(config.get("trimming", {}), dict)
             else "",
             notes=_flag(config, "notes"),
+            synthetic_data=_flag(config, "synthetic_data"),
             title_model=_conversations(config.get("conversations", {})),
             flag_patterns=_texts(config, "flag_patterns"),
             scope=_scope(config.get("scope")),

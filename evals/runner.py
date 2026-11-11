@@ -166,6 +166,9 @@ def turn_record(view: RunView) -> dict[str, Any]:
         "model_calls": view.model_calls,
         "usd": round(view.usd, 6),
         "seconds": view.seconds,
+        "tokens_in": view.tokens_in,
+        "tokens_out": view.tokens_out,
+        "replies": view.replies,
         "scope": None if view.scope_in is None else ("in" if view.scope_in else "out"),
         "tools": [
             {
@@ -376,6 +379,9 @@ def build_result(
             "first": judge.first,
             "now": judge.current,
             "switched": judge.switched,
+            "calls": judge.calls,
+            "tokens_in": judge.tokens_in,
+            "tokens_out": judge.tokens_out,
         },
         "usd": {
             "agent": round(tally.agent_usd, 6),

@@ -61,6 +61,10 @@ class RunView:
     tools: tuple[ToolUse, ...]
     asked: tuple[tuple[str, bool], ...]  # (approver role, approved) for every approval
     root: Span
+    # Every model reply in the run, helpers included: what the eval cost panel learns from.
+    tokens_in: int = 0
+    tokens_out: int = 0  # thinking counts as output, as it is billed
+    replies: int = 0
 
     @property
     def loop_ran(self) -> bool:
@@ -86,6 +90,7 @@ def read_run(path: Path) -> RunView:
     scope_in: bool | None = None
     scope_reason = ""
     finished: dict[str, Any] = {}
+    tokens_in = tokens_out = replies = 0
 
     for event in events[1:]:
         kind, data = event.get("type"), event.get("data", {})
@@ -103,6 +108,11 @@ def read_run(path: Path) -> RunView:
         elif kind == "scope_checked" and not helper_id:
             scope_in, scope_reason = bool(data.get("in_scope")), str(data.get("reason", ""))
         elif kind == "model_replied":
+            usage = data.get("usage") or {}
+            tokens_in += int(usage.get("total_input_tokens") or 0)
+            tokens_out += int(usage.get("total_output_tokens") or 0)
+            tokens_out += int(usage.get("total_thought_tokens") or 0)
+            replies += 1
             text = data.get("text") or ""
             calls = data.get("tool_calls") or []
             parent.children.append(
@@ -145,4 +155,7 @@ def read_run(path: Path) -> RunView:
         tools=tuple(tools),
         asked=tuple(asked),
         root=root,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        replies=replies,
     )

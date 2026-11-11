@@ -288,6 +288,7 @@ def create_app(
                 "title": workspace.title,
                 "owner": workspace.owner,
                 "logo": bool(workspace.logo),
+                "synthetic_data": workspace.synthetic_data,
                 # One agent per workspace folder for now; the page lists them as a menu so a
                 # company with several is one more entry, not a redesign.
                 "agents": [

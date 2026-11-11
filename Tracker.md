@@ -303,3 +303,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your requests: pick the judge model in the Run dialog (animated menu, like the chat's); sidebar headings Profiles, Chats ("New conversation") and Workspace, all foldable; hero footer: Agent and Judge only. 363 offline tests. |
 | 2026-11-12 | Your rule: UI names in Title Case, sentences in sentence case (added to `CLAUDE.md`, test on metric and case-group names; page labels renamed). Evals card opens ready (no stale verdict) with the Agent and Judge menus on it; a past eval opens dated. |
 | 2026-11-12 | Golden Dataset page (your request): the 16 golden cases as cards with their right answers and rules, filterable; no scores. |
+| 2026-11-12 | D-117: Next Run cost panel (Agent, Judge, You Pay cards; free-limit meters; learns from your last 5 evals). "Synthetic Data" tag from a workspace setting. 368 offline tests, coverage 91%. |

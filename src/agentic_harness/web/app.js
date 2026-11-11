@@ -183,6 +183,7 @@ function setUpAgent() {
   $("empty-title").textContent = `What should the ${ws.title} do?`;
   $("empty-hint").textContent = "";
   setUpProfilePicker(ws);
+  for (const tag of document.querySelectorAll(".synthetic-tag")) tag.hidden = !ws.synthetic_data;
   refreshWork();
   $("examples").replaceChildren(
     ...(ws.examples ?? []).map((text) => {
@@ -1613,6 +1614,7 @@ async function loadEvals(select) {
     }
   }
   setUpEvalPickers(evals.defaultJudge);
+  refreshCost();
   const id = select === null ? null : (select ?? evals.result?.id); // nothing chosen: the ready state
   evals.result = null;
   if (id) {
@@ -2179,8 +2181,13 @@ function costToYou(plan) {
 }
 
 function refreshEstimate() {
+  if (!$("evals-dialog").open) return refreshCost(); // a picker changed on the card
   clearTimeout(planTimer);
   const cases = pickedCases();
+  if (cases.length) {
+    evals.next = { cases, runs: pickedRuns() }; // the panel shows what Start will run
+    refreshCost();
+  }
   if (!cases.length) return showEstimate({});
   planTimer = setTimeout(async () => {
     try {
@@ -2189,6 +2196,118 @@ function refreshEstimate() {
       $("evals-estimate").textContent = error.message;
     }
   }, 250);
+}
+
+// ── Next Run cost panel (D-117): what each role costs, and what you pay ─────
+let costTimer = 0;
+const part = (root, name) => root.querySelector(`[data-part="${name}"]`);
+const usdShort = (usd) => (usd <= 0 ? "$0" : usd < 0.01 ? `$${usd.toFixed(3)}` : `$${usd.toFixed(2)}`);
+
+// A dollar figure that counts to its new value (0.4 s, easing out); instant if reduced motion.
+function countTo(node, value) {
+  const from = Number(node.dataset.value ?? 0);
+  node.dataset.value = String(value);
+  if (from === value || matchMedia("(prefers-reduced-motion: reduce)").matches) return void (node.textContent = usdShort(value));
+  const start = performance.now();
+  const step = (now) => {
+    if (node.dataset.value !== String(value)) return; // a newer value took over
+    const t = Math.min((now - start) / 400, 1);
+    node.textContent = usdShort(from + (value - from) * (1 - (1 - t) ** 3));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// What the next run covers: the dialog's last pick, else the core set.
+function nextScope() {
+  if (!evals.next) {
+    const core = evals.suite.filter((c) => c.core).map((c) => c.id);
+    evals.next = { cases: core.length ? core : evals.suite.map((c) => c.id), runs: 1 };
+  }
+  return evals.next;
+}
+
+function refreshCost() {
+  clearTimeout(costTimer);
+  costTimer = setTimeout(async () => {
+    if (!evals.suite.length || !$("evals-model").value) return;
+    const { cases, runs } = nextScope();
+    const query = new URLSearchParams({ cases: cases.join(","), runs, model: $("evals-model").value });
+    if ($("evals-judge").value) query.set("judge", $("evals-judge").value);
+    try {
+      const response = await fetch(`/api/evals/plan?${query}`);
+      if (response.ok) renderCostPanel(await response.json());
+    } catch {
+      // the panel keeps its last numbers
+    }
+  }, 150);
+}
+
+// One role's card: Free Tier or Paid, the big number, the work, the free-limit meter.
+function roleCard(card, role, work, helper) {
+  card.classList.toggle("paid", role.paid);
+  const pill = part(card, "pill");
+  pill.textContent = role.paid ? "Paid" : "Free Tier";
+  pill.className = `cost-pill ${role.paid ? "paid" : "free"}`;
+  countTo(part(card, "num"), role.paid ? role.usd_list : 0);
+  part(card, "list").textContent = role.paid ? "Billed to your Claude key" : `${usdShort(role.usd_list)} on a paid key`;
+  part(card, "work").textContent = work;
+  const meter = part(card, "meter");
+  const text = part(card, "meter-text");
+  const limit = role.free_per_day;
+  meter.hidden = role.paid || !limit;
+  card.classList.remove("over");
+  if (role.paid) return void (text.textContent = "");
+  if (!limit) return void (text.textContent = "Free limit unknown");
+  const share = role.calls / limit;
+  meter.firstElementChild.style.width = `${Math.min(share, 1) * 100}%`;
+  card.classList.toggle("over", share > 1);
+  text.textContent =
+    share <= 1 ? `${role.calls} of ${limit} free calls a day` : helper ? `Over the free limit: ${helper} takes over` : "Over the free limit: the eval will stop";
+}
+
+function renderCostPanel(plan) {
+  const cost = plan.cost;
+  if (plan.type !== "plan" || !cost?.agent) return;
+  const { cases, runs } = nextScope();
+  const core = evals.suite.filter((c) => c.core).map((c) => c.id);
+  const isCore = cases.length === core.length && cases.every((id) => core.includes(id));
+  $("next-scope").textContent = `${cases.length} ${isCore ? "core " : ""}test${cases.length === 1 ? "" : "s"} × ${runs} run${runs > 1 ? "s" : ""}`;
+  const basis = $("next-basis");
+  basis.textContent = cost.basis === "measured" ? `Estimate from your last ${cost.from_evals} eval${cost.from_evals > 1 ? "s" : ""}` : "Cautious estimate";
+  basis.title =
+    cost.basis === "measured"
+      ? "Average tokens per agent turn and per judge call, from your recent evals."
+      : "Assumes 15k tokens in and 1.5k out per agent turn, and 3k in and 400 out per judge call. It sharpens once you've run evals.";
+  const helper = cost.fallback ? modelLabel(cost.fallback.model) : "";
+  const turns = cost.agent.turns;
+  roleCard($("cost-agent"), cost.agent, `${turns} answer${turns === 1 ? "" : "s"} · ≈ ${cost.agent.calls} model calls`, helper);
+  roleCard($("cost-judge"), cost.judge, `${cost.judge.calls} grading calls`, helper);
+
+  const total = $("cost-total");
+  countTo(part(total, "num"), cost.low);
+  part(total, "range").textContent =
+    cost.high > cost.low
+      ? `Up to ${usdShort(cost.high)} if Gemini runs out and ${helper} steps in`
+      : cost.low > 0
+        ? "Billed to your Claude key"
+        : "Free tier only: the eval stops if Gemini runs out";
+  if (cost.high > plan.cap_usd) part(total, "range").append(el("strong", "cost-cap", ` The $${plan.cap_usd.toFixed(2)} cap stops it first.`));
+  // The split: what each role costs at most, in the two role colours.
+  const most = (role, backup) => (role.paid ? role.usd_list : (backup ?? role.usd_list));
+  const agentMost = most(cost.agent, cost.fallback?.agent_usd);
+  const judgeMost = most(cost.judge, cost.fallback?.judge_usd);
+  const sum = agentMost + judgeMost || 1;
+  const split = part(total, "split");
+  split.firstElementChild.style.width = `${(agentMost / sum) * 100}%`;
+  split.lastElementChild.style.width = `${(judgeMost / sum) * 100}%`;
+  // Say which price the split uses: the takeover model's when Gemini could run out.
+  const takeover = cost.fallback && !(cost.agent.paid && cost.judge.paid);
+  part(total, "legend").replaceChildren(
+    el("span", "legend-note", takeover ? `If ${helper} does it all:` : "Split:"),
+    el("span", "legend-agent", `Agent ${usdShort(agentMost)}`),
+    el("span", "legend-judge", `Judge ${usdShort(judgeMost)}`),
+  );
 }
 
 // ── A live eval: rows fill in as runs finish ──────────────────────────────────

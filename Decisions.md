@@ -913,3 +913,10 @@
 - **Instead of:** stopping the eval (before), or retrying Gemini later
 - **Because:** a 16 × 3 eval needs more calls than one day of free quota; the person started the eval, so the paid fallback is theirs (D-104)
 - **Cost:** Haiku agent runs cost cents each; the eval's $0.50 cap still stops it with a named reason. Runs before and after the switch used different models
+
+### D-117 · A Next Run cost panel: what each role costs, and what you pay
+✅ Accepted · S10 · your request ("cost projected beside the models, for the agent and for judging")
+- **Chose:** three cards on the Evals card (Agent, Judge, You Pay). Each role card shows Free Tier or Paid, one big number, the work it does and Google's free daily limit where known (`free_per_day` in `pricing.toml`: Flash-Lite 500, 3.6 Flash 20); You Pay shows the total, the range if Claude Haiku takes over, and how agent and judge split it. Token counts are the averages of your last 5 evals (agent tokens and replies per turn, judge tokens per call, now saved in each result); cautious numbers before any
+- **Instead of:** one line of text in the Run dialog
+- **Because:** picking a model is a cost decision; seeing it beside the picker, per role, makes the choice clear to anyone
+- **Cost:** results files gain a token block (older ones are skipped); 3.8 Flash shows "Free limit unknown" until we know its limit

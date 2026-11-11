@@ -145,20 +145,55 @@
     <!-- ── Evals view (S10): summary, metrics, cases, past evals, Run ── -->
     <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
       <header class="page-header evals-head">
-        <h1 id="evals-heading">Evals</h1>
+        <h1 id="evals-heading">Evals <span class="synthetic-tag" hidden>Synthetic Data</span></h1>
         <button type="button" id="evals-run" class="primary">Run Evals</button>
       </header>
 
       <div class="evals-summary" id="evals-summary" role="status"></div>
       <!-- The next run's models: shown inside the summary card (moved there by the script). -->
       <div class="evals-next" id="evals-next">
-        <span class="evals-next-label">Next Run</span>
-        <label class="evals-model-pick"><span>Agent</span>
-          <select class="model-pick evals-pick" id="evals-model"><button type="button"><selectedcontent></selectedcontent></button></select>
-        </label>
-        <label class="evals-model-pick"><span>Judge</span>
-          <select class="model-pick evals-pick" id="evals-judge"><button type="button"><selectedcontent></selectedcontent></button></select>
-        </label>
+        <div class="next-head">
+          <span class="evals-next-label">Next Run</span>
+          <span class="next-scope" id="next-scope"></span>
+          <span class="next-basis" id="next-basis" tabindex="0"></span>
+        </div>
+        <div class="cost-cards">
+          <section class="cost-card" id="cost-agent" aria-labelledby="cost-agent-title">
+            <header class="cost-card-head">
+              <h3 id="cost-agent-title">Agent</h3>
+              <span class="cost-pill" data-part="pill"></span>
+            </header>
+            <p class="cost-does">Answers the test questions</p>
+            <label class="visually-hidden" for="evals-model">Agent model</label>
+            <select class="model-pick evals-pick" id="evals-model"><button type="button"><selectedcontent></selectedcontent></button></select>
+            <p class="cost-big"><span class="cost-num" data-part="num">$0</span></p>
+            <p class="cost-list" data-part="list"></p>
+            <p class="cost-work" data-part="work"></p>
+            <div class="cost-meter" data-part="meter" hidden><span class="cost-meter-fill"></span></div>
+            <p class="cost-meter-text" data-part="meter-text"></p>
+          </section>
+          <section class="cost-card" id="cost-judge" aria-labelledby="cost-judge-title">
+            <header class="cost-card-head">
+              <h3 id="cost-judge-title">Judge</h3>
+              <span class="cost-pill" data-part="pill"></span>
+            </header>
+            <p class="cost-does">Grades every answer</p>
+            <label class="visually-hidden" for="evals-judge">Judge model</label>
+            <select class="model-pick evals-pick" id="evals-judge"><button type="button"><selectedcontent></selectedcontent></button></select>
+            <p class="cost-big"><span class="cost-num" data-part="num">$0</span></p>
+            <p class="cost-list" data-part="list"></p>
+            <p class="cost-work" data-part="work"></p>
+            <div class="cost-meter" data-part="meter" hidden><span class="cost-meter-fill"></span></div>
+            <p class="cost-meter-text" data-part="meter-text"></p>
+          </section>
+          <section class="cost-card total" id="cost-total" aria-labelledby="cost-total-title" aria-live="polite">
+            <header class="cost-card-head"><h3 id="cost-total-title">You Pay</h3></header>
+            <p class="cost-big"><span class="cost-num" data-part="num">$0</span></p>
+            <p class="cost-range" data-part="range"></p>
+            <div class="cost-split" data-part="split" aria-hidden="true"><span class="split-agent"></span><span class="split-judge"></span></div>
+            <p class="cost-legend" data-part="legend"></p>
+          </section>
+        </div>
       </div>
 
       <div class="evals-live" id="evals-live" hidden>
@@ -203,7 +238,7 @@
     <section class="view view-golden" id="view-golden" aria-labelledby="golden-heading" hidden>
       <header class="page-header golden-head">
         <div>
-          <h1 id="golden-heading">Golden Dataset</h1>
+          <h1 id="golden-heading">Golden Dataset <span class="synthetic-tag" hidden>Synthetic Data</span></h1>
           <p class="golden-sub" id="golden-sub"></p>
         </div>
         <div class="golden-filter" role="group" aria-label="Show">

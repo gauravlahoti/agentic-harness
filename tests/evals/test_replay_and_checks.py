@@ -79,6 +79,14 @@ def test_s10_ac3_saved_run_with_a_subagent_becomes_a_nested_trace() -> None:
     assert all(len(str(c.get("output", ""))) <= OUTPUT_CAP + 40 for c in nested[0]["children"])
 
 
+def test_s10_tokens_and_replies_are_read_from_the_trace() -> None:
+    """D-117: the cost panel learns from real runs, helpers included."""
+    view = read_run(WITH_HELPER)
+    assert view.replies == 8  # the agent's and its helper's model replies
+    assert view.tokens_in == 33162
+    assert view.tokens_out > 0
+
+
 def test_s10_ac3_test_cases_carry_tools_trace_and_retrieval_context() -> None:
     view = read_run(WITH_HELPER)
     single = llm_test_case(view, task="custom task")

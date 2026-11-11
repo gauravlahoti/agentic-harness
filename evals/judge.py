@@ -69,6 +69,10 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
         self.switched = ""  # why the judge moved to the fallback, if it did
         self.usd = 0.0  # everything the judge cost in this eval
         self.by_model: dict[str, float] = {}  # per model: Claude is paid, Gemini may be free
+        # what the cost panel learns from (D-117): calls made and tokens used
+        self.calls = 0
+        self.tokens_in = 0
+        self.tokens_out = 0
         self._used: list[str] = []
         self._spent = 0.0
         super().__init__(model=primary.name)
@@ -119,6 +123,10 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
             except ModelError as second:
                 raise JudgeUnavailableError(f"The fallback judge failed too: {second}") from second
         cost = self._prices.cost(self._active.name, reply.usage)
+        self.calls += 1
+        self.tokens_in += int(reply.usage.get("total_input_tokens") or 0)
+        self.tokens_out += int(reply.usage.get("total_output_tokens") or 0)
+        self.tokens_out += int(reply.usage.get("total_thought_tokens") or 0)
         self._used.append(self._active.name)
         self._spent += cost
         self.usd += cost

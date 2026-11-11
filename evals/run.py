@@ -28,12 +28,14 @@ from agentic_harness.pricing import PriceNotFoundError, load_prices
 from evals.cases import CaseError, load_suite
 from evals.plan import (
     DEFAULT_CAP_USD,
+    DEFAULT_FOLDER,
     FALLBACK_AGENT,
     FALLBACK_JUDGE,
     JUDGE_MODEL,
     RUNS,
-    cost_range,
     estimate,
+    measured,
+    project,
 )
 
 DEFAULT_SUITE = Path("evals") / "cases" / "cloudco.toml"
@@ -97,8 +99,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "fallback_agent": agent_fallback,
                 "cap_usd": args.cap,
                 "estimate": est,
-                "cost": cost_range(
-                    est, model, judge_model, agent_fallback or fallback, load_prices()
+                "cost": project(
+                    est,
+                    model,
+                    judge_model,
+                    agent_fallback or fallback,
+                    load_prices(),
+                    measured(args.out or DEFAULT_FOLDER),
                 ),
             }
         )
@@ -116,7 +123,7 @@ async def _run(
     emit: Any,
 ) -> int:
     from evals.judge import Judge
-    from evals.report import DEFAULT_FOLDER, save
+    from evals.report import save
     from evals.runner import Options, run_eval
 
     prices = load_prices()

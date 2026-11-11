@@ -216,6 +216,17 @@ def test_s06_ac9_ask_human_is_on_only_when_the_workspace_says_so(tmp_path: Path)
     assert Workspace.load(plain).ask_human is False
 
 
+def test_s10_synthetic_data_is_said_by_the_workspace_not_the_harness(tmp_path: Path) -> None:
+    """The page tags a workspace's data "Synthetic Data" only when the workspace says so."""
+    (tmp_path / "workspace.toml").write_text("synthetic_data = true\n")
+    assert Workspace.load(tmp_path).synthetic_data is True
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    assert Workspace.load(plain).synthetic_data is False
+    cloudco = Path(__file__).resolve().parents[2] / "workspaces" / "cloudco"
+    assert Workspace.load(cloudco).synthetic_data is True  # its data is all made up
+
+
 def test_s06_ac1_approvals_take_a_role_a_label_and_a_condition(tmp_path: Path) -> None:
     (tmp_path / "tools.py").write_text(
         "from agentic_harness.tools.registry import tool\n\n"

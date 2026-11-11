@@ -94,3 +94,18 @@ def test_s01_ac13_priced_models_are_the_ones_you_can_pick() -> None:
     models = load_prices().models()
     assert models == sorted(models)
     assert {"gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"} <= set(models)
+
+
+def test_s10_free_daily_limit_is_optional_and_only_where_known() -> None:
+    """D-117: the eval cost panel shows Google's free daily limit only where we know it."""
+    prices = Prices(
+        {
+            "a": {"input": 1.0, "output": 2.0, "cached_input": 0.5, "free_per_day": 500},
+            "b": {"input": 1.0, "output": 2.0, "cached_input": 0.5},
+        }
+    )
+    assert prices.free_per_day("a") == 500
+    assert prices.free_per_day("b") is None
+    real = load_prices()
+    assert real.free_per_day("gemini-3.5-flash-lite") == 500  # Google's own 429 said so
+    assert real.free_per_day("claude-haiku-5-5") is None  # Claude has no free tier

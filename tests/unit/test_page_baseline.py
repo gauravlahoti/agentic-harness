@@ -118,6 +118,11 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
     assert 'id="evals-core"' in HTML  # the dialog starts on the core set
     assert 'id="evals-judge"' in HTML  # the judge is picked too, in the same animated menu
     assert 'id="evals-next"' in HTML  # both menus sit on the summary card, for the next run
+    for card in ('id="cost-agent"', 'id="cost-judge"', 'id="cost-total"'):  # D-117 cost panel
+        assert card in HTML
+    assert "on a paid key" in JS  # Gemini: $0 on the free tier, and what a paid key would cost
+    assert "prefers-reduced-motion" in JS  # the count-up snaps when motion is reduced
+    assert 'class="synthetic-tag"' in HTML  # the workspace says its data is synthetic
     assert "Tests Ready to Run" in JS  # no verdict until an eval is run or opened
     assert 'data-view="golden"' in HTML  # the golden dataset, on its own page
     assert 'id="view-golden"' in HTML

@@ -26,6 +26,7 @@
   --part-guard: light-dark(#b7791f, #e0b84a);
   --part-block: light-dark(#b42318, #ff8a80);
   --part-memory: light-dark(#6d3fc0, #b69cff);
+  --claude: light-dark(#b85a33, #e8956a); /* Claude's warm orange: paid */
 
   /* Agent view surfaces. */
   --bubble: light-dark(#ecebe6, #2b2b28);
@@ -1499,21 +1500,71 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .hero-tile.good strong { color: var(--pass); }
 .hero-tile.bad strong { color: var(--fail); }
 .hero-kicker { margin: 0 0 6px; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
-/* The next run's models, along the bottom of the card. Hidden until the card takes it in. */
+/* Next Run cost panel (D-117): Agent, Judge and You Pay, side by side along the card's
+   bottom. Hidden until the card takes it in. Free = green, paid = Claude orange. */
 #view-evals > .evals-next { display: none; }
-.evals-next {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 22px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
+.evals-next { grid-column: 1 / -1; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.next-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 12px; }
 .evals-next-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
-.evals-next .evals-model-pick { display: flex; align-items: center; gap: 8px; }
-.evals-next .evals-model-pick > span { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.next-scope { font-size: 13px; font-weight: 600; }
+.next-basis { margin-left: auto; padding: 2px 9px; border: 1px dashed var(--line); border-radius: 999px; color: var(--muted); font-size: 11.5px; cursor: help; }
+.next-basis:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cost-cards { display: grid; grid-template-columns: 1fr 1fr 1.05fr; gap: 12px; }
+.cost-card {
+  --tone: var(--pass);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg) 45%, var(--surface));
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, background-color 0.35s ease;
+}
+.cost-card.paid { --tone: var(--claude); border-color: color-mix(in srgb, var(--claude) 45%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--claude) 10%, transparent), 0 10px 26px -16px color-mix(in srgb, var(--claude) 70%, transparent); }
+.cost-card.over { --tone: var(--skip); }
+.cost-card-head { display: flex; justify-content: space-between; align-items: center; }
+.cost-card h3 { margin: 0; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.cost-does { margin: 0 0 4px; color: var(--text-soft); font-size: 13px; }
+.cost-pill { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; transition: background-color 0.3s ease, color 0.3s ease; }
+.cost-pill.free { background: color-mix(in srgb, var(--pass) 14%, transparent); color: var(--pass); }
+.cost-pill.paid { background: color-mix(in srgb, var(--claude) 15%, transparent); color: var(--claude); }
+.cost-card .model-pick { align-self: flex-start; margin-left: -8px; }
+.cost-big { margin: 4px 0 0; line-height: 1; }
+.cost-num { font-size: 32px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--tone); transition: color 0.3s ease; }
+.cost-list, .cost-work, .cost-meter-text, .cost-range { margin: 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cost-list { color: var(--text-soft); }
+.cost-meter { height: 6px; margin-top: 6px; border-radius: 3px; background: color-mix(in srgb, var(--line) 85%, transparent); overflow: hidden; }
+.cost-meter[hidden] { display: none; }
+.cost-meter-fill { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--tone); transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s ease; }
+.cost-card.over .cost-meter-text { color: var(--skip); font-weight: 600; }
+/* You Pay: the total, the range, and how agent and judge split it. */
+.cost-card.total {
+  --tone: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background:
+    radial-gradient(130% 120% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    var(--surface);
+}
+.cost-card.total .cost-num { font-size: 40px; }
+.cost-range { color: var(--text-soft); line-height: 1.45; }
+.cost-cap { color: var(--skip); font-weight: 600; }
+.cost-split { display: flex; height: 10px; margin-top: auto; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--line) 85%, transparent); }
+.cost-split span { height: 100%; transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.split-agent { background: var(--accent); }
+.split-judge { background: var(--part-memory); }
+.cost-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.cost-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-agent::before, .legend-judge::before { content: ""; width: 8px; height: 8px; border-radius: 2px; }
+.legend-agent::before { background: var(--accent); }
+.legend-judge::before { background: var(--part-memory); }
+.legend-note { color: var(--muted); }
+.synthetic-tag { margin-left: 10px; padding: 2px 9px; border: 1px solid color-mix(in srgb, var(--skip) 45%, var(--line)); border-radius: 999px; color: var(--skip); font-size: 11.5px; font-weight: 650; letter-spacing: 0.02em; vertical-align: middle; }
+.synthetic-tag[hidden] { display: none; }
+@media (max-width: 760px) { .cost-cards { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .cost-card, .cost-pill, .cost-num, .cost-meter-fill, .cost-split span { transition: none; } }
 @media (max-width: 700px) {
   .evals-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 22px 18px; }
   .hero-tiles { justify-content: center; }

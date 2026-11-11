@@ -137,23 +137,65 @@ def test_s10_ac5_refused_case_needs_no_judge_and_estimates_are_positive() -> Non
 
 
 def test_s10_ac6_cost_to_you_is_a_range_free_tier_to_all_claude() -> None:
-    """The Run dialog's cost: $0 while Gemini's free tier lasts; at most all-Haiku (D-116)."""
-    from evals.plan import cost_range
+    """The cost panel: $0 while Gemini's free tier lasts; at most all-Haiku (D-116, D-117)."""
+    from evals.plan import project
 
     prices = load_prices()
     est = {"agent_runs": 10, "judge_calls": 100}
     flash, lite, haiku_id = "gemini-3.8-flash", "gemini-3.5-flash-lite", "claude-haiku-5-5"
-    gemini = cost_range(est, flash, lite, haiku_id, prices)
+    gemini = project(est, flash, lite, haiku_id, prices)
     assert gemini["low"] == 0.0  # the free tier bills nothing
     # 10 turns x (15k in, 1.5k out) + 100 calls x (3k in, 400 out), at Haiku's price
     haiku = 10 * (15_000 * 0.10 + 1_500 * 0.50) / 1e6 + 100 * (3_000 * 0.10 + 400 * 0.50) / 1e6
     assert gemini["high"] == pytest.approx(haiku, abs=1e-4)
-    no_key = cost_range(est, "gemini-3.8-flash", "gemini-3.5-flash-lite", None, prices)
-    assert no_key == {"low": 0.0, "high": 0.0}
-    claude = cost_range(est, haiku_id, lite, haiku_id, prices)
+    # each role: what it does, its list price, who pays, its free daily limit
+    assert gemini["agent"]["turns"] == 10
+    assert gemini["agent"]["paid"] is False
+    list_price = 10 * (15_000 * 0.75 + 1_500 * 3.75) / 1e6  # Gemini 3.8 Flash on a paid key
+    assert gemini["agent"]["usd_list"] == pytest.approx(list_price, abs=1e-4)
+    assert gemini["judge"]["calls"] == 100
+    assert gemini["judge"]["free_per_day"] == 500
+    assert gemini["fallback"]["model"] == haiku_id
+    assert gemini["basis"] == "cautious"
+    no_key = project(est, flash, lite, None, prices)
+    assert (no_key["low"], no_key["high"], no_key["fallback"]) == (0.0, 0.0, None)
+    claude = project(est, haiku_id, lite, haiku_id, prices)
     assert claude["low"] > 0  # a Claude agent is paid from the first turn
-    judge = cost_range(est, "gemini-3.8-flash", "claude-haiku-5-5", None, prices)
+    assert claude["agent"]["paid"] is True
+    judge = project(est, flash, haiku_id, None, prices)
     assert judge["low"] == judge["high"] > 0  # a Claude judge is paid for every call
+
+
+def test_s10_ac6_the_projection_learns_from_past_evals(tmp_path: Path) -> None:
+    """Once evals have run, their real averages replace the cautious numbers (D-117)."""
+    import json
+
+    from evals.plan import measured, project
+
+    assert measured(tmp_path) is None  # nothing run yet
+    turn = {"tokens_in": 4_000, "tokens_out": 300, "replies": 3}
+    result = {
+        "cases": [{"runs": [{"turns": [turn, turn]}]}],
+        "judge": {"calls": 10, "tokens_in": 20_000, "tokens_out": 2_000},
+    }
+    (tmp_path / "20261112-100000-abcdef.json").write_text(json.dumps(result))
+    (tmp_path / "20261111-090000-aaaaaa.json").write_text("{}")  # an old result: skipped
+    seen = measured(tmp_path)
+    assert seen == {"agent": (4_000, 300, 3), "judge": (2_000, 200), "evals": 1}
+    plan = project(
+        {"agent_runs": 2, "judge_calls": 10},
+        "claude-haiku-5-5",
+        "claude-haiku-5-5",
+        None,
+        load_prices(),
+        seen,
+    )
+    assert plan["basis"] == "measured"
+    assert plan["from_evals"] == 1
+    assert plan["agent"]["calls"] == 6  # 2 turns x 3 replies
+    assert plan["low"] == pytest.approx(
+        2 * (4_000 * 0.10 + 300 * 0.50) / 1e6 + 10 * (2_000 * 0.10 + 200 * 0.50) / 1e6
+    )
 
 
 async def test_s10_ac6_the_judge_keeps_what_each_model_cost() -> None:

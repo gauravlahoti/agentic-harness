@@ -15,11 +15,13 @@ cached_input = 0.075   # doubles to 0.15 on 2027-01-01
 input = 0.75           # doubles to 1.50 on 2027-01-01
 output = 3.75          # doubles to 7.50 on 2027-01-01
 cached_input = 0.075   # doubles to 0.15 on 2027-01-01
+free_per_day = 20      # free-tier requests a day, seen live 2026-11 (optional field)
 
 [models."gemini-3.5-flash-lite"]
 input = 0.30
 output = 2.50
 cached_input = 0.03
+free_per_day = 500     # from Google's own 429 message, 2026-11-11
 
 # Claude (Anthropic), a paid option the person picks (D-102). Source: Anthropic's model table
 # in the claude-api reference, checked 2026-11-10. Cache reads ~0.1x input (Sonnet 5.5: $0.20);

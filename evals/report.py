@@ -17,8 +17,6 @@ from typing import Any
 
 from evals.scoring import catalog
 
-DEFAULT_FOLDER = Path(".agentic-harness") / "evals"
-
 
 def save(result: dict[str, Any], folder: Path, secrets: Sequence[str] = ()) -> Path:
     folder.mkdir(parents=True, exist_ok=True)

@@ -4,8 +4,9 @@ Harness part: the loop's cost limit. Prices live in ``pricing.toml``, a data
 file, so no model name is written in code. An unknown model is an error at
 startup: a missing price would let the cost limit silently count $0.
 
-Does not: talk to Google, or know about the free tier (it prices every call
-as paid, so the cost limit works the same either way).
+Does not: talk to Google, or count the free tier (it prices every call as
+paid, so the cost limit works the same either way). It only carries a model's
+free daily limit, where one is known, for the eval cost panel (D-117).
 """
 
 import tomllib
@@ -27,10 +28,11 @@ class ModelPrice:
     input: float
     output: float  # thinking tokens are billed at this rate too
     cached_input: float
+    free_per_day: int | None = None  # free-tier requests a day, only where known
 
 
 class Prices:
-    def __init__(self, table: Mapping[str, Mapping[str, float]]) -> None:
+    def __init__(self, table: Mapping[str, Mapping[str, Any]]) -> None:
         self._table = {name: ModelPrice(**row) for name, row in table.items()}
 
     def models(self) -> list[str]:
@@ -45,6 +47,9 @@ class Prices:
             raise PriceNotFoundError(
                 f"No price for model {model!r} in pricing.toml (known: {known})."
             ) from None
+
+    def free_per_day(self, model: str) -> int | None:
+        return self.for_model(model).free_per_day
 
     def cost(self, model: str, usage: Mapping[str, Any]) -> float:
         """USD for one call, from Gemini's usage block. Thought tokens count as output."""

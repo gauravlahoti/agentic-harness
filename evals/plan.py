@@ -7,7 +7,10 @@ calls no model, so it answers in a moment.
 Does not: run or score anything.
 """
 
+import json
+import re
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from agentic_harness.config import CLAUDE_PREFIX, CLAUDE_SMALL_MODEL, EVAL_JUDGE_MODEL
@@ -45,35 +48,117 @@ def judge_calls(case: Case) -> int:
     return calls
 
 
-def cost_range(
-    est: dict[str, Any], model: str, judge: str, fallback: str | None, prices: Prices
-) -> dict[str, float]:
-    """What the person pays, at least and at most (USD).
+CAUTIOUS_REPLIES_PER_TURN = 4  # model calls per agent turn, for the free-limit meter
+RECENT_EVALS = 5  # how many past evals the projection learns from
+DEFAULT_FOLDER = Path(".agentic-harness") / "evals"  # results, when --out isn't given
+RESULT_FILE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{6}$")
 
-    Gemini's free tier bills nothing, so a Gemini eval costs $0 while the quota lasts; a
-    Claude agent or judge is paid from the first call. At most, the fallback (Claude Haiku)
-    does every Gemini agent turn and judge call (D-116).
+
+def measured(folder: Path) -> dict[str, Any] | None:
+    """Real averages from your last evals, or None before any has recorded tokens (D-117).
+
+    Agent: tokens in, tokens out and model replies per turn. Judge: tokens per call.
+    Results saved before D-117 carry no tokens and are skipped.
     """
+    files = sorted((f for f in folder.glob("*.json") if RESULT_FILE.match(f.stem)), reverse=True)
+    turns: list[dict[str, Any]] = []
+    judged = [0, 0, 0]  # calls, tokens in, tokens out
+    used = 0
+    for path in files[:RECENT_EVALS]:
+        try:
+            result = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        found = [
+            t
+            for case in result.get("cases", [])
+            for run in case.get("runs", [])
+            for t in run.get("turns", [])
+            if t.get("replies")
+        ]
+        judge = result.get("judge") or {}
+        if not found and not judge.get("calls"):
+            continue
+        used += 1
+        turns += found
+        judged[0] += int(judge.get("calls") or 0)
+        judged[1] += int(judge.get("tokens_in") or 0)
+        judged[2] += int(judge.get("tokens_out") or 0)
+    if not used:
+        return None
 
-    def each(name: str, tokens: tuple[int, int]) -> float:
-        usage = {"total_input_tokens": tokens[0], "total_output_tokens": tokens[1]}
-        return prices.cost(name, usage)
+    def mean(key: str) -> int:
+        return round(sum(int(t[key]) for t in turns) / len(turns))
 
-    def agent(name: str) -> float:
-        return float(est["agent_runs"]) * each(name, AGENT_TURN_TOKENS)
+    return {
+        "agent": (mean("tokens_in"), mean("tokens_out"), mean("replies")) if turns else None,
+        "judge": (judged[1] // judged[0], judged[2] // judged[0]) if judged[0] else None,
+        "evals": used,
+    }
 
-    def judging(name: str) -> float:
-        return float(est["judge_calls"]) * each(name, JUDGE_CALL_TOKENS)
+
+def project(
+    est: dict[str, Any],
+    model: str,
+    judge: str,
+    fallback: str | None,
+    prices: Prices,
+    seen: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """What a run will cost, per role, and what the person pays (D-117).
+
+    Gemini's free tier bills nothing, so a Gemini role costs the person $0 while the quota
+    lasts; its list price shows what it would cost on a paid key. A Claude role is paid from
+    the first call. At most, the fallback (Claude Haiku) does every Gemini turn and call
+    (D-116). Token counts are your last evals' averages, or cautious numbers before any.
+    """
+    seen = seen or {}
+    a_in, a_out, a_replies = seen.get("agent") or (*AGENT_TURN_TOKENS, CAUTIOUS_REPLIES_PER_TURN)
+    j_in, j_out = seen.get("judge") or JUDGE_CALL_TOKENS
+    turns, calls = int(est["agent_runs"]), int(est["judge_calls"])
+
+    def usd(name: str, n: int, tokens_in: int, tokens_out: int) -> float:
+        usage = {"total_input_tokens": tokens_in, "total_output_tokens": tokens_out}
+        return n * prices.cost(name, usage)
 
     def paid(name: str) -> bool:
         return name.startswith(CLAUDE_PREFIX)
 
-    low_agent = agent(model) if paid(model) else 0.0
-    low_judge = judging(judge) if paid(judge) else 0.0
-    high_agent = low_agent or (agent(fallback) if fallback else 0.0)
-    high_judge = low_judge or (judging(fallback) if fallback else 0.0)
-    low, high = low_agent + low_judge, high_agent + high_judge
-    return {"low": round(low, 4), "high": round(high, 4)}
+    agent_list = usd(model, turns, a_in, a_out)
+    judge_list = usd(judge, calls, j_in, j_out)
+    low = (agent_list if paid(model) else 0.0) + (judge_list if paid(judge) else 0.0)
+    high, backup = low, None
+    if fallback:
+        backup_agent = 0.0 if paid(model) else usd(fallback, turns, a_in, a_out)
+        backup_judge = 0.0 if paid(judge) else usd(fallback, calls, j_in, j_out)
+        high = low + backup_agent + backup_judge
+        backup = {
+            "model": fallback,
+            "agent_usd": round(backup_agent, 4),
+            "judge_usd": round(backup_judge, 4),
+        }
+    return {
+        "agent": {
+            "model": model,
+            "turns": turns,
+            "calls": turns * a_replies,
+            "usd_list": round(agent_list, 4),
+            "paid": paid(model),
+            "free_per_day": None if paid(model) else prices.free_per_day(model),
+        },
+        "judge": {
+            "model": judge,
+            "calls": calls,
+            "usd_list": round(judge_list, 4),
+            "paid": paid(judge),
+            "free_per_day": None if paid(judge) else prices.free_per_day(judge),
+        },
+        "fallback": backup,
+        "low": round(low, 4),
+        "high": round(high, 4),
+        "basis": "measured" if seen.get("agent") or seen.get("judge") else "cautious",
+        "from_evals": int(seen.get("evals") or 0),
+    }
 
 
 def estimate(cases: Sequence[Case], runs: int) -> dict[str, Any]:
