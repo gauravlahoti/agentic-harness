@@ -37,6 +37,7 @@ KNOWN = {
     "scope",
     "approvals",
     "expect_flagged",
+    "core",
     *TEXT_LISTS,
 }
 
@@ -62,6 +63,7 @@ class Case:
     expect_approval: tuple[str, ...] = ()
     expect_blocked: tuple[str, ...] = ()
     expect_flagged: bool = False
+    core: bool = False  # in the Run dialog's default set: a few cases that score every metric
 
     @property
     def multi_turn(self) -> bool:
@@ -134,8 +136,10 @@ def _case(raw: dict[str, Any], number: int) -> Case:
     if not isinstance(key_args, dict) or not all(isinstance(v, dict) for v in key_args.values()):
         raise fail("key_args", "must map a tool name to its expected arguments.")
     flagged = raw.get("expect_flagged", False)
-    if not isinstance(flagged, bool):
-        raise fail("expect_flagged", "must be true or false.")
+    core = raw.get("core", False)
+    for key, value in (("expect_flagged", flagged), ("core", core)):
+        if not isinstance(value, bool):
+            raise fail(key, "must be true or false.")
     return Case(
         id=raw["id"],
         group=raw["group"],
@@ -146,5 +150,6 @@ def _case(raw: dict[str, Any], number: int) -> Case:
         scope=scope,
         approvals=dict(approvals),
         expect_flagged=flagged,
+        core=core,
         **lists,
     )

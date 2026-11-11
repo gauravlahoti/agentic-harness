@@ -77,6 +77,7 @@ class Options:
 class Tally:
     agent: str  # the agent's model now
     agent_usd: float = 0.0
+    paid_usd: float = 0.0  # the agent's Claude runs: what the person pays for (D-104)
     switched: str = ""  # why the agent moved to the fallback, if it did
     stop: str = ""  # why the eval stopped early; "" while it runs
     started: float = field(default_factory=time.time)
@@ -260,6 +261,8 @@ async def run_eval(
                 secrets=secrets,
             )
             tally.agent_usd += sum(v.usd for v in views)
+            if tally.agent.startswith(CLAUDE_PREFIX):
+                tally.paid_usd += sum(v.usd for v in views)
             scores: list[Score] = code_scores(case, views)
             failed = next((v for v in views if v.outcome == "failed"), None)
             if failed and BUSY.search(failed.reason):
@@ -300,6 +303,7 @@ async def run_eval(
                     },
                     "usd": record["usd"],
                     "spent_usd": round(spent(), 6),
+                    "paid_usd": round(paid(tally, judge), 6),
                 }
             )
             if tally.stop:
@@ -376,6 +380,7 @@ def build_result(
             "agent": round(tally.agent_usd, 6),
             "judge": round(judge_usd, 6),
             "total": round(tally.agent_usd + judge_usd, 6),
+            "paid": round(paid(tally, judge), 6),  # Claude's part; Gemini's free tier bills $0
         },
         "summary": {
             "cases": len(cases),
@@ -386,6 +391,12 @@ def build_result(
         "metrics": metric_means(every),
         "cases": case_rows,
     }
+
+
+def paid(tally: Tally, judge: Judge) -> float:
+    """What Claude cost (agent and judge); the rest ran on Gemini."""
+    judged = sum(usd for name, usd in judge.by_model.items() if name.startswith(CLAUDE_PREFIX))
+    return tally.paid_usd + judged
 
 
 def metric_means(runs: Sequence[dict[str, Any]]) -> dict[str, dict[str, Any]]:

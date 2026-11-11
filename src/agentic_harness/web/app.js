@@ -1582,11 +1582,11 @@ async function loadFacts() {
 
 // ── Evals view (S10): summary, metrics, cases, past evals, Run ───────────────
 // The server only reads result files and starts one fixed command (D-113, D-115).
-const evals = { index: null, result: null, live: null, running: false };
+const evals = { index: null, result: null, live: null, running: false, suite: [] };
 
 const duration = (s) => (s >= 60 ? `${Math.floor(s / 60)} m ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
 const metricInfo = (id) => evals.index?.catalog?.metrics?.[id] ?? { name: id, kind: "judge", threshold: 0 };
-const STATUS = { passed: "Passed", failed: "Failed", incomplete: "Not finished", running: "Running", waiting: "Waiting" };
+const STATUS = { passed: "Passed", failed: "Failed", incomplete: "Not finished", running: "Running", waiting: "Waiting", notrun: "Not run" };
 
 async function loadEvals(select) {
   try {
@@ -1599,6 +1599,10 @@ async function loadEvals(select) {
     showEvalProblem(`Couldn't load evals: ${error.message}`);
     $("evals-run").disabled = true; // nothing to start until the server can run evals
     return;
+  }
+  if (evals.index.has_cases && !evals.suite.length) {
+    const plan = await fetch("/api/evals/plan").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (plan?.type === "plan") evals.suite = plan.cases;
   }
   const id = select ?? evals.result?.id ?? evals.index.results[0]?.id;
   evals.result = null;
@@ -1622,9 +1626,24 @@ function showEvalProblem(text) {
 }
 
 // ── Summary: one big number, then a few labelled facts ──────────────────────
-function summaryCard(value, label, ok, facts) {
-  const score = el("div", `evals-score${ok == null ? "" : ok ? " pass" : " fail"}`);
-  score.append(el("strong", null, value), el("span", null, label));
+function bigStat(value, label, cls = "") {
+  const stat = el("div", `evals-score ${cls}`);
+  stat.append(el("strong", null, value), el("span", null, label));
+  return stat;
+}
+
+// What the person paid: Claude's part. Gemini on the free tier bills nothing (D-116).
+function costStat(paid, total) {
+  if (paid == null) return bigStat(`$${(total ?? 0).toFixed(4)}`, "cost");
+  return bigStat(`$${paid.toFixed(paid ? 4 : 0)}`, paid ? "paid for Claude · Gemini on free tier" : "paid · Gemini on free tier", "cost");
+}
+
+// Results saved before D-116 have no "paid": all-Gemini ones cost the person nothing.
+const usedClaude = (r) => [r.model, r.agent?.now, r.judge?.first, r.judge?.now].some((m) => m?.startsWith("claude-"));
+
+function summaryCard(value, label, ok, facts, cost) {
+  const score = el("div", "evals-stats");
+  score.append(bigStat(value, label, ok == null ? "" : ok ? "pass" : "fail"), cost);
   const list = el("dl", "evals-facts");
   for (const [name, text] of facts) {
     if (!text) continue;
@@ -1648,11 +1667,16 @@ function renderEvalSummary() {
     const done = live.cases.reduce((n, c) => n + c.done, 0);
     const failed = live.cases.filter((c) => c.status === "failed").length;
     return void box.replaceChildren(
-      summaryCard(`${done}/${total}`, "runs done", null, [
-        ["Agent", modelLabel(live.agent)],
-        ["Failed so far", String(failed)],
-        ["Spent", `$${live.spent.toFixed(4)}`],
-      ]),
+      summaryCard(
+        `${done}/${total}`,
+        "runs done",
+        null,
+        [
+          ["Agent", modelLabel(live.agent)],
+          ["Failed so far", String(failed)],
+        ],
+        costStat(live.paid, live.spent),
+      ),
     );
   }
   if (!evals.index?.has_cases) return void box.replaceChildren(el("p", "evals-note", "No eval cases for this agent."));
@@ -1665,10 +1689,9 @@ function renderEvalSummary() {
     ["Judge", modelPath(r.judge)],
     ["Not finished", r.summary.incomplete ? String(r.summary.incomplete) : ""],
     ["Runs", r.runs > 1 ? `${r.runs} per case, all must pass` : "1 per case"],
-    ["Cost", `$${r.usd.total.toFixed(4)}`],
     ["Time", duration(r.seconds)],
     ["Since last", change == null ? "" : change > 0 ? `▲ ${change}` : change < 0 ? `▼ ${-change}` : "same"],
-  ]);
+  ], costStat(r.usd.paid ?? (usedClaude(r) ? null : 0), r.usd.total));
   box.replaceChildren(card);
   if (r.status === "stopped") box.append(el("p", "evals-stopped", `Stopped early: ${r.stop_reason}`));
 }
@@ -1750,14 +1773,16 @@ function renderMetrics() {
 }
 
 // ── Cases: one line each; open one to see what the agent did and why it scored so ──
+// Every case in the suite: its result from the eval on show, or "Not run".
 function caseRows() {
   if (evals.live) return evals.live.cases;
-  return (evals.result?.cases ?? []).map((c) => ({
-    ...c,
-    ask: c.turns[0],
-    turns: c.turns.length,
-    missed: new Set(c.runs.flatMap((r) => Object.entries(r.metrics).filter(([, m]) => !m.passed).map(([id]) => id))),
-  }));
+  const ran = new Map((evals.result?.cases ?? []).map((c) => [c.id, c]));
+  const listed = evals.suite.length ? evals.suite : [...ran.values()];
+  return listed.map((s) => {
+    const c = ran.get(s.id);
+    const missed = c ? c.runs.flatMap((r) => Object.entries(r.metrics).filter(([, m]) => !m.passed).map(([id]) => id)) : [];
+    return { ...s, ...c, status: c?.status ?? "notrun", ask: s.turns[0], turns: s.turns.length, missed: new Set(missed) };
+  });
 }
 
 function caseLine(row) {
@@ -1766,7 +1791,9 @@ function caseLine(row) {
   const main = el("div", "case-main");
   const ask = el("p", "case-ask", `“${row.ask ?? row.id}”`);
   if (row.turns > 1) ask.append(el("span", "case-more", ` + ${row.turns - 1} more turn${row.turns > 2 ? "s" : ""}`));
-  main.append(ask, el("p", "case-meta", `${row.id} · ${labelFor(row.profile)} · ${row.group}`));
+  const meta = el("p", "case-meta", `${row.id} · ${labelFor(row.profile)} · ${row.group}`);
+  if (row.core) meta.append(el("span", "case-core", "core"));
+  main.append(ask, meta);
   line.append(main);
   const missed = [...(row.missed ?? [])].map((id) => metricInfo(id).name);
   line.append(el("span", "case-missed", missed.length ? `Missed: ${missed.join(", ")}` : ""));
@@ -1812,22 +1839,28 @@ function renderCases() {
   const box = $("evals-cases");
   const rows = caseRows();
   if (!rows.length) return void box.replaceChildren(el("p", "evals-note", "Nothing yet."));
+  const single = rows.filter((r) => r.turns === 1);
+  const multi = rows.filter((r) => r.turns > 1);
   box.replaceChildren(
-    ...rows.map((row) => {
-      if (!row.runs?.length) {
-        const plain = el("div", "case-row");
-        plain.append(caseLine(row));
-        return plain;
-      }
-      const item = el("details", "case-row");
-      const summary = el("summary");
-      summary.append(caseLine(row));
-      const body = el("div", "case-body");
-      body.append(el("p", "case-expected", `Expected: ${row.expected_outcome}`), ...row.runs.map(runDetail));
-      item.append(summary, body);
-      return item;
-    }),
+    ...[["Single turn", single], ["Multi-turn", multi]].flatMap(([title, group]) =>
+      group.length ? [el("h3", "case-kind", `${title} · ${group.length}`), ...group.map(caseItem)] : [],
+    ),
   );
+}
+
+function caseItem(row) {
+  if (!row.runs?.length) {
+    const plain = el("div", "case-row");
+    plain.append(caseLine(row));
+    return plain;
+  }
+  const item = el("details", "case-row");
+  const summary = el("summary");
+  summary.append(caseLine(row));
+  const body = el("div", "case-body");
+  body.append(el("p", "case-expected", `Expected: ${row.expected_outcome}`), ...row.runs.map(runDetail));
+  item.append(summary, body);
+  return item;
 }
 
 function renderEvalHistory() {
@@ -1872,7 +1905,8 @@ async function openEvalDialog() {
   const models = health?.models ?? [];
   const pick = $("evals-model");
   pick.replaceChildren(...models.map((m) => Object.assign(el("option", null, modelLabel(m)), { value: m })));
-  pick.value = $("model").value || health?.model || models[0];
+  // Claude is paid: never the eval's agent unless picked here (D-104).
+  pick.value = [$("model").value, health?.model].find((m) => m && !m.startsWith("claude-")) ?? models.find((m) => !m.startsWith("claude-")) ?? models[0];
   let plan;
   try {
     plan = await fetchPlan([]);
@@ -1887,11 +1921,12 @@ async function openEvalDialog() {
   for (const c of plan.cases) {
     if (c.group !== group) list.append(el("p", "case-pick-group", (group = c.group)));
     const label = el("label", "case-pick");
-    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: c.id, checked: true });
+    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: c.id, checked: c.core || !plan.cases.some((x) => x.core) });
+    box.dataset.core = c.core ? "1" : "";
     label.append(box, el("span", null, c.id), el("span", "case-pick-turns", c.turns.length > 1 ? `${c.turns.length} turns` : ""));
     list.append(label);
   }
-  showEstimate(plan);
+  refreshEstimate();
   $("evals-dialog").returnValue = ""; // Esc or Cancel must never reuse an old "start"
   $("evals-dialog").showModal();
 }
@@ -1901,13 +1936,24 @@ function showEstimate(plan) {
   const n = pickedCases().length;
   $("evals-start").disabled = n === 0;
   if (!n) return void (est.textContent = "Pick at least one case.");
-  const out = plan.fallback_judge
-    ? `If Gemini runs out, ${modelLabel(plan.fallback_judge)} takes over (paid, within the cap).`
-    : "If Gemini runs out, the eval stops: no Claude key to take over.";
   est.replaceChildren(
     el("span", null, `≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · judge ${modelLabel(plan.judge)} · cap $${plan.cap_usd.toFixed(2)}`),
-    el("span", "evals-estimate-out", out),
+    el("strong", "evals-estimate-cost", costToYou(plan)),
   );
+}
+
+// "$0 on Gemini's free tier · up to ≈ $0.10 if Claude Haiku 5.5 does it all"
+function costToYou(plan) {
+  const { low, high } = plan.cost ?? { low: 0, high: 0 };
+  const money = (usd) => (usd < 0.01 ? `$${usd.toFixed(3)}` : `$${usd.toFixed(2)}`);
+  const helper = modelLabel(plan.fallback_agent ?? plan.fallback_judge ?? "");
+  let text = low
+    ? `Cost to you: ≈ ${money(low)}–${money(high)} (Claude is paid)`
+    : high
+      ? `Cost to you: $0 on Gemini's free tier · up to ≈ ${money(high)} if ${helper} does it all`
+      : "Cost to you: $0 on Gemini's free tier · if it runs out, the eval stops (no Claude key)";
+  if (high > plan.cap_usd) text += ` · the $${plan.cap_usd.toFixed(2)} cap stops it before that`;
+  return text;
 }
 
 function refreshEstimate() {
@@ -1953,6 +1999,7 @@ async function startEval(cases, runs, model) {
           runs: ev.runs,
           agent: ev.model,
           spent: 0,
+          paid: 0,
           cases: ev.cases.map((c) => ({ ...c, status: "waiting", done: 0, missed: new Set(), metrics: {} })),
         };
         renderEvals();
@@ -1983,6 +2030,7 @@ async function startEval(cases, runs, model) {
           row.status = !ev.passed ? "failed" : row.done >= evals.live.runs ? "passed" : "running";
         }
         evals.live.spent = ev.spent_usd;
+        evals.live.paid = ev.paid_usd ?? null;
         progress.value += 1;
         text.textContent = `${ev.case} · run ${ev.run} ${ev.passed ? "passed" : "failed"}`;
         renderEvalSummary();
@@ -2013,6 +2061,10 @@ $("evals-run").addEventListener("click", openEvalDialog);
 $("evals-case-list").addEventListener("change", refreshEstimate);
 $("evals-model").addEventListener("change", refreshEstimate);
 for (const radio of document.querySelectorAll('#evals-form input[name="runs"]')) radio.addEventListener("change", refreshEstimate);
+$("evals-core").addEventListener("click", () => {
+  for (const box of $("evals-case-list").querySelectorAll("input")) box.checked = box.dataset.core === "1";
+  refreshEstimate();
+});
 $("evals-all").addEventListener("click", () => {
   for (const box of $("evals-case-list").querySelectorAll("input")) box.checked = true;
   refreshEstimate();

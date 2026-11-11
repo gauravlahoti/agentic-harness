@@ -26,7 +26,15 @@ from agentic_harness import config
 from agentic_harness.model import ModelClient, make_model
 from agentic_harness.pricing import PriceNotFoundError, load_prices
 from evals.cases import CaseError, load_suite
-from evals.plan import DEFAULT_CAP_USD, FALLBACK_AGENT, FALLBACK_JUDGE, JUDGE_MODEL, RUNS, estimate
+from evals.plan import (
+    DEFAULT_CAP_USD,
+    FALLBACK_AGENT,
+    FALLBACK_JUDGE,
+    JUDGE_MODEL,
+    RUNS,
+    cost_range,
+    estimate,
+)
 
 DEFAULT_SUITE = Path("evals") / "cases" / "cloudco.toml"
 
@@ -68,11 +76,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     claude_agent = model.startswith(config.CLAUDE_PREFIX)
     agent_fallback = FALLBACK_AGENT if fallback and not claude_agent else None
     if args.plan:
+        est = estimate(cases, args.runs)
         emit(
             {
                 "type": "plan",
                 "cases": [
-                    {"id": c.id, "group": c.group, "profile": c.profile, "turns": list(c.turns)}
+                    {
+                        "id": c.id,
+                        "group": c.group,
+                        "profile": c.profile,
+                        "turns": list(c.turns),
+                        "expected_outcome": c.expected_outcome,
+                        "core": c.core,
+                    }
                     for c in cases
                 ],
                 "runs": args.runs,
@@ -81,7 +97,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "fallback_judge": fallback,
                 "fallback_agent": agent_fallback,
                 "cap_usd": args.cap,
-                "estimate": estimate(cases, args.runs),
+                "estimate": est,
+                "cost": cost_range(est, model, fallback, load_prices()),
             }
         )
         return 0

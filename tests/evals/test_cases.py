@@ -21,6 +21,28 @@ def test_s10_ac1_cloudco_has_16_valid_cases() -> None:
     assert "follow-up-in-scope" in multi
 
 
+CORE = {
+    "single": [
+        "find-changes",
+        "discount-needs-cfo",
+        "uptime-never",
+        "injection-flagged",
+        "deal-value-hidden",
+        "off-topic",
+    ],
+    "multi": ["follow-up-in-scope", "cfo-no-holds", "round-2-memory"],
+}
+
+
+def test_s10_ac1_the_core_set_mixes_single_and_multi_turn_cases() -> None:
+    """The Run dialog's default: a few of each, enough to score all 12 metrics once."""
+    cases = load_suite(CLOUDCO).cases
+    assert [c.id for c in cases if c.core and not c.multi_turn] == CORE["single"]
+    assert [c.id for c in cases if c.core and c.multi_turn] == CORE["multi"]
+    groups = {c.group for c in cases if c.core}
+    assert groups >= {"Sales review", "Approvals", "Never rules", "Injection", "Scope"}
+
+
 def test_s10_ac1_fields_come_through() -> None:
     case = next(c for c in load_suite(CLOUDCO).cases if c.id == "send-cfo-rejects")
     assert case.profile == "sales"
@@ -68,6 +90,7 @@ def test_s10_ac1_a_minimal_case_loads(tmp_path: Path) -> None:
         (('group = "G"', 'group = "G"\napprovals = { CFO = "perhaps" }'), "approvals"),
         (('group = "G"', 'group = "G"\nmust_include = "2.1"'), "must_include"),
         (('group = "G"', 'group = "G"\nexpect_flaged = true'), "expect_flaged"),
+        (('group = "G"', 'group = "G"\ncore = "yes"'), "core"),
     ],
 )
 def test_s10_ac1_a_bad_case_names_its_field(

@@ -68,6 +68,7 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
         self._prices = prices
         self.switched = ""  # why the judge moved to the fallback, if it did
         self.usd = 0.0  # everything the judge cost in this eval
+        self.by_model: dict[str, float] = {}  # per model: Claude is paid, Gemini may be free
         self._used: list[str] = []
         self._spent = 0.0
         super().__init__(model=primary.name)
@@ -121,4 +122,5 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
         self._used.append(self._active.name)
         self._spent += cost
         self.usd += cost
+        self.by_model[self._active.name] = self.by_model.get(self._active.name, 0.0) + cost
         return reply.text

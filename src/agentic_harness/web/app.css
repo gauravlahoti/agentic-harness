@@ -1431,7 +1431,10 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
   border-radius: 14px;
   background: var(--surface);
 }
+.evals-stats { display: flex; gap: 28px; }
 .evals-score { display: grid; line-height: 1.1; }
+.evals-score.cost { padding-left: 28px; border-left: 1px solid var(--line); }
+.evals-score.cost strong { color: var(--text); }
 .evals-score strong { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .evals-score span { color: var(--muted); font-size: 12.5px; }
 .evals-score.pass strong { color: var(--pass); }
@@ -1497,6 +1500,8 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 
 /* Cases: one line each; open one for its runs. */
 .evals-cases { display: grid; gap: 6px; }
+.case-kind { margin: 10px 0 2px; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.case-kind:first-child { margin-top: 0; }
 .case-row { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .case-row > summary { list-style: none; cursor: pointer; border-radius: 12px; }
 .case-row > summary::-webkit-details-marker { display: none; }
@@ -1512,6 +1517,7 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .case-ask { margin: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .case-more { color: var(--muted); font-size: 12px; }
 .case-meta { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.case-core { margin-left: 8px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 999px; color: var(--accent); font-size: 11px; }
 .case-missed { color: var(--fail); font-size: 12.5px; text-align: right; }
 .case-body { padding: 4px 16px 14px; }
 .case-expected { margin: 10px 0 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
@@ -1585,7 +1591,7 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .evals-runs label { margin-right: 14px; font-size: 13px; }
 .evals-model-pick { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
 .evals-model-pick select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-weight: 400; }
-.evals-estimate-out { display: block; margin-top: 4px; }
+.evals-estimate-cost { display: block; margin-top: 4px; color: var(--text); font-weight: 600; }
 .evals-estimate { margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--skip) 10%, transparent); color: var(--text-soft); font-size: 13px; }
 .evals-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 

@@ -221,6 +221,9 @@ async def test_s10_ac6_gemini_out_of_quota_hands_the_agent_to_claude_haiku(
     # the run that hit the 429 runs again on Haiku: still exactly 3 runs, all on Haiku
     assert [r["model"] for r in result["cases"][0]["runs"]] == ["claude-haiku-5-5"] * 3
     assert [r["run"] for r in result["cases"][0]["runs"]] == [1, 2, 3]
+    # what the person pays: the Haiku runs; the half-run on Gemini's free tier costs them nothing
+    assert result["usd"]["paid"] > 0
+    assert result["usd"]["paid"] <= result["usd"]["total"]
     switched = [e for e in events if e["type"] == "agent_switched"]
     assert len(switched) == 1  # once, then it stays on Haiku
     assert switched[0]["to"] == "claude-haiku-5-5"
@@ -279,6 +282,7 @@ def test_s10_ac7_cli_plan_and_bad_cases(capsys: pytest.CaptureFixture[str]) -> N
     plan = json.loads(capsys.readouterr().out)
     assert [c["id"] for c in plan["cases"]] == ["off-topic", "find-changes"]
     assert plan["estimate"]["agent_runs"] == 6
+    assert [c["core"] for c in plan["cases"]] == [True, True]  # the dialog's default set
     assert main(["--plan", "--json", "--cases", "nope"]) == 2
     assert "nope" in capsys.readouterr().out
 

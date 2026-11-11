@@ -115,6 +115,9 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
         assert piece in HTML, f"S10 piece missing from index.html: {piece}"
     assert '"Metric", "What it checks", "Score"' in JS
     assert "agent_switched" in JS  # the live view says when Claude Haiku takes over (D-116)
+    assert 'id="evals-core"' in HTML  # the dialog starts on the core set
+    assert "Cost to you" in JS  # what Claude may cost, before Start
+    assert "paid for Claude" in JS  # what it did cost, at the top
     for rule in (".evals-metrics", ".case-row", ".evals-card", ".evals-dialog"):
         assert rule in CSS, f"S10 style missing from app.css: {rule}"
     for gone in (".metric-chip", ".evals-grid", "Not covered:"):  # the clumsy parts, removed

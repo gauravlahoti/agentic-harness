@@ -97,13 +97,13 @@ A case passes when every metric that applies passes. It runs 3 times and counts 
 The sidebar gets an **Evals** entry, added to what's already there.
 
 **The page shows, from top to bottom:**
-- **Summary line:** cases passed, judge(s), cost, time, and the change since the last eval.
+- **Summary card:** cases passed and **what you paid** (Claude's part; Gemini on the free tier is $0), then agent, judge, runs, time, and the change since the last eval.
 - **Metrics table:** Metric · What it checks · Score, for the 12 metrics we score only, grouped as DeepEval groups them. The score shows the mean, a bar with the pass mark, and runs passed.
 - **Cases:** one row each: status, the question asked, and the metrics it missed. A row opens to the expected outcome and each run: question, tool calls, answer, every metric with its reason.
 - **Past evals.**
 
 **Run button:**
-- It opens an in-page dialog with the cases, runs (1 or 3), agent model, judge, estimated calls and the budget cap.
+- It opens an in-page dialog with the cases (the **core** set ticked: 6 single-turn + 3 multi-turn, enough to score all 12 metrics; or All), runs (1 or 3), agent model (Gemini by default), judge, estimated calls, the budget cap, and **cost to you**: $0 on Gemini's free tier, up to ≈ $X if Claude Haiku does it all.
 - **Start** begins the eval; progress then fills the grid live. **Stop** ends it, and only one eval runs at a time.
 
 ## Done when
@@ -119,7 +119,7 @@ The sidebar gets an **Evals** entry, added to what's already there.
 | S10-AC7 | Result JSON saved; telemetry off; DeepEval reads no `.env`; no key in any result or trace | 🧪 |
 | S10-AC8 | No test calls Gemini or Anthropic (recorded traces + stand-in judge); `make check` passes with coverage back to 85% (D-33) | 🧪 |
 | S10-AC9 | Evals page: summary, metrics table (Metric · What it checks · Score), case rows that open to runs and reasons, past evals; `test_page_baseline.py` still passes | 🧪 👀 |
-| S10-AC10 | Run button: dialog with estimate, live progress, Stop, one eval at a time; the server starts only the fixed command | 🧪 👀 |
+| S10-AC10 | Run button: dialog with the core set, estimate and cost to you, live progress, Stop, one eval at a time; the server starts only the fixed command | 🧪 👀 |
 | S10-AC11 | Live: a full eval (16 × 3) finishes; ≥ 14 of 16 cases pass | 🔑 👀 |
 
 ## Key choices
@@ -150,3 +150,4 @@ The sidebar gets an **Evals** entry, added to what's already there.
 
   The per-case step / $ budget was dropped: Step efficiency judges wasted steps, and the eval's cap limits money.
 - 2026-11-12 · Your feedback after the first live run. (1) Gemini's free tier ran out and the eval stopped: now the agent moves to Claude Haiku too, and the run restarts on it (D-116). Stop reasons are plain words ("gemini-3.8-flash is out of quota (it resets in 2h6m50s), and there's no Claude key to take over."). (2) "The UI looks clumsy": the two category tables, chips, greyed skipped metrics and the 12-column grid are replaced by one Metrics table (Metric · What it checks · Score) and case rows you open. The skipped metrics stay in `evals/catalog.json` and this spec, not on the page. AC6, AC9, AC10 reset to 📝, then back to 🟨 with tests.
+- 2026-11-12 · Your questions "why only 2 cases?" and "how much will it cost?". (1) The page lists all 16 cases (Single turn · 11, Multi-turn · 5), run or not; a `core = true` field marks 9 (6 single, 3 multi) that the Run dialog ticks by default. (2) The dialog shows cost to you, from cautious token counts (agent turn 15k in / 1.5k out, above the 90th percentile of 115 saved runs; judge call 3k / 400): $0 on Gemini's free tier, at most all-Haiku. The summary card shows what Claude cost; Gemini's list price is not shown as money spent. (3) The dialog's agent model defaults to Gemini, even if the chat is on Claude.
