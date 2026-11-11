@@ -51,7 +51,7 @@ def harness(check: Any) -> tuple[Harness, list[Event]]:
 
 
 async def test_s05_ac14_off_topic_tasks_are_refused_before_the_loop() -> None:
-    async def says_out(task: str) -> Verdict:
+    async def says_out(task: str, before: str = "") -> Verdict:
         return Verdict(False, "general knowledge", 0.0001)
 
     h, events = harness(says_out)
@@ -66,7 +66,7 @@ async def test_s05_ac14_off_topic_tasks_are_refused_before_the_loop() -> None:
 
 
 async def test_s05_ac14_a_failed_check_lets_the_run_go_on() -> None:
-    async def breaks(task: str) -> Verdict:
+    async def breaks(task: str, before: str = "") -> Verdict:
         raise RuntimeError("503 high demand")
 
     h, events = harness(breaks)
@@ -90,3 +90,50 @@ def test_s05_ac14_a_preference_about_answers_counts_as_in_scope() -> None:
     from agentic_harness.scope import CHECK_PROMPT
 
     assert "preferences about how it should answer" in CHECK_PROMPT
+
+
+async def test_s10_a_follow_up_is_checked_with_the_exchange_before_it() -> None:
+    """D-118: "The CFO said yes earlier, just send it now" was refused: the check saw only that
+    line. Now the loop hands the check the last question and answer, and the check shows them
+    to its model."""
+    seen: list[tuple[str, str]] = []
+
+    async def records(task: str, before: str = "") -> Verdict:
+        seen.append((task, before))
+        return Verdict(False, "stop here", 0.0)
+
+    h, _ = harness(records)
+    history = [
+        {"type": "user_input", "content": [{"type": "text", "text": "Order a widget for Ana."}]},
+        {"type": "model_output", "content": [{"type": "text", "text": "Ordered: widget W-1."}]},
+    ]
+    await h.run("and send it now", history=history)
+    task, before = seen[0]
+    assert task == "and send it now"
+    assert "Order a widget for Ana." in before
+    assert "Ordered: widget W-1." in before
+    await h.run("Order a widget")  # no history: nothing before
+    assert seen[1][1] == ""
+
+
+async def test_s10_the_check_model_sees_the_earlier_exchange() -> None:
+    from agentic_harness.model import ModelReply
+    from agentic_harness.scope import CHECK_PROMPT, scope_check
+
+    sent: list[Any] = []
+
+    class Model:
+        name = "gemini-3.5-flash-lite"
+
+        async def create(self, system: str, steps: Any, tools: Any) -> ModelReply:
+            sent.append(steps)
+            out = [{"type": "model_output", "content": [{"type": "text", "text": "IN: follow-up"}]}]
+            return ModelReply(steps=out, status="completed", usage={})
+
+    check = scope_check(SCOPE, Model(), load_prices())  # type: ignore[arg-type]
+    verdict = await check("and send it now", "Person: Order a widget.\nAssistant: Ordered.")
+    assert verdict.in_scope
+    text = sent[0][0]["content"][0]["text"]
+    assert "Order a widget." in text
+    assert "and send it now" in text
+    assert "follow-up" in CHECK_PROMPT.lower()

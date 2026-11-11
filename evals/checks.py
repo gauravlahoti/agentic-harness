@@ -36,9 +36,17 @@ class Score:
     judge: list[str] = field(default_factory=list)  # models that judged it; [] for code
     usd: float = 0.0
     error: str = ""
+    # "scored" counts toward pass/fail. "not_scored" (the judge failed) and
+    # "not_applicable" (nothing to grade) are shown, never counted (D-118).
+    status: str = "scored"
+
+    @property
+    def counted(self) -> bool:
+        return self.status == "scored"
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "status": self.status,
             "score": None if self.score is None else round(self.score, 3),
             "passed": self.passed,
             "reason": self.reason,

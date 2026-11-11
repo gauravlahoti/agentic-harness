@@ -35,7 +35,7 @@ CORE = {
 
 
 def test_s10_ac1_the_core_set_mixes_single_and_multi_turn_cases() -> None:
-    """The Run dialog's default: a few of each, enough to score all 12 metrics once."""
+    """The Run dialog's default: a few of each, enough to score all 11 metrics once."""
     cases = load_suite(CLOUDCO).cases
     assert [c.id for c in cases if c.core and not c.multi_turn] == CORE["single"]
     assert [c.id for c in cases if c.core and c.multi_turn] == CORE["multi"]

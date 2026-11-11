@@ -920,3 +920,16 @@
 - **Instead of:** one line of text in the Run dialog
 - **Because:** picking a model is a cost decision; seeing it beside the picker, per role, makes the choice clear to anyone
 - **Cost:** results files gain a token block (older ones are skipped); 3.8 Flash shows "Free limit unknown" until we know its limit
+
+### D-118 · After the first full eval: judge errors aren't failures, a clean trace for the judge, Turn Faithfulness dropped, the scope check reads the last exchange
+✅ Accepted · S10 · your review of the 2026-11-12 eval (9 core tests, Haiku as agent and judge, 2 of 9 passed)
+- **Chose:**
+  - a metric whose judge fails is **Not Scored**, and one with nothing to grade is **Not Applicable**: both are shown with the reason and never fail a case; the judge tries once more on a reply in the wrong shape;
+  - Turn Faithfulness is dropped (it crashed on every case, and it grades retrieval we don't have): 11 metrics;
+  - the judge's copy of the trace leaves out `load_skill` (the skill text becomes "the plan") and nests each helper inside its `delegate_task` call;
+  - the scope check also reads the last question and answer, so follow-ups pass;
+  - the reply skill always tries to send when asked (the approval step asks the CFO);
+  - on the page: an activity panel, time estimates, a progress ring while running and a labelled pass-rate ring after, This Run cost, Reset, delete a past eval, case groups folded.
+- **Instead of:** counting judge errors as failures; keeping the raw trace; leaving the scope bug deferred
+- **Because:** 5 of the 7 failures came from our scoring or our hand-off, not the agent; an eval has to blame the right thing
+- **Cost:** Not Scored metrics can hide a judge that keeps failing (the reason is shown, and the count is visible per case); the scope check reads a little more text per task

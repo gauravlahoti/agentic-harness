@@ -19,6 +19,7 @@ Does not: score anything, or know any workspace's cases.
 import asyncio
 import json
 import re
+import shutil
 import sys
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
@@ -88,6 +89,19 @@ def read_result(folder: Path, eval_id: str) -> dict[str, Any] | None:
         return None
     data: dict[str, Any] = json.loads(path.read_text())
     return data
+
+
+def delete_result(folder: Path, eval_id: str) -> bool:
+    """Remove one saved eval: its result file and its working folder. False if none."""
+    if not RESULT_ID.match(eval_id):  # an ID, never a path: nothing outside the folder
+        raise EvalError("Not an eval ID.")
+    path, work = folder / f"{eval_id}.json", folder / eval_id
+    if not path.is_file():
+        return False
+    path.unlink()
+    if work.is_dir():
+        shutil.rmtree(work)  # that eval's copy of the workspace and its traces
+    return True
 
 
 def command(

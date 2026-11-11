@@ -359,3 +359,47 @@ def test_s10_ac6_plan_names_the_agents_fallback(
     picked = json.loads(capsys.readouterr().out)
     assert (picked["judge"], picked["fallback_judge"]) == ("claude-haiku-5-5", None)
     assert "test-claude" not in json.dumps(plan)
+
+
+async def test_s10_the_page_can_follow_each_step_and_time_it(suite: Any, tmp_path: Path) -> None:
+    """D-118: you see what is happening: the agent answering, then each metric being judged."""
+    result, events = await go(suite, tmp_path, cases=["lookup"])
+    kinds = [e["type"] for e in events]
+    assert (
+        kinds.index("run_started") < kinds.index("agent_finished") < kinds.index("metric_started")
+    )
+    finished = next(e for e in events if e["type"] == "agent_finished")
+    assert finished["case"] == "lookup"
+    assert "lookup_customer_record" in finished["tools"]
+    assert finished["seconds"] >= 0
+    started = [e for e in events if e["type"] == "metric_started"]
+    assert [e["metric"] for e in started][:2] == ["plan_adherence", "argument_correctness"]
+    assert started[0]["index"] == 1
+    assert started[0]["of"] == len(started)  # "Judge grading · Plan Adherence (1 of 4)"
+    assert len([e for e in events if e["type"] == "metric_finished"]) == len(started)
+    run = next(e for e in events if e["type"] == "run_finished")
+    assert run["seconds"] >= 0
+    assert all("status" in m for m in run["metrics"].values())
+    assert result["cases"][0]["runs"][0]["seconds"] >= 0
+
+
+def test_s10_the_plan_says_how_long_a_run_will_take(tmp_path: Path) -> None:
+    """D-118: a time estimate before Start: past evals' seconds per test, else 60 s each."""
+    from agentic_harness.pricing import load_prices
+    from evals.plan import SECONDS_PER_TEST, measured, project
+
+    est = {"agent_runs": 9, "judge_calls": 150, "test_runs": 9}
+    cautious = project(est, "gemini-3.8-flash", "gemini-3.5-flash-lite", None, load_prices())
+    assert cautious["seconds"] == 9 * SECONDS_PER_TEST
+    past = {
+        "seconds": 477.2,
+        "runs": 1,
+        "cases": [{"runs": [{"turns": []}]} for _ in range(9)],
+        "judge": {"calls": 10, "tokens_in": 1, "tokens_out": 1},
+    }
+    (tmp_path / "20261112-014651-80f0bc.json").write_text(json.dumps(past))
+    seen = measured(tmp_path)
+    assert seen is not None
+    assert round(seen["seconds_per_test"]) == 53  # 477 s over 9 tests
+    plan = project(est, "gemini-3.8-flash", "gemini-3.5-flash-lite", None, load_prices(), seen)
+    assert plan["seconds"] == round(9 * seen["seconds_per_test"])

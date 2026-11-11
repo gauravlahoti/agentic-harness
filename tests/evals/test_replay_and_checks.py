@@ -203,3 +203,21 @@ def test_s10_ac4_required_words_are_checked_in_the_last_answer(tmp_path: Path) -
     two = read_run(run_file(tmp_path, [started(), done("Only 3.2 needs the CFO.")], "b"))
     assert missing_words(case(must_include=("2.1", "3.2")), [one]) == []
     assert missing_words(case(must_include=("2.1", "3.2")), [one, two]) == ["2.1"]
+
+
+def test_s10_the_judge_sees_the_plan_as_input_and_each_helper_once() -> None:
+    """D-118: load_skill is reading the plan, not a step; a helper shows once, inside its call."""
+
+    def names(node: dict[str, Any]) -> list[str]:
+        return [node["name"]] + [n for child in node["children"] for n in names(child)]
+
+    view = read_run(WITH_HELPER)
+    trace = trace_dict(view.root, for_judge=True)
+    assert "load_skill" not in names(trace)  # no "extra step" for reading the plan
+    assert "The plan (the skill it loaded)" in trace["input"]  # the plan is still there
+    top = [c["name"] for c in trace["children"]]
+    assert "clause-reviewer" not in top  # the helper is no longer a second, separate run
+    delegate = next(c for c in trace["children"] if c["name"] == "delegate_task")
+    assert [c["name"] for c in delegate["children"]] == ["clause-reviewer"]
+    case = llm_test_case(view)
+    assert "load_skill" not in [t.name for t in case.tools_called]

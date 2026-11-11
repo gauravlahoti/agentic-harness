@@ -95,6 +95,17 @@ def out_of_quota(model: str, reason: str, fallback: str | None) -> str:
     return f"{model} is {what}{when}, and there's no Claude key to take over."
 
 
+def metric_events(emit: Emit, case_id: str) -> Callable[[str, str, int, int], None]:
+    """Tell the page as each judged metric starts and finishes (D-118)."""
+
+    def tell(what: str, metric: str, index: int, of: int) -> None:
+        emit(
+            {"type": f"metric_{what}", "case": case_id, "metric": metric, "index": index, "of": of}
+        )
+
+    return tell
+
+
 def scripted_approver(case: Case) -> Approver:
     """Answers every ⏸ from the case: its role's scripted decision, else reject."""
 
@@ -254,6 +265,7 @@ async def run_eval(
             if tally.stop:
                 break
             emit({"type": "run_started", "case": case.id, "run": number})
+            began = time.time()
             views = await run_case(
                 case,
                 number,
@@ -262,6 +274,16 @@ async def run_eval(
                 factory=factory,
                 folder=folder / eval_id,
                 secrets=secrets,
+            )
+            emit(
+                {
+                    "type": "agent_finished",
+                    "case": case.id,
+                    "run": number,
+                    "seconds": round(time.time() - began, 1),
+                    "tools": [t.name for v in views for t in v.tools],
+                    "usd": round(sum(v.usd for v in views), 6),
+                }
             )
             tally.agent_usd += sum(v.usd for v in views)
             if tally.agent.startswith(CLAUDE_PREFIX):
@@ -280,18 +302,25 @@ async def run_eval(
             else:
                 try:
                     scores += await judged_scores(
-                        case, views, judge, role=role.get(case.profile, ""), topics=topics
+                        case,
+                        views,
+                        judge,
+                        role=role.get(case.profile, ""),
+                        topics=topics,
+                        progress=metric_events(emit, case.id),
                     )
                 except JudgeUnavailableError as error:
                     tally.stop = str(error)
             record: dict[str, Any] = {
                 "run": number,
                 "model": tally.agent,
-                "passed": not tally.stop and all(s.passed for s in scores),
+                # Not Scored / Not Applicable never fail a run (D-118)
+                "passed": not tally.stop and all(s.passed for s in scores if s.counted),
                 "complete": not tally.stop,
                 "turns": [turn_record(v) for v in views],
                 "metrics": {s.metric: s.to_dict() for s in scores},
                 "usd": round(sum(v.usd for v in views) + sum(s.usd for s in scores), 6),
+                "seconds": round(time.time() - began, 1),  # agent + judging (D-118)
             }
             results[case.id].append(record)
             emit(
@@ -301,9 +330,10 @@ async def run_eval(
                     "run": number,
                     "passed": record["passed"],
                     "metrics": {
-                        k: {"score": v["score"], "passed": v["passed"]}
+                        k: {"score": v["score"], "passed": v["passed"], "status": v["status"]}
                         for k, v in record["metrics"].items()
                     },
+                    "seconds": record["seconds"],
                     "usd": record["usd"],
                     "spent_usd": round(spent(), 6),
                     "paid_usd": round(paid(tally, judge), 6),
@@ -411,7 +441,8 @@ def metric_means(runs: Sequence[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     table: dict[str, list[dict[str, Any]]] = {}
     for run in runs:
         for metric, score in run["metrics"].items():
-            table.setdefault(metric, []).append(score)
+            if score.get("status", "scored") == "scored":  # only real scores count (D-118)
+                table.setdefault(metric, []).append(score)
     return {
         metric: {
             "score": round(mean(numbers), 3)

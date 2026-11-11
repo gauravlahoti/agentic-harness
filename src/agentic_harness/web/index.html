@@ -146,14 +146,17 @@
     <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
       <header class="page-header evals-head">
         <h1 id="evals-heading">Evals <span class="synthetic-tag" hidden>Synthetic Data</span></h1>
-        <button type="button" id="evals-run" class="primary">Run Evals</button>
+        <div class="evals-actions">
+          <button type="button" id="evals-reset" class="evals-reset" title="Back to the ready card, the core set, and no eval open">Reset</button>
+          <button type="button" id="evals-run" class="primary">Run Evals</button>
+        </div>
       </header>
 
       <div class="evals-summary" id="evals-summary" role="status"></div>
       <!-- The next run's models: shown inside the summary card (moved there by the script). -->
       <div class="evals-next" id="evals-next">
         <div class="next-head">
-          <span class="evals-next-label">Next Run</span>
+          <span class="evals-next-label" id="next-label">Next Run</span>
           <span class="next-scope" id="next-scope"></span>
           <span class="next-basis" id="next-basis" tabindex="0"></span>
         </div>
@@ -185,22 +188,40 @@
             <p class="cost-work" data-part="work"></p>
             <div class="cost-meter" data-part="meter" hidden><span class="cost-meter-fill"></span></div>
             <p class="cost-meter-text" data-part="meter-text"></p>
+            <p class="cost-note" data-part="note"></p>
           </section>
           <section class="cost-card total" id="cost-total" aria-labelledby="cost-total-title" aria-live="polite">
             <header class="cost-card-head"><h3 id="cost-total-title">You Pay</h3></header>
             <p class="cost-big"><span class="cost-num" data-part="num">$0</span></p>
             <p class="cost-range" data-part="range"></p>
+            <p class="cost-time" data-part="time"></p>
             <div class="cost-split" data-part="split" aria-hidden="true"><span class="split-agent"></span><span class="split-judge"></span></div>
             <p class="cost-legend" data-part="legend"></p>
           </section>
         </div>
       </div>
 
-      <div class="evals-live" id="evals-live" hidden>
+      <!-- While an eval runs: what is happening now, the time taken and left, and a feed. -->
+      <section class="evals-live" id="evals-live" aria-labelledby="live-title" hidden>
+        <header class="live-head">
+          <span class="live-pulse" aria-hidden="true"></span>
+          <h2 id="live-title">Running</h2>
+          <span class="live-count" id="live-count"></span>
+          <span class="live-time" id="live-time"></span>
+          <button type="button" class="evals-stop" id="evals-stop">Stop</button>
+        </header>
         <progress id="evals-progress" max="1" value="0" aria-label="Eval progress"></progress>
-        <span class="evals-live-text" id="evals-live-text" aria-live="polite"></span>
-        <button type="button" class="evals-stop" id="evals-stop">Stop</button>
-      </div>
+        <div class="live-now">
+          <p class="live-ask" id="live-ask"></p>
+          <ol class="live-phases" id="live-phases" aria-label="Where this test is">
+            <li data-phase="agent">Agent Answering</li>
+            <li data-phase="judge">Judge Grading</li>
+            <li data-phase="done">Done</li>
+          </ol>
+          <p class="live-detail" id="live-detail" aria-live="polite"></p>
+        </div>
+        <ol class="live-feed" id="live-feed" aria-label="What happened so far"></ol>
+      </section>
 
       <h2 class="evals-sub" id="evals-metrics-title">Metrics</h2>
       <table class="evals-metrics" id="evals-metrics" aria-labelledby="evals-metrics-title"></table>

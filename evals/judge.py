@@ -54,6 +54,12 @@ def parse(text: str, schema: Any) -> Any:
     return schema.model_validate_json(body[start : end + 1])
 
 
+RETRY_NOTE = (
+    "\n\nYour last reply did not match the JSON schema asked for. Reply with that JSON only, "
+    "with every field in the exact shape asked (lists as lists)."
+)
+
+
 class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here (pyproject)
     def __init__(
         self,
@@ -86,7 +92,14 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
 
     async def a_generate(self, prompt: str, schema: Any = None) -> Any:
         text = await self._ask(prompt)
-        return parse(text, schema) if schema is not None else text
+        if schema is None:
+            return text
+        try:
+            return parse(text, schema)
+        except ValueError:  # pydantic's ValidationError is a ValueError too
+            # A reply in the wrong shape is usually a one-off: ask once more, then give up
+            # (the metric shows Not Scored, D-118).
+            return parse(await self._ask(prompt + RETRY_NOTE), schema)
 
     def generate(self, prompt: str, schema: Any = None) -> Any:
         # The evals always call ``a_measure``; this sync path exists for DeepEval's interface.

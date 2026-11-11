@@ -42,13 +42,13 @@ def judge_calls(case: Case) -> int:
         return 0  # refused before the loop: nothing for the judge to read
     turns = len(case.turns)
     calls = turns * len(PER_TURN) * 2  # each metric: about two calls per turn
-    calls += 2 + 2 * turns  # turn faithfulness: claims, then a verdict per turn
     if case.multi_turn:
         calls += len(CONVERSATION) * 2
     return calls
 
 
 CAUTIOUS_REPLIES_PER_TURN = 4  # model calls per agent turn, for the free-limit meter
+SECONDS_PER_TEST = 60  # one test, agent + judging, before any eval has been timed (D-118)
 RECENT_EVALS = 5  # how many past evals the projection learns from
 DEFAULT_FOLDER = Path(".agentic-harness") / "evals"  # results, when --out isn't given
 RESULT_FILE = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{6}$")
@@ -64,6 +64,7 @@ def measured(folder: Path) -> dict[str, Any] | None:
     turns: list[dict[str, Any]] = []
     judged = [0, 0, 0]  # calls, tokens in, tokens out
     used = 0
+    timed = [0.0, 0]  # seconds, test runs
     for path in files[:RECENT_EVALS]:
         try:
             result = json.loads(path.read_text())
@@ -80,6 +81,10 @@ def measured(folder: Path) -> dict[str, Any] | None:
         if not found and not judge.get("calls"):
             continue
         used += 1
+        runs = sum(len(case.get("runs", [])) for case in result.get("cases", []))
+        if runs and result.get("seconds"):
+            timed[0] += float(result["seconds"])
+            timed[1] += runs
         turns += found
         judged[0] += int(judge.get("calls") or 0)
         judged[1] += int(judge.get("tokens_in") or 0)
@@ -93,6 +98,7 @@ def measured(folder: Path) -> dict[str, Any] | None:
     return {
         "agent": (mean("tokens_in"), mean("tokens_out"), mean("replies")) if turns else None,
         "judge": (judged[1] // judged[0], judged[2] // judged[0]) if judged[0] else None,
+        "seconds_per_test": timed[0] / timed[1] if timed[1] else None,
         "evals": used,
     }
 
@@ -158,11 +164,16 @@ def project(
         "high": round(high, 4),
         "basis": "measured" if seen.get("agent") or seen.get("judge") else "cautious",
         "from_evals": int(seen.get("evals") or 0),
+        # how long: past evals' seconds per test, else a cautious minute each (D-118)
+        "seconds": round(
+            int(est.get("test_runs") or 0) * (seen.get("seconds_per_test") or SECONDS_PER_TEST)
+        ),
     }
 
 
 def estimate(cases: Sequence[Case], runs: int) -> dict[str, Any]:
     return {
+        "test_runs": runs * len(cases),
         "agent_runs": runs * sum(len(c.turns) for c in cases),
         "judge_calls": runs * sum(judge_calls(c) for c in cases),
     }

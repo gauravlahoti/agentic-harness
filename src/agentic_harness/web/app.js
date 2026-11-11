@@ -1640,7 +1640,11 @@ function showEvalProblem(text) {
 const SVG = "http://www.w3.org/2000/svg";
 
 // A ring split into passed (green), failed (red) and not finished (grey).
-function passRing(passed, failed, total, center) {
+// A ring with an optional caption and legend. Segments are drawn in order around it.
+//   ready: no segments, the test count in the middle;
+//   live: one blue arc, the share of tests done (never pass/fail colours mid-run);
+//   result: green passed then red failed, "Pass Rate" under the number, and a legend.
+function ringBlock({ segments = [], total, center, caption, legend = [] }) {
   const svg = document.createElementNS(SVG, "svg");
   svg.setAttribute("viewBox", "0 0 120 120");
   svg.setAttribute("class", "hero-ring");
@@ -1648,33 +1652,59 @@ function passRing(passed, failed, total, center) {
   const r = 52;
   const round = 2 * Math.PI * r;
   let start = 0;
-  const arc = (count, cls) => {
-    if (cls !== "ring-track" && !count) return; // a zero arc would still draw a round dot
+  const circle = (cls) => {
     const c = document.createElementNS(SVG, "circle");
     c.setAttribute("cx", "60");
     c.setAttribute("cy", "60");
     c.setAttribute("r", String(r));
     c.setAttribute("class", cls);
-    if (cls !== "ring-track") {
-      const len = total ? (count / total) * round : 0;
-      c.style.setProperty("--len", `${len}`);
-      c.style.strokeDasharray = `${len} ${round}`;
-      c.style.strokeDashoffset = `${-start}`;
-      start += len;
-    }
     svg.append(c);
+    return c;
   };
-  arc(0, "ring-track");
-  arc(passed, "ring-pass");
-  arc(failed, "ring-fail");
-  const pct = document.createElementNS(SVG, "text");
-  pct.setAttribute("x", "60");
-  pct.setAttribute("y", "60");
-  pct.setAttribute("class", "ring-pct");
-  pct.textContent = center ?? (total ? `${Math.round((passed / total) * 100)}%` : "–");
-  svg.append(pct);
-  return svg;
+  circle("ring-track");
+  for (const { count, cls } of segments) {
+    if (!count || !total) continue; // a zero arc would still draw a round dot
+    const len = (count / total) * round;
+    const c = circle(cls);
+    c.style.strokeDasharray = `${len} ${round}`;
+    c.style.strokeDashoffset = `${-start}`;
+    start += len;
+  }
+  const middle = document.createElementNS(SVG, "text");
+  middle.setAttribute("x", "60");
+  middle.setAttribute("y", caption ? "55" : "60");
+  middle.setAttribute("class", "ring-pct");
+  middle.textContent = center;
+  svg.append(middle);
+  if (caption) {
+    const under = document.createElementNS(SVG, "text");
+    under.setAttribute("x", "60");
+    under.setAttribute("y", "77");
+    under.setAttribute("class", "ring-caption");
+    under.textContent = caption;
+    svg.append(under);
+  }
+  const block = el("div", "hero-ring-block");
+  block.append(svg);
+  if (legend.length) {
+    const list = el("ul", "ring-legend");
+    for (const [count, label, cls] of legend) list.append(el("li", cls, `${count} ${label}`));
+    block.append(list);
+  }
+  return block;
 }
+
+// A metric result's status. Results saved before D-118 have none: a judge error with no
+// score was Not Scored, "nothing to grade" was Not Applicable.
+function statusOf(m) {
+  if (m.status) return m.status;
+  if (m.score == null && m.error) return "not_scored";
+  if (/no question-answer pairs|nothing to evaluate/i.test(m.reason ?? "")) return "not_applicable";
+  return "scored";
+}
+const inCatalog = (id) => Boolean(evals.index?.catalog?.metrics?.[id]); // dropped metrics stay hidden
+
+const metricCount = () => Object.keys(evals.index?.catalog?.metrics ?? {}).length || 11;
 
 function tile(value, label, tone = "") {
   const t = el("div", `hero-tile ${tone}`);
@@ -1716,7 +1746,7 @@ function costLabel(models, paid) {
 
 // The card: ring, words, tiles, and at the bottom the next run's model menus (the same
 // two <select>s every time, moved in, so a menu keeps its state across re-renders).
-function hero({ passed, failed, total, center, kicker, headline, sub, tiles }) {
+function hero({ ring, kicker, headline, sub, tiles }) {
   const box = el("div", "evals-hero");
   const words = el("div", "hero-words");
   if (kicker) words.append(el("p", "hero-kicker", kicker));
@@ -1726,7 +1756,7 @@ function hero({ passed, failed, total, center, kicker, headline, sub, tiles }) {
   words.append(row);
   const next = $("evals-next");
   for (const pick of next.querySelectorAll("select")) pick.disabled = Boolean(evals.live);
-  box.append(passRing(passed, failed, total, center), words, next);
+  box.append(ringBlock(ring), words, next);
   return box;
 }
 
@@ -1750,13 +1780,22 @@ function renderEvalSummary() {
     const failed = live.cases.filter((c) => c.status === "failed").length;
     const runs = live.cases.reduce((n, c) => n + c.done, 0);
     const s = safety(metricTotals());
+    const all = total * live.runs;
     return void box.replaceChildren(
       hero({
-        passed,
-        failed,
-        total,
+        ring: {
+          segments: [{ count: runs, cls: "ring-progress" }],
+          total: all,
+          center: `${Math.round((runs / Math.max(all, 1)) * 100)}%`,
+          caption: "Done",
+          legend: [
+            [passed, "Passed", "pass"],
+            [failed, "Failed", "fail"],
+            [total - passed - failed, "To Go", "todo"],
+          ],
+        },
         headline: `Testing the agent… ${passed + failed} of ${total} tests done`,
-        sub: `${runs} of ${total * live.runs} runs finished. Each test is a conversation with a known right answer.`,
+        sub: `${runs} of ${all} runs finished. Each test is a conversation with a known right answer.`,
         kicker: "Running Now",
         tiles: [
           tile(`${passed + failed} / ${total}`, "Tests Completed"),
@@ -1775,13 +1814,14 @@ function renderEvalSummary() {
     const core = evals.suite.filter((c) => c.core).length;
     return void box.replaceChildren(
       hero({
-        passed: 0,
-        failed: 0,
-        total: 0,
-        center: String(evals.suite.length || "–"),
+        ring: { total: 0, center: String(evals.suite.length || "–"), caption: "Tests" },
         headline: `${evals.suite.length} Tests Ready to Run`,
-        sub: `${single} single-turn and ${multi} multi-turn conversations with known right answers, each scored on 12 metrics.`,
-        tiles: [tile(String(evals.suite.length), "Tests"), tile("12", "Metrics"), tile(String(core), "Core Tests")],
+        sub: `${single} single-turn and ${multi} multi-turn conversations with known right answers, each scored on ${metricCount()} metrics.`,
+        tiles: [
+          tile(String(evals.suite.length), "Tests"),
+          tile(String(metricCount()), "Metrics"),
+          tile(String(core), "Core Tests"),
+        ],
       }),
     );
   }
@@ -1806,9 +1846,20 @@ function renderEvalSummary() {
   const models = [agentFirst, agentNow, r.judge.first, r.judge.now];
   box.replaceChildren(
     hero({
-      passed,
-      failed,
-      total: cases,
+      ring: {
+        segments: [
+          { count: passed, cls: "ring-pass" },
+          { count: failed, cls: "ring-fail" },
+        ],
+        total: cases,
+        center: `${Math.round((passed / Math.max(cases, 1)) * 100)}%`,
+        caption: "Pass Rate",
+        legend: [
+          [passed, "Passed", "pass"],
+          [failed, "Failed", "fail"],
+          ...(incomplete ? [[incomplete, "Not Finished", "todo"]] : []),
+        ],
+      },
       headline,
       sub,
       tiles: [
@@ -1827,7 +1878,7 @@ function renderEvalSummary() {
 // ── Metrics: the 12 we score, in DeepEval's groups ───────────────────────────
 // Per metric: the mean score and runs passed, from the saved result or the live eval.
 function metricTotals() {
-  if (!evals.live) return evals.result?.metrics ?? {};
+  if (!evals.live) return resultTotals(evals.result);
   const totals = {};
   for (const c of evals.live.cases) {
     for (const [id, m] of Object.entries(c.metrics)) {
@@ -1836,6 +1887,28 @@ function metricTotals() {
       t.scored += m.scored;
       t.passed += m.passed;
       t.runs += m.runs;
+    }
+  }
+  for (const t of Object.values(totals)) t.score = t.scored ? t.sum / t.scored : null;
+  return totals;
+}
+
+// A saved eval's totals, worked out from its runs so every result (old or new) counts the
+// same way: only real scores; Not Scored and Not Applicable are left out (D-118).
+function resultTotals(result) {
+  const totals = {};
+  for (const c of result?.cases ?? []) {
+    for (const run of c.runs) {
+      for (const [id, m] of Object.entries(run.metrics)) {
+        if (statusOf(m) !== "scored") continue;
+        const t = (totals[id] ??= { sum: 0, scored: 0, passed: 0, runs: 0 });
+        if (m.score != null) {
+          t.sum += m.score;
+          t.scored += 1;
+        }
+        t.passed += m.passed ? 1 : 0;
+        t.runs += 1;
+      }
     }
   }
   for (const t of Object.values(totals)) t.score = t.scored ? t.sum / t.scored : null;
@@ -1908,7 +1981,8 @@ function caseRows() {
   const listed = evals.suite.length ? evals.suite : [...ran.values()];
   return listed.map((s) => {
     const c = ran.get(s.id);
-    const missed = c ? c.runs.flatMap((r) => Object.entries(r.metrics).filter(([, m]) => !m.passed).map(([id]) => id)) : [];
+    // Not Scored / Not Applicable and dropped metrics never count as a miss (D-118)
+    const missed = c ? c.runs.flatMap((r) => Object.entries(r.metrics).filter(([id, m]) => inCatalog(id) && statusOf(m) === "scored" && !m.passed).map(([id]) => id)) : [];
     return { ...s, ...c, status: c?.status ?? "notrun", ask: s.turns[0], turns: s.turns.length, missed: new Set(missed) };
   });
 }
@@ -1947,15 +2021,23 @@ function runDetail(run) {
     t.append(el("p", "turn-answer", turn.answer || "(no answer)"));
     block.append(t);
   }
-  const scores = Object.entries(run.metrics).sort(([, a], [, b]) => a.passed - b.passed); // misses first
+  // Misses first, then passes, then what wasn't scored (D-118).
+  const rank = (m) => (statusOf(m) !== "scored" ? 2 : m.passed ? 1 : 0);
+  const scores = Object.entries(run.metrics)
+    .filter(([id]) => inCatalog(id))
+    .sort(([, a], [, b]) => rank(a) - rank(b));
   if (!scores.length) block.append(el("p", "evals-note", "Not scored: the eval stopped during this run."));
   const list = el("ul", "run-scores");
   for (const [id, m] of scores) {
-    const li = el("li", m.passed ? "pass" : "fail");
+    const status = statusOf(m);
+    const off = status !== "scored";
+    const li = el("li", off ? "off" : m.passed ? "pass" : "fail");
+    const label = off ? (status === "not_applicable" ? "Not Applicable" : "Not Scored") : m.score == null ? "" : m.score.toFixed(2);
+    const why = off ? (status === "not_applicable" ? "Nothing to grade in this conversation." : `The judge failed, not the agent: ${m.error}`) : m.reason || m.error || "";
     li.append(
-      el("span", "run-score-mark", m.passed ? "✓" : "✗"),
-      el("span", "run-score-name", `${metricInfo(id).name}${m.score == null ? "" : ` ${m.score.toFixed(2)}`}`),
-      el("span", "run-score-why", m.reason || m.error || ""),
+      el("span", "run-score-mark", off ? "–" : m.passed ? "✓" : "✗"),
+      el("span", "run-score-name", `${metricInfo(id).name} ${label}`.trim()),
+      el("span", "run-score-why", why),
     );
     list.append(li);
   }
@@ -1969,10 +2051,33 @@ function renderCases() {
   if (!rows.length) return void box.replaceChildren(el("p", "evals-note", "Nothing yet."));
   const single = rows.filter((r) => r.turns === 1);
   const multi = rows.filter((r) => r.turns > 1);
+  // Each group folds, closed by default (your request); the heading carries the tally, and
+  // a group you opened stays open while a live eval re-draws the list.
+  evals.openGroups ??= new Set();
   box.replaceChildren(
-    ...[["Single Turn", single], ["Multi-Turn", multi]].flatMap(([title, group]) =>
-      group.length ? [el("h3", "case-kind", `${title} · ${group.length}`), ...group.map(caseItem)] : [],
-    ),
+    ...[["Single Turn", single], ["Multi-Turn", multi]]
+      .filter(([, group]) => group.length)
+      .map(([title, group]) => {
+        const fold = el("details", "case-fold");
+        fold.open = evals.openGroups.has(title);
+        fold.addEventListener("toggle", () => (fold.open ? evals.openGroups.add(title) : evals.openGroups.delete(title)));
+        const head = el("summary", "case-kind");
+        const count = (status) => group.filter((r) => r.status === status).length;
+        const tally = [
+          [count("passed"), "Passed", "pass"],
+          [count("failed"), "Failed", "fail"],
+          [count("running"), "Running", "run"],
+          [count("waiting") + count("notrun") + count("incomplete"), "Not Run", ""],
+        ].filter(([n]) => n);
+        head.append(el("span", "case-kind-title", `${title} · ${group.length}`));
+        const marks = el("span", "case-kind-tally");
+        for (const [n, label, cls] of tally) marks.append(el("span", cls, `${n} ${label}`));
+        head.append(marks);
+        const list = el("div", "case-fold-list");
+        list.append(...group.map(caseItem));
+        fold.append(head, list);
+        return fold;
+      }),
   );
 }
 
@@ -2008,7 +2113,27 @@ function renderEvalHistory() {
         el("span", "history-tag", r.status === "stopped" ? "Stopped Early" : ""),
       );
       pick.addEventListener("click", () => loadEvals(r.id === evals.result?.id ? null : r.id));
-      li.append(pick);
+      // × deletes this eval; the first click asks, the second deletes (like Chats).
+      const drop = el("button", "history-delete", "×");
+      drop.type = "button";
+      drop.setAttribute("aria-label", `Delete the eval of ${r.started ?? r.id}`);
+      drop.addEventListener("click", async () => {
+        if (!drop.classList.contains("sure")) {
+          drop.classList.add("sure");
+          drop.textContent = "Delete?";
+          setTimeout(() => {
+            drop.classList.remove("sure");
+            drop.textContent = "×";
+          }, 3000);
+          return;
+        }
+        const response = await fetch(`/api/evals/${encodeURIComponent(r.id)}`, { method: "DELETE", headers: PAGE_HEADER });
+        if (!response.ok) return void showEvalProblem(`Couldn't delete: ${(await response.json()).detail ?? response.statusText}`);
+        announce("Eval deleted.");
+        loadEvals(r.id === evals.result?.id ? null : undefined);
+      });
+      li.className = "history-row";
+      li.append(pick, drop);
       return li;
     }),
   );
@@ -2274,17 +2399,23 @@ function renderCostPanel(plan) {
   const isCore = cases.length === core.length && cases.every((id) => core.includes(id));
   $("next-scope").textContent = `${cases.length} ${isCore ? "core " : ""}test${cases.length === 1 ? "" : "s"} × ${runs} run${runs > 1 ? "s" : ""}`;
   const basis = $("next-basis");
-  basis.textContent = cost.basis === "measured" ? `Estimate from your last ${cost.from_evals} eval${cost.from_evals > 1 ? "s" : ""}` : "Cautious estimate";
-  basis.title =
-    cost.basis === "measured"
-      ? "Average tokens per agent turn and per judge call, from your recent evals."
-      : "Assumes 15k tokens in and 1.5k out per agent turn, and 3k in and 400 out per judge call. It sharpens once you've run evals.";
+  // Only say where the numbers come from once they come from your own evals.
+  basis.hidden = cost.basis !== "measured";
+  basis.textContent = `From your last ${cost.from_evals} eval${cost.from_evals > 1 ? "s" : ""}`;
+  basis.title = "Average tokens, calls and time per test, from your recent evals.";
+  evals.lastPlan = plan;
   const helper = cost.fallback ? modelLabel(cost.fallback.model) : "";
   const turns = cost.agent.turns;
   roleCard($("cost-agent"), cost.agent, `${turns} answer${turns === 1 ? "" : "s"} · ≈ ${cost.agent.calls} model calls`, helper);
   roleCard($("cost-judge"), cost.judge, `${cost.judge.calls} grading calls`, helper);
+  // A model grading its own answers is lenient: say so (your pick, D-118).
+  part($("cost-judge"), "note").textContent =
+    cost.agent.model === cost.judge.model ? "Grading its own answers: pick a different judge" : "";
 
   const total = $("cost-total");
+  part(total, "time").textContent = cost.seconds ? `≈ ${aboutTime(cost.seconds)} to run` : "";
+  if (evals.live) return showThisRun(); // while running, You Pay shows what's spent
+  $("next-label").textContent = "Next Run";
   countTo(part(total, "num"), cost.low);
   part(total, "range").textContent =
     cost.high > cost.low
@@ -2310,6 +2441,59 @@ function renderCostPanel(plan) {
   );
 }
 
+// "about 8 min", "under a minute"
+function aboutTime(seconds) {
+  if (seconds < 60) return "under a minute";
+  const minutes = Math.round(seconds / 60);
+  return minutes < 90 ? `${minutes} min` : `${Math.round(minutes / 6) / 10} h`;
+}
+const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+
+// While a run is going, the cost panel is "This Run": spent so far against the estimate.
+function showThisRun() {
+  const live = evals.live;
+  const cost = evals.lastPlan?.cost;
+  if (!live) return;
+  $("next-label").textContent = "This Run";
+  const total = $("cost-total");
+  countTo(part(total, "num"), live.paid ?? 0);
+  const estimate = cost ? (cost.high > cost.low ? `${usdShort(cost.low)}–${usdShort(cost.high)}` : usdShort(cost.low)) : "";
+  part(total, "range").textContent = estimate ? `Spent so far, of ≈ ${estimate} estimated` : "Spent so far";
+}
+
+// ── The activity panel: what is happening now, how long it has taken, what's left ──
+const PHASES = ["agent", "judge", "done"];
+
+function setPhase(phase, detail = "") {
+  const at = PHASES.indexOf(phase);
+  for (const li of $("live-phases").children) {
+    const i = PHASES.indexOf(li.dataset.phase);
+    li.className = i < at ? "past" : i === at ? "now" : "";
+  }
+  $("live-detail").textContent = detail;
+}
+
+function feed(text, tone = "") {
+  const live = evals.live;
+  const line = el("li", tone);
+  line.append(el("span", "feed-time", live ? clock((Date.now() - live.started) / 1000) : ""), el("span", null, text));
+  $("live-feed").prepend(line);
+  while ($("live-feed").children.length > 8) $("live-feed").lastElementChild.remove();
+}
+
+// Elapsed and time left: the mean seconds of finished tests (or the plan's) × tests to go.
+function tickLive() {
+  const live = evals.live;
+  if (!live) return;
+  const elapsed = (Date.now() - live.started) / 1000;
+  const all = live.cases.length * live.runs;
+  const done = live.cases.reduce((n, c) => n + c.done, 0);
+  const each = live.timed.length ? live.timed.reduce((a, b) => a + b, 0) / live.timed.length : live.perTest;
+  const left = Math.max(each * (all - done) - (live.current ? (Date.now() - live.current) / 1000 : 0), 0);
+  $("live-count").textContent = `${done} of ${all} tests`;
+  $("live-time").textContent = `${clock(elapsed)} elapsed · ${done === all ? "finishing" : `≈ ${aboutTime(left)} left`}`;
+}
+
 // ── A live eval: rows fill in as runs finish ──────────────────────────────────
 function liveRow(caseId) {
   return evals.live?.cases.find((c) => c.id === caseId);
@@ -2318,14 +2502,17 @@ function liveRow(caseId) {
 async function startEval(cases, runs, model, judge) {
   evals.running = true;
   $("evals-run").disabled = true;
+  $("evals-reset").disabled = true;
   $("evals-live").hidden = false;
   $("evals-stop").disabled = false;
+  $("live-feed").replaceChildren();
+  $("live-ask").textContent = "Starting…";
+  setPhase("agent");
   const progress = $("evals-progress");
-  const text = $("evals-live-text");
   progress.value = 0;
-  text.textContent = "Starting…";
   let saved = null;
   let finished = null;
+  let ticker = 0;
   try {
     const response = await fetch("/api/evals/run", {
       method: "POST",
@@ -2336,6 +2523,8 @@ async function startEval(cases, runs, model, judge) {
     for await (const ev of readLines(response)) {
       if (ev.type === "eval_started") {
         progress.max = Math.max(ev.cases.length * ev.runs, 1);
+        const planned = evals.lastPlan?.cost?.seconds;
+        const testRuns = ev.cases.length * ev.runs;
         evals.live = {
           runs: ev.runs,
           agent: ev.model,
@@ -2344,22 +2533,39 @@ async function startEval(cases, runs, model, judge) {
           firstJudge: ev.judge,
           spent: 0,
           paid: 0,
+          started: Date.now(),
+          current: 0,
+          timed: [],
+          perTest: planned ? planned / testRuns : 60,
           cases: ev.cases.map((c) => ({ ...c, status: "waiting", done: 0, missed: new Set(), metrics: {} })),
         };
+        ticker = setInterval(tickLive, 1000);
+        feed(`Started ${testRuns} test${testRuns > 1 ? "s" : ""} · agent ${modelLabel(ev.model)} · judge ${modelLabel(ev.judge)}`);
         renderEvals();
+        tickLive();
       } else if (ev.type === "run_started") {
         const row = liveRow(ev.case);
         if (row) row.status = "running";
-        text.textContent = `${ev.case} · run ${ev.run} of ${evals.live.runs}`;
+        evals.live.current = Date.now();
+        $("live-ask").textContent = `“${row?.ask ?? ev.case}”`;
+        $("live-ask").title = ev.case;
+        setPhase("agent", `${modelLabel(evals.live.agent)} is answering${evals.live.runs > 1 ? ` · run ${ev.run} of ${evals.live.runs}` : ""}`);
         renderCases();
+      } else if (ev.type === "agent_finished") {
+        const tools = [...new Set(ev.tools)];
+        feed(`${ev.case}: agent answered in ${Math.round(ev.seconds)} s${tools.length ? ` · used ${tools.join(", ")}` : " · no tools"}`);
+        setPhase("judge", "Grading starts");
+      } else if (ev.type === "metric_started") {
+        setPhase("judge", `${modelLabel(evals.live.judge)} grading ${metricInfo(ev.metric).name} (${ev.index} of ${ev.of})`);
       } else if (ev.type === "agent_switched") {
         evals.live.agent = ev.to;
-        text.textContent = `${modelLabel(ev.from)} ran out of quota: ${modelLabel(ev.to)} takes over`;
+        feed(`${modelLabel(ev.from)} ran out of quota: ${modelLabel(ev.to)} takes over`, "warn");
         renderEvalSummary();
       } else if (ev.type === "run_finished") {
         const row = liveRow(ev.case);
         if (row) {
           for (const [id, m] of Object.entries(ev.metrics)) {
+            if ((m.status ?? "scored") !== "scored") continue; // Not Scored never counts (D-118)
             const t = (row.metrics[id] ??= { sum: 0, scored: 0, passed: 0, runs: 0, score: null });
             if (m.score != null) {
               t.sum += m.score;
@@ -2376,11 +2582,20 @@ async function startEval(cases, runs, model, judge) {
         evals.live.spent = ev.spent_usd;
         evals.live.paid = ev.paid_usd ?? null;
         if (ev.judge) evals.live.judge = ev.judge;
+        if (ev.seconds != null) evals.live.timed.push(ev.seconds);
+        evals.live.current = 0;
         progress.value += 1;
-        text.textContent = `${ev.case} · run ${ev.run} ${ev.passed ? "passed" : "failed"}`;
+        const misses = row ? [...row.missed].map((id) => metricInfo(id).name) : [];
+        feed(
+          `${ev.passed ? "✓" : "✗"} ${ev.case} ${ev.passed ? "passed" : "failed"} · ${Math.round(ev.seconds ?? 0)} s · ${usdShort(ev.usd)}${!ev.passed && misses.length ? ` · missed ${misses.join(", ")}` : ""}`,
+          ev.passed ? "pass" : "fail",
+        );
+        setPhase("done", ev.passed ? "Passed" : "Failed");
         renderEvalSummary();
         renderMetrics();
         renderCases();
+        showThisRun();
+        tickLive();
       } else if (ev.type === "eval_finished") {
         finished = ev;
       } else if (ev.type === "saved") {
@@ -2392,10 +2607,12 @@ async function startEval(cases, runs, model, judge) {
   } catch (error) {
     showEvalProblem(`✗ ${error.message}`);
   } finally {
+    clearInterval(ticker);
     evals.running = false;
     evals.live = null;
     $("evals-live").hidden = true;
-    await loadEvals(saved ?? undefined); // also turns Run back on
+    $("evals-reset").disabled = false;
+    await loadEvals(saved ?? undefined); // also turns Run back on and the panel back to Next Run
     if (!finished) announce("Eval ended.");
     else if (finished.status === "stopped") announce(`Eval stopped: ${finished.stop_reason}`);
     else announce(`Eval finished: ${finished.summary.passed} of ${finished.summary.cases} cases passed.`);
@@ -2403,6 +2620,12 @@ async function startEval(cases, runs, model, judge) {
 }
 
 $("evals-run").addEventListener("click", openEvalDialog);
+// Reset: back to the ready card, the core set and no eval open (your request).
+$("evals-reset").addEventListener("click", () => {
+  evals.next = null;
+  loadEvals(null);
+  announce("Evals reset.");
+});
 $("evals-case-list").addEventListener("change", refreshEstimate);
 $("evals-model").addEventListener("change", refreshEstimate);
 $("evals-judge").addEventListener("change", refreshEstimate);
@@ -2424,7 +2647,7 @@ $("evals-dialog").addEventListener("close", () => {
 });
 $("evals-stop").addEventListener("click", async () => {
   $("evals-stop").disabled = true;
-  $("evals-live-text").textContent = "Stopping after this run…";
+  $("live-detail").textContent = "Stopping after this test…";
   await fetch("/api/evals/stop", { method: "POST", headers: PAGE_HEADER });
 });
 

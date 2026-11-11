@@ -9,10 +9,18 @@ nothing has to run again.
 
 - ``llm_test_case``: one run (one turn) → ``LLMTestCase`` with the trace and tools called.
 - ``conversation``: all turns of a case → ``ConversationalTestCase``; each answer carries
-  what that turn's tools returned as its retrieval context (for TurnFaithfulness).
+  what that turn's tools returned as its retrieval context.
 
 Tool results are cut to ``OUTPUT_CAP`` characters: the judge needs what was found, not
 every word of a contract, and each character costs.
+
+**The judge's copy is cleaned (D-118).** The first full eval showed two ways the raw trace
+misled the judge:
+
+- ``load_skill`` is how the agent reads its plan, but the judge counted it as an extra step
+  "before the plan". Its output (the skill text) moves into the agent's input as the plan.
+- A helper's work was saved both as its own agent and as the ``delegate_task`` call that
+  started it, so the judge saw "the reviewer ran twice". The helper now sits inside its call.
 
 Does not: call DeepEval's metrics (``evals/scoring.py`` does) or a model.
 """
@@ -31,15 +39,44 @@ def cut(value: Any) -> Any:
     return value
 
 
-def trace_dict(span: Span) -> dict[str, Any]:
+READS_PLAN = "load_skill"  # reading the plan: not a step of it
+STARTS_HELPER = "delegate_task"  # the call a helper's work belongs under
+
+
+def trace_dict(span: Span, *, for_judge: bool = False) -> dict[str, Any]:
     """A Span tree → DeepEval's trace dict (the shape ``create_nested_spans_dict`` makes)."""
     node: dict[str, Any] = {"name": span.name, "type": span.kind}
-    if span.input not in (None, "", {}):
-        node["input"] = cut(span.input)
+    children = list(span.children)
+    plan = ""
+    if for_judge:
+        plan = "\n\n".join(
+            str(c.output) for c in children if c.kind == "tool" and c.name == READS_PLAN
+        )
+        children = nest_helpers([c for c in children if c.name != READS_PLAN])
+    given = span.input
+    if plan:
+        given = f"{span.input}\n\nThe plan (the skill it loaded):\n{plan}"
+    if given not in (None, "", {}):
+        node["input"] = cut(given)
     if span.output not in (None, ""):
         node["output"] = cut(span.output)
-    node["children"] = [trace_dict(child) for child in span.children]
+    node["children"] = [trace_dict(child, for_judge=for_judge) for child in children]
     return node
+
+
+def nest_helpers(children: list[Span]) -> list[Span]:
+    """Move each helper's agent span inside the delegate_task call that started it."""
+    kept: list[Span] = []
+    waiting: list[Span] = []  # helpers seen since the last delegate_task
+    for child in children:
+        if child.kind == "agent":
+            waiting.append(child)
+            continue
+        if child.kind == "tool" and child.name == STARTS_HELPER and waiting:
+            child = Span(child.kind, child.name, child.input, child.output, [*waiting])
+            waiting = []
+        kept.append(child)
+    return kept + waiting  # a helper with no call left (shouldn't happen) stays visible
 
 
 def llm_test_case(view: RunView, task: str | None = None) -> Any:
@@ -52,9 +89,10 @@ def llm_test_case(view: RunView, task: str | None = None) -> Any:
         tools_called=[
             ToolCall(name=t.name, input_parameters=t.arguments, output=cut(t.output))
             for t in view.tools
+            if t.name != READS_PLAN
         ],
     )
-    case._trace_dict = trace_dict(view.root)  # what the trajectory metrics read
+    case._trace_dict = trace_dict(view.root, for_judge=True)  # what the trajectory metrics read
     return case
 
 

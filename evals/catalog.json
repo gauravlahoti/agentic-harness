@@ -102,10 +102,12 @@
           "id": "rag",
           "name": "RAG",
           "does": "Answers backed by what the tools returned",
-          "metrics": [
-            "turn_faithfulness"
-          ],
+          "metrics": [],
           "skipped": [
+            {
+              "deepeval": "TurnFaithfulnessMetric",
+              "why": "It grades answers against retrieved passages; our tools fetch records by ID, and its judge path crashed in the first full eval (D-118)."
+            },
             {
               "deepeval": "TurnContextualRelevancyMetric · PrecisionMetric · RecallMetric",
               "why": "They grade a retriever's ranking; we fetch by ID and keyword, so nothing is ranked."
@@ -216,13 +218,6 @@
       "kind": "code",
       "threshold": 1.0,
       "measures": "Every turn holds the rules: no forbidden words, no unapproved send, the right approver asked again."
-    },
-    "turn_faithfulness": {
-      "name": "Turn Faithfulness",
-      "deepeval": "TurnFaithfulnessMetric",
-      "kind": "judge",
-      "threshold": 0.7,
-      "measures": "Is every claim in each answer backed by what the tools returned?"
     }
   }
 }

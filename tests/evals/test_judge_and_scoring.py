@@ -86,7 +86,7 @@ def case(**fields: Any) -> Case:
     return Case(**{**base, **fields})
 
 
-async def test_s10_ac5_one_turn_gets_agent_layers_and_faithfulness() -> None:
+async def test_s10_ac5_one_turn_gets_the_agent_layers() -> None:
     view = read_run(FIXTURES / "20261110-235952-d16300.jsonl")
     scores = await judged_scores(
         case(), [view], StandInJudge(), role="Contract Agent", topics=["contracts"]
@@ -97,8 +97,7 @@ async def test_s10_ac5_one_turn_gets_agent_layers_and_faithfulness() -> None:
         "argument_correctness",
         "task_completion",
         "step_efficiency",
-        "turn_faithfulness",
-    ]
+    ]  # D-118: no Turn Faithfulness
     for score in scores:
         assert score.judge == ["stand-in"], score
         assert score.score is not None, score.error
@@ -119,8 +118,8 @@ async def test_s10_ac5_conversation_metrics_and_required_words() -> None:
         "conversation_completeness",
         "role_adherence",
         "topic_adherence",
-        "turn_faithfulness",
     }
+    assert "turn_faithfulness" not in scores  # D-118
     # Only turn 1 ran the loop; the refused turn has no plan or tools to judge.
     assert "Turn 2" not in scores["plan_adherence"].reason
     assert not scores["task_completion"].passed
@@ -181,7 +180,12 @@ def test_s10_ac6_the_projection_learns_from_past_evals(tmp_path: Path) -> None:
     (tmp_path / "20261112-100000-abcdef.json").write_text(json.dumps(result))
     (tmp_path / "20261111-090000-aaaaaa.json").write_text("{}")  # an old result: skipped
     seen = measured(tmp_path)
-    assert seen == {"agent": (4_000, 300, 3), "judge": (2_000, 200), "evals": 1}
+    assert seen == {
+        "agent": (4_000, 300, 3),
+        "judge": (2_000, 200),
+        "seconds_per_test": None,
+        "evals": 1,
+    }
     plan = project(
         {"agent_runs": 2, "judge_calls": 10},
         "claude-haiku-5-5",
@@ -207,3 +211,56 @@ async def test_s10_ac6_the_judge_keeps_what_each_model_cost() -> None:
     await judge.a_generate("judge this")
     assert set(judge.by_model) == {"claude-haiku-5-5"}
     assert judge.by_model["claude-haiku-5-5"] == pytest.approx(judge.usd)
+
+
+async def test_s10_a_judge_error_is_not_scored_and_never_fails_a_case() -> None:
+    """D-118: a crash or a malformed judge reply shows as Not Scored, not as a fail."""
+    from evals.scoring import measure
+
+    class Broken(StandInJudge):
+        async def a_generate(self, prompt: str, schema: Any = None) -> Any:
+            raise RuntimeError("the judge's reply had the wrong shape")
+
+    view = read_run(FIXTURES / "20261110-235952-d16300.jsonl")
+    from evals.replay import llm_test_case
+
+    score = await measure("plan_adherence", llm_test_case(view, None), Broken(), topics=[])
+    assert score.status == "not_scored"
+    assert score.counted is False  # left out of the case's pass/fail
+    assert "wrong shape" in score.error
+    assert score.to_dict()["status"] == "not_scored"
+
+
+async def test_s10_nothing_to_grade_is_not_applicable() -> None:
+    """D-118: a conversation the judge finds nothing in is Not Applicable, not 0."""
+    from evals.scoring import settle
+
+    empty = settle(
+        __import__("evals.checks", fromlist=["Score"]).Score(
+            "topic_adherence", 0.0, False, "There were no question-answer pairs to evaluate."
+        )
+    )
+    assert empty.status == "not_applicable"
+    assert empty.counted is False
+    real = settle(
+        __import__("evals.checks", fromlist=["Score"]).Score("role_adherence", 0.4, False, "off")
+    )
+    assert (real.status, real.counted, real.passed) == ("scored", True, False)
+
+
+async def test_s10_a_wrong_shaped_judge_reply_gets_one_more_try() -> None:
+    """D-118: Role Adherence once failed on a reply in the wrong shape; one retry fixes that."""
+    judge = Judge(
+        Scripted(
+            "gemini-3.5-flash-lite",
+            ['{"verdict": ["not", "a", "string"]}', '{"verdict": "yes", "reason": "ok"}'],
+        ),
+        load_prices(),
+    )
+    assert await judge.a_generate("judge this", schema=Verdict) == Verdict(
+        verdict="yes", reason="ok"
+    )
+    assert judge.calls == 2
+    twice_bad = Judge(Scripted("gemini-3.5-flash-lite", ["no json", "still none"]), load_prices())
+    with pytest.raises(ValueError, match="JSON"):
+        await twice_bad.a_generate("judge this", schema=Verdict)

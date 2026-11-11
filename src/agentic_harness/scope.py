@@ -5,7 +5,9 @@ what the agent ``covers`` and its polite ``refusal``. The harness then adds two 
 
 1. a Scope section in the system prompt, so the agent knows its job;
 2. an input check before the loop: one small model call reads the task and answers
-   IN or OUT. OUT ends the run with the refusal, before any tool or loop step.
+   IN or OUT. OUT ends the run with the refusal, before any tool or loop step. It also
+   reads the exchange just before (the last question and answer), so a follow-up such as
+   "who is the point of contact" or "just send it now" is judged in context (D-118).
 
 If the check itself fails (a busy model), the run goes on: layer 1 still applies, and a
 503 must never block real work.
@@ -35,7 +37,7 @@ class Verdict:
     usd: float = 0.0
 
 
-ScopeCheck = Callable[[str], Awaitable[Verdict]]
+ScopeCheck = Callable[[str, str], Awaitable[Verdict]]  # (task, the exchange before it)
 
 
 def scope_prompt(scope: Scope) -> str:
@@ -57,7 +59,8 @@ CHECK_PROMPT = (
     "The assistant only helps with: {covers}\n"
     "Reply with IN or OUT, a colon, and a reason of a few words. Greetings, questions "
     "about what the assistant can do, and the person's preferences about how it should "
-    "answer them (format, length, tone) are IN."
+    "answer them (format, length, tone) are IN. A follow-up to an earlier exchange that "
+    'was in scope ("and send it", "who is the contact") is IN.'
 )
 
 
@@ -72,8 +75,13 @@ def parse_verdict(text: str) -> tuple[bool, str]:
 def scope_check(scope: Scope, model: ModelClient, prices: Prices) -> ScopeCheck:
     """Layer 2: one small call per task, before the loop."""
 
-    async def check(task: str) -> Verdict:
-        steps = [{"type": "user_input", "content": [{"type": "text", "text": task}]}]
+    async def check(task: str, before: str = "") -> Verdict:
+        text = (
+            f"Earlier in this conversation:\n{before}\n\nThe new request: {task}"
+            if before
+            else task
+        )
+        steps = [{"type": "user_input", "content": [{"type": "text", "text": text}]}]
         reply = await model.create(CHECK_PROMPT.format(covers=scope.covers), steps, [])
         in_scope, reason = parse_verdict(reply.text)
         return Verdict(in_scope, reason, prices.cost(model.name, reply.usage))

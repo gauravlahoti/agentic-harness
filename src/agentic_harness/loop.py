@@ -58,6 +58,20 @@ Outcome = Literal["completed", "stopped", "failed"]
 Approver = Callable[[ApprovalRequest], Awaitable[tuple[bool, str]]]
 APPROVAL_TIMEOUT = 600.0  # seconds; no answer counts as "no" (D-79)
 SCOPE_CHECK_SECONDS = 15.0  # the scope check is small; a stuck one must not hold the run
+EXCHANGE_CHARS = 600  # how much of the last question and answer the scope check sees (D-118)
+
+
+def last_exchange(history: Sequence[Step]) -> str:
+    """The conversation's last question and answer, short, for the scope check (D-118)."""
+
+    def text(step: Step) -> str:
+        return "".join(p.get("text", "") for p in step.get("content", []) if isinstance(p, dict))
+
+    asked = next((text(s) for s in reversed(history) if s.get("type") == "user_input"), "")
+    said = next((text(s) for s in reversed(history) if s.get("type") == "model_output"), "")
+    if not asked and not said:
+        return ""
+    return f"Person: {asked[:EXCHANGE_CHARS]}\nAssistant: {said[:EXCHANGE_CHARS]}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,7 +199,7 @@ class Harness:
         if self.scope_check is not None:
             try:
                 async with asyncio.timeout(min(SCOPE_CHECK_SECONDS, budget.seconds_left())):
-                    verdict = await self.scope_check(task)
+                    verdict = await self.scope_check(task, last_exchange(history))
             except Exception as error:  # a busy check must not block real work
                 run.emit("scope_checked", in_scope=True, reason="", usd=0.0, error=f"{error}"[:300])
             else:

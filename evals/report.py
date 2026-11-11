@@ -1,7 +1,7 @@
 """Save an eval's result as one JSON file the page can read (S10-AC7).
 
 Part of the evals. Results live in ``.agentic-harness/evals/<id>.json`` (git-ignored); the
-page lists that folder. The catalog (the 12 metrics and the skipped ones) is copied in, so
+page lists that folder. The catalog (the 11 metrics and the skipped ones) is copied in, so
 an old result still explains itself after the catalog changes.
 
 Before writing, every key the run could touch is replaced by ``***``. The traces are already

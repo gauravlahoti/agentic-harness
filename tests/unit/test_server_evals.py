@@ -84,7 +84,7 @@ def test_s10_ac9_lists_results_newest_first_with_the_catalog(tmp_path: Path) -> 
         "20261111-090000-aaaaaa",
     ]
     assert "cases" not in body["results"][0]  # the list is short; the detail has the cases
-    assert body["catalog"]["metrics"]["turn_faithfulness"]["deepeval"] == "TurnFaithfulnessMetric"
+    assert body["catalog"]["metrics"]["role_adherence"]["deepeval"] == "RoleAdherenceMetric"
     assert body["has_cases"] is True
     assert body["running"] is False
     one = client(root).get("/api/evals/20261111-100000-bbbbbb").json()
@@ -188,3 +188,25 @@ async def test_s10_ac10_stop_ends_the_eval_and_one_runs_at_a_time(tmp_path: Path
     assert rest[-1] == {"type": "exit", "code": 1}
     assert not process.running
     assert process.stop() is False
+
+
+def test_s10_a_past_eval_can_be_deleted_from_the_page(tmp_path: Path) -> None:
+    """The x on a Past Evals row removes that eval: its result file and its working folder."""
+    root = project(tmp_path)
+    folder = root / "memory" / "evals"
+    (folder / "20261111-090000-aaaaaa" / "traces").mkdir(parents=True)
+    (folder / "20261111-090000-aaaaaa.json").write_text(
+        json.dumps(result("20261111-090000-aaaaaa", 1))
+    )
+    (folder / "20261111-100000-bbbbbb.json").write_text(
+        json.dumps(result("20261111-100000-bbbbbb", 2))
+    )
+    web = client(root)
+    assert web.delete("/api/evals/20261111-090000-aaaaaa").status_code == 403  # page only
+    gone = web.delete("/api/evals/20261111-090000-aaaaaa", headers=PAGE)
+    assert gone.status_code == 200
+    assert not (folder / "20261111-090000-aaaaaa.json").exists()
+    assert not (folder / "20261111-090000-aaaaaa").exists()
+    assert (folder / "20261111-100000-bbbbbb.json").exists()  # only that one
+    assert web.delete("/api/evals/20261111-090000-aaaaaa", headers=PAGE).status_code == 404
+    assert web.delete("/api/evals/not-an-id", headers=PAGE).status_code == 400

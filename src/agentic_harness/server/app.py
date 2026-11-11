@@ -54,6 +54,7 @@ from agentic_harness.server.evals import (
     EvalProcess,
     catalog,
     command,
+    delete_result,
     list_results,
     plan,
     read_result,
@@ -416,6 +417,18 @@ def create_app(
                 yield json.dumps(event, ensure_ascii=False) + "\n"
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+    @app.delete("/api/evals/{eval_id}")
+    async def evals_delete(request: Request, eval_id: str) -> dict[str, bool]:
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        try:
+            gone = delete_result(evals_folder, eval_id)
+        except EvalError as error:
+            raise HTTPException(400, str(error)) from None
+        if not gone:
+            raise HTTPException(404, "No such eval.")
+        return {"deleted": True}
 
     @app.post("/api/evals/stop")
     async def evals_stop(request: Request) -> dict[str, bool]:
