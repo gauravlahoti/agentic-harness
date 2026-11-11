@@ -35,6 +35,13 @@ SYSTEM = (
 FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.S)
 
 
+JUDGE_CALL_SECONDS = 120.0  # one judge call; past this it timed out, not "still thinking" (D-119)
+
+
+class JudgeTimeoutError(RuntimeError):
+    """One judge call took longer than JUDGE_CALL_SECONDS: that metric is Not Scored."""
+
+
 class JudgeUnavailableError(RuntimeError):
     """No model can judge right now; the eval stops with this message."""
 
@@ -120,7 +127,14 @@ class Judge(DeepEvalBaseLLM):  # type: ignore[misc]  # DeepEval is untyped here 
     async def _ask(self, prompt: str) -> str:
         steps = [{"type": "user_input", "content": [{"type": "text", "text": prompt}]}]
         try:
-            reply = await self._active.create(SYSTEM, steps, [])
+            # A request that never answers must not freeze the eval (found 2026-11-12).
+            reply = await asyncio.wait_for(
+                self._active.create(SYSTEM, steps, []), JUDGE_CALL_SECONDS
+            )
+        except TimeoutError:
+            raise JudgeTimeoutError(
+                f"{self._active.name} didn't answer in {JUDGE_CALL_SECONDS:g} s."
+            ) from None
         except ModelError as error:
             if self._active is not self._primary or not busy(error):
                 raise JudgeUnavailableError(f"The judge failed: {error}") from error

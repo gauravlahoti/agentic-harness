@@ -383,6 +383,18 @@ def create_app(
             raise HTTPException(400, str(error)) from None
         return await plan(project_root, args)
 
+    @app.get("/api/evals/follow")
+    async def evals_follow() -> StreamingResponse:
+        """A page that came back (a reload) follows the running eval from its start (D-119)."""
+        if not evals.running:
+            raise HTTPException(409, "No eval is running.")
+
+        async def lines() -> AsyncIterator[str]:
+            async for event in evals.follow():
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+
+        return StreamingResponse(lines(), media_type="application/x-ndjson")
+
     @app.get("/api/evals/{eval_id}")
     async def evals_result(eval_id: str) -> dict[str, object]:
         try:

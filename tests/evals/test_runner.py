@@ -413,3 +413,22 @@ def test_s10_the_cap_is_a_safety_net_of_three_dollars() -> None:
 
     assert DEFAULT_CAP_USD == 3.0
     assert Options(model="m").max_usd == 3.0
+
+
+async def test_s10_stop_interrupts_a_test_in_progress(suite: Any, tmp_path: Path) -> None:
+    """D-119: Stop ends the eval even mid-grading: it doesn't wait for a hung judge."""
+
+    class Hangs(StandInJudge):
+        async def a_generate(self, prompt: str, schema: Any = None) -> Any:
+            await asyncio.sleep(3600)
+
+    stop = asyncio.Event()
+    asyncio.get_running_loop().call_later(0.3, stop.set)
+    result, events = await asyncio.wait_for(
+        go(suite, tmp_path, cases=["lookup", "two-turns"], judge=Hangs(), stop=stop), timeout=10
+    )
+    assert result["status"] == "stopped"
+    assert result["stop_reason"] == "Stopped by you."
+    first = result["cases"][0]
+    assert first["status"] == "incomplete"  # its grading was cut short; nothing counts
+    assert any(e["type"] == "eval_finished" for e in events)

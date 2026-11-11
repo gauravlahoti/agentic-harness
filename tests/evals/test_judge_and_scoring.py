@@ -4,6 +4,7 @@ No test calls Gemini or Anthropic (S10-AC8): the judge's model is a scripted sta
 the scoring tests use a stand-in judge that fills in whatever schema DeepEval asks for.
 """
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -264,3 +265,45 @@ async def test_s10_a_wrong_shaped_judge_reply_gets_one_more_try() -> None:
     twice_bad = Judge(Scripted("gemini-3.5-flash-lite", ["no json", "still none"]), load_prices())
     with pytest.raises(ValueError, match="JSON"):
         await twice_bad.a_generate("judge this", schema=Verdict)
+
+
+class Hangs:
+    """A judge model that never answers (the 2026-11-12 Sonnet eval froze like this)."""
+
+    name = "claude-sonnet-5-5"
+
+    async def create(self, system: str, steps: Any, tools: Any) -> Any:
+        await asyncio.sleep(3600)
+
+
+async def test_s10_a_judge_call_that_never_answers_times_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-119: one judge call may take at most JUDGE_CALL_SECONDS; then it times out."""
+    import evals.judge as judge_module
+    from evals.judge import JudgeTimeoutError
+
+    monkeypatch.setattr(judge_module, "JUDGE_CALL_SECONDS", 0.05)
+    judge = Judge(Hangs(), load_prices())  # type: ignore[arg-type]
+    with pytest.raises(JudgeTimeoutError, match="didn't answer"):
+        await judge.a_generate("judge this", schema=Verdict)
+
+
+async def test_s10_a_metric_that_runs_too_long_is_not_scored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-119: a metric past METRIC_SECONDS is Not Scored with the reason; the eval goes on."""
+    import evals.scoring as scoring
+    from evals.replay import llm_test_case
+    from evals.scoring import measure
+
+    monkeypatch.setattr(scoring, "METRIC_SECONDS", 0.05)
+
+    class Slow(StandInJudge):
+        async def a_generate(self, prompt: str, schema: Any = None) -> Any:
+            await asyncio.sleep(3600)
+
+    view = read_run(FIXTURES / "20261110-235952-d16300.jsonl")
+    score = await measure("plan_adherence", llm_test_case(view, None), Slow(), topics=[])
+    assert score.status == "not_scored"
+    assert "didn't answer" in score.error

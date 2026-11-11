@@ -5,6 +5,7 @@ started with: the tests see exactly what the page can make the server run, and n
 real (no model, no key) is ever touched.
 """
 
+import asyncio
 import json
 import shutil
 import textwrap
@@ -176,37 +177,74 @@ async def test_s10_ac10_stop_ends_the_eval_and_one_runs_at_a_time(tmp_path: Path
         models=["m"],
     )
     process = EvalProcess()
-    stream = process.stream(root, args)
-    first = await anext(stream)
+    await process.start(root, args)
+    follow = process.follow()
+    first = await anext(follow)
     assert first["type"] == "eval_started"
     assert process.running
     with pytest.raises(EvalError, match="already running"):
-        await anext(process.stream(root, args))
+        await process.start(root, args)
     assert process.stop() is True
-    rest = [event async for event in stream]
+    rest = [event async for event in follow]
     assert rest[0] == {"type": "eval_finished", "stop_reason": "Stopped by you."}
     assert rest[-1] == {"type": "exit", "code": 1}
     assert not process.running
     assert process.stop() is False
 
 
-def test_s10_a_past_eval_can_be_deleted_from_the_page(tmp_path: Path) -> None:
-    """The x on a Past Evals row removes that eval: its result file and its working folder."""
+async def test_s10_a_reloaded_page_follows_the_running_eval_from_the_start(tmp_path: Path) -> None:
+    """D-119: the server reads the eval itself; a page that comes back sees every event so far."""
     root = project(tmp_path)
-    folder = root / "memory" / "evals"
-    (folder / "20261111-090000-aaaaaa" / "traces").mkdir(parents=True)
-    (folder / "20261111-090000-aaaaaa.json").write_text(
-        json.dumps(result("20261111-090000-aaaaaa", 1))
+    args = command(
+        root / "evals" / "cases" / "cloudco.toml",
+        root / "out",
+        cases=["slow"],
+        runs=1,
+        model="m",
+        judge="m",
+        models=["m"],
     )
-    (folder / "20261111-100000-bbbbbb.json").write_text(
-        json.dumps(result("20261111-100000-bbbbbb", 2))
+    process = EvalProcess()
+    await process.start(root, args)
+    await asyncio.sleep(0.5)  # the first page went away; the eval goes on
+    again = process.follow()
+    assert (await anext(again))["type"] == "eval_started"  # from the start
+    process.stop()
+    assert [e async for e in again][-1]["type"] == "exit"
+
+
+async def test_s10_stop_ends_even_an_eval_that_ignores_it(tmp_path: Path) -> None:
+    """D-119: if the eval doesn't end within the grace period after Stop, it is ended for it."""
+    root = project(tmp_path)
+    (root / "evals" / "run.py").write_text(
+        "import json, signal, sys, time\n"
+        "signal.signal(signal.SIGTERM, lambda *_: None)  # pretend to be stuck\n"
+        "print(json.dumps({'type': 'eval_started'}), flush=True)\n"
+        "time.sleep(60)\n"
     )
-    web = client(root)
-    assert web.delete("/api/evals/20261111-090000-aaaaaa").status_code == 403  # page only
-    gone = web.delete("/api/evals/20261111-090000-aaaaaa", headers=PAGE)
-    assert gone.status_code == 200
-    assert not (folder / "20261111-090000-aaaaaa.json").exists()
-    assert not (folder / "20261111-090000-aaaaaa").exists()
-    assert (folder / "20261111-100000-bbbbbb.json").exists()  # only that one
-    assert web.delete("/api/evals/20261111-090000-aaaaaa", headers=PAGE).status_code == 404
-    assert web.delete("/api/evals/not-an-id", headers=PAGE).status_code == 400
+    args = command(
+        root / "evals" / "cases" / "cloudco.toml",
+        root / "out",
+        cases=[],
+        runs=1,
+        model="m",
+        judge="m",
+        models=["m"],
+    )
+    process = EvalProcess(stop_grace_seconds=0.3)
+    await process.start(root, args)
+    follow = process.follow()
+    await anext(follow)
+    process.stop()
+    events = await asyncio.wait_for(_all(follow), timeout=10)
+    assert events[-1]["type"] == "exit"
+    assert not process.running
+
+
+async def _all(follow: Any) -> list[dict[str, Any]]:
+    return [e async for e in follow]
+
+
+def test_s10_the_page_can_ask_to_follow_the_running_eval(tmp_path: Path) -> None:
+    web = client(project(tmp_path))
+    assert web.get("/api/evals/follow").status_code == 409  # nothing running

@@ -19,6 +19,7 @@ and neither fails the case (D-118). ``JudgeUnavailableError`` stops the whole ev
 Does not: run the agent (``evals/runner.py`` does) or write files.
 """
 
+import asyncio
 import json
 from collections.abc import Callable, Sequence
 from functools import cache
@@ -34,6 +35,7 @@ from evals.replay import conversation, llm_test_case
 from evals.traces import RunView
 
 CATALOG = Path(__file__).with_name("catalog.json")
+METRIC_SECONDS = 300.0  # one metric, all its judge calls; past this it's Not Scored (D-119)
 
 
 @cache
@@ -75,9 +77,13 @@ async def measure(metric: str, test_case: Any, judge: Judge, **options: Any) -> 
     instance = build(metric, judge, **options)
     judge.start()
     try:
-        await instance.a_measure(test_case, _show_indicator=False)
+        await asyncio.wait_for(instance.a_measure(test_case, _show_indicator=False), METRIC_SECONDS)
     except JudgeUnavailableError:
         raise
+    except TimeoutError:  # the judge never finished this metric: Not Scored, eval goes on
+        used, usd = judge.taken()
+        why = f"The judge didn't answer in {METRIC_SECONDS / 60:g} min."
+        return Score(metric, None, False, "", used, usd, why, status="not_scored")
     except Exception as error:  # the judge failed, not the agent: Not Scored (D-118)
         used, usd = judge.taken()
         why = f"{type(error).__name__}: {error}"[:300]

@@ -934,3 +934,15 @@
 - **Instead of:** counting judge errors as failures; keeping the raw trace; leaving the scope bug deferred
 - **Because:** 5 of the 7 failures came from our scoring or our hand-off, not the agent; an eval has to blame the right thing
 - **Cost:** Not Scored metrics can hide a judge that keeps failing (the reason is shown, and the count is visible per case); the scope check reads a little more text per task
+
+### D-119 · An eval can't hang silently: time limits, a Stop that always works, pages that follow a running eval
+✅ Accepted · S10 · your report ("why is it stuck, there is no option to stop on UI, it's not displayed")
+- **Found (2026-11-12):** an eval with a Claude Sonnet judge froze for 20+ minutes while grading `cfo-no-holds`: the process idle, its connections to Anthropic silent. Nothing limited a judge call; Stop was only checked between tests; and the eval was read only by the page that started it, so a reload showed nothing and offered no Stop.
+- **Chose:**
+  - one judge call may take 2 min and one metric 5 min; past that it's **Not Scored** ("the judge didn't answer in …") and the eval goes on;
+  - Stop interrupts the test in progress and saves what finished; if the eval hasn't ended 20 s after Stop, the server ends it;
+  - the server reads the eval itself and keeps its events; any page (a reload, another tab) follows it from the start (`/api/evals/follow`);
+  - after a minute with no news, the Running panel says what it's waiting on and for how long.
+- **Instead of:** waiting forever; a polite Stop only; a stream tied to one page
+- **Because:** a long run on a paid judge must never fail silently or be impossible to stop
+- **Cost:** a slow but healthy judge call over 2 min counts as Not Scored; the server keeps one eval's events in memory

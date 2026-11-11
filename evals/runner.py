@@ -36,11 +36,12 @@ Does not: write files (``evals/report.py`` does) or choose models (the caller do
 """
 
 import asyncio
+import contextlib
 import re
 import secrets as random
 import shutil
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import mean
@@ -93,6 +94,29 @@ def out_of_quota(model: str, reason: str, fallback: str | None) -> str:
         return f"{model} is {what} too."
     when = f" (it resets in {m.group(1)})" if (m := RETRY.search(reason)) else ""
     return f"{model} is {what}{when}, and there's no Claude key to take over."
+
+
+class StoppedError(Exception):
+    """Stop was pressed while a test was in progress."""
+
+
+async def unless_stopped[T](work: Awaitable[T], stop: asyncio.Event | None) -> T:
+    """Wait for ``work``, unless Stop comes first: then cancel it (D-119).
+
+    Stop used to be checked only between tests, so a hung judge call meant Stop did nothing.
+    """
+    task = asyncio.ensure_future(work)
+    if stop is None:
+        return await task
+    stopped = asyncio.ensure_future(stop.wait())
+    done, _ = await asyncio.wait({task, stopped}, return_when=asyncio.FIRST_COMPLETED)
+    if task in done:
+        stopped.cancel()
+        return task.result()
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await task
+    raise StoppedError
 
 
 def metric_events(emit: Emit, case_id: str) -> Callable[[str, str, int, int], None]:
@@ -266,15 +290,22 @@ async def run_eval(
                 break
             emit({"type": "run_started", "case": case.id, "run": number})
             began = time.time()
-            views = await run_case(
-                case,
-                number,
-                workspace=workspace,
-                model=tally.agent,
-                factory=factory,
-                folder=folder / eval_id,
-                secrets=secrets,
-            )
+            try:
+                views = await unless_stopped(
+                    run_case(
+                        case,
+                        number,
+                        workspace=workspace,
+                        model=tally.agent,
+                        factory=factory,
+                        folder=folder / eval_id,
+                        secrets=secrets,
+                    ),
+                    stop,
+                )
+            except StoppedError:
+                tally.stop = "Stopped by you."
+                break
             emit(
                 {
                     "type": "agent_finished",
@@ -301,16 +332,21 @@ async def run_eval(
                 tally.stop = out_of_quota(tally.agent, failed.reason, options.fallback)
             else:
                 try:
-                    scores += await judged_scores(
-                        case,
-                        views,
-                        judge,
-                        role=role.get(case.profile, ""),
-                        topics=topics,
-                        progress=metric_events(emit, case.id),
+                    scores += await unless_stopped(
+                        judged_scores(
+                            case,
+                            views,
+                            judge,
+                            role=role.get(case.profile, ""),
+                            topics=topics,
+                            progress=metric_events(emit, case.id),
+                        ),
+                        stop,
                     )
                 except JudgeUnavailableError as error:
                     tally.stop = str(error)
+                except StoppedError:
+                    tally.stop = "Stopped by you."
             record: dict[str, Any] = {
                 "run": number,
                 "model": tally.agent,

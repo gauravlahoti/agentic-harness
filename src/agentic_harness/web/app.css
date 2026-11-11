@@ -1639,6 +1639,7 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .live-phases li.past { color: var(--text-soft); }
 .live-phases li.past::before { content: "✓"; background: color-mix(in srgb, var(--pass) 20%, transparent); color: var(--pass); }
 .live-detail { margin: 0; color: var(--text-soft); font-size: 13px; }
+.live-detail.stalled { color: var(--skip); font-weight: 600; }
 .live-feed { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--text-soft); max-height: 190px; overflow-y: auto; }
 .live-feed li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; animation: feed-in 0.3s ease both; }
 .live-feed .feed-time { color: var(--muted); font-variant-numeric: tabular-nums; }

@@ -17,6 +17,7 @@ Does not: score anything, or know any workspace's cases.
 """
 
 import asyncio
+import contextlib
 import json
 import re
 import shutil
@@ -155,25 +156,36 @@ async def plan(project_root: Path, args: list[str]) -> dict[str, Any]:
 
 
 class EvalProcess:
-    """At most one eval at a time; Stop asks it to finish politely, then insists."""
+    """At most one eval at a time, read by the server itself; pages follow it (D-119).
 
-    def __init__(self) -> None:
+    The eval used to be read only while the page that started it kept listening. A reload
+    left it unwatched (no Stop, no progress), and Stop only asked it politely. Now:
+
+    - ``start`` launches the eval and a reader that keeps every event, watched or not;
+    - ``follow`` replays the events so far and then the new ones, so any page (a reloaded
+      one too) shows the whole run;
+    - ``stop`` asks the eval to stop (SIGTERM: it saves what finished) and, if it hasn't
+      ended within ``stop_grace_seconds``, ends it.
+    """
+
+    def __init__(
+        self,
+        limit_seconds: float = LIMIT_SECONDS,
+        stop_grace_seconds: float = STOP_GRACE_SECONDS,
+    ) -> None:
         self._process: asyncio.subprocess.Process | None = None
+        self._events: list[dict[str, Any]] = []
+        self._changed = asyncio.Event()
+        self._done = True
+        self._limit = limit_seconds
+        self._grace = stop_grace_seconds
+        self._reader: asyncio.Task[None] | None = None
 
     @property
     def running(self) -> bool:
-        return self._process is not None and self._process.returncode is None
+        return not self._done
 
-    def stop(self) -> bool:
-        if not self.running or self._process is None:
-            return False
-        self._process.terminate()  # SIGTERM: the eval saves what it has (evals/run.py)
-        return True
-
-    async def stream(
-        self, project_root: Path, args: list[str], limit_seconds: float = LIMIT_SECONDS
-    ) -> AsyncIterator[dict[str, Any]]:
-        """Start the eval and yield its JSON events, then ``exit``."""
+    async def start(self, project_root: Path, args: list[str]) -> None:
         if self.running:
             raise EvalError("An eval is already running.")
         process = await asyncio.create_subprocess_exec(
@@ -182,26 +194,69 @@ class EvalProcess:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
-        self._process = process
+        self._process, self._events, self._done = process, [], False
+        self._reader = asyncio.create_task(self._read(process))
+
+    def _add(self, event: dict[str, Any]) -> None:
+        self._events.append(event)
+        self._changed.set()  # wake every follower
+        self._changed = asyncio.Event()
+
+    async def _read(self, process: asyncio.subprocess.Process) -> None:
+        """Keep every JSON line the eval prints, until it ends (or runs over its limit)."""
         if process.stdout is None:  # can't happen with stdout=PIPE; says so to the type checker
             raise RuntimeError("eval started without an output pipe")
         try:
-            async with asyncio.timeout(limit_seconds):
+            async with asyncio.timeout(self._limit):
                 async for raw in process.stdout:
                     text = raw.decode(errors="replace").strip()
                     if text.startswith("{"):
-                        yield json.loads(text)
+                        with contextlib.suppress(json.JSONDecodeError):
+                            self._add(json.loads(text))
                 code = await process.wait()
         except TimeoutError:
-            yield {"type": "error", "message": f"Stopped: the eval ran over {limit_seconds:g} s."}
+            self._add(
+                {"type": "error", "message": f"Stopped: the eval ran over {self._limit:g} s."}
+            )
+            await self._end(process)
+            code = process.returncode if process.returncode is not None else -9
+        self._done = True
+        self._add({"type": "exit", "code": code})
+
+    async def _end(self, process: asyncio.subprocess.Process) -> None:
+        """SIGTERM; if it's still there after the grace period, kill it."""
+        if process.returncode is not None:
             return
-        finally:
-            if process.returncode is None:  # timed out, or the page went away mid-eval
-                process.terminate()
-                try:
-                    await asyncio.wait_for(process.wait(), STOP_GRACE_SECONDS)
-                except TimeoutError:
-                    process.kill()
-                    await process.wait()
-            self._process = None
-        yield {"type": "exit", "code": code}
+        process.terminate()
+        try:
+            await asyncio.wait_for(process.wait(), self._grace)
+        except TimeoutError:
+            process.kill()
+            await process.wait()
+
+    def stop(self) -> bool:
+        if not self.running or self._process is None:
+            return False
+        asyncio.get_running_loop().create_task(self._end(self._process))
+        return True
+
+    async def follow(self) -> AsyncIterator[dict[str, Any]]:
+        """Every event of the current (or last) eval from the start, then new ones, to ``exit``."""
+        seen = 0
+        while True:
+            changed = self._changed
+            while seen < len(self._events):
+                event = self._events[seen]
+                seen += 1
+                yield event
+                if event.get("type") == "exit":
+                    return
+            if self._done and seen >= len(self._events):
+                return
+            await changed.wait()
+
+    async def stream(self, project_root: Path, args: list[str]) -> AsyncIterator[dict[str, Any]]:
+        """Start the eval and follow it (what the Run button does)."""
+        await self.start(project_root, args)
+        async for event in self.follow():
+            yield event

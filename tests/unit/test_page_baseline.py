@@ -123,6 +123,8 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
     assert "on a paid key" in JS  # Gemini: $0 on the free tier, and what a paid key would cost
     assert "prefers-reduced-motion" in JS  # the count-up snaps when motion is reduced
     assert 'class="synthetic-tag"' in HTML  # the workspace says its data is synthetic
+    assert "/api/evals/follow" in JS  # a reloaded page picks the running eval back up (D-119)
+    assert "Waiting on" in JS  # a stalled run says what it is waiting on
     assert "Tests Ready to Run" in JS  # no verdict until an eval is run or opened
     assert 'data-view="golden"' in HTML  # the golden dataset, on its own page
     assert 'id="view-golden"' in HTML

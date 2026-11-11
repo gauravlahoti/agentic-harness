@@ -1615,6 +1615,8 @@ async function loadEvals(select) {
   }
   setUpEvalPickers(evals.defaultJudge);
   refreshCost();
+  // An eval is running but this page didn't start it (a reload, another tab): follow it.
+  if (evals.index.running && !evals.running) watchEval(() => fetch("/api/evals/follow"));
   const id = select === null ? null : (select ?? evals.result?.id); // nothing chosen: the ready state
   evals.result = null;
   if (id) {
@@ -2463,8 +2465,11 @@ function showThisRun() {
 
 // ── The activity panel: what is happening now, how long it has taken, what's left ──
 const PHASES = ["agent", "judge", "done"];
+const STALL_SECONDS = 60; // this long with no news, the panel says what it's waiting on
 
 function setPhase(phase, detail = "") {
+  if (evals.live) evals.live.phase = phase;
+  $("live-detail").classList.remove("stalled");
   const at = PHASES.indexOf(phase);
   for (const li of $("live-phases").children) {
     const i = PHASES.indexOf(li.dataset.phase);
@@ -2491,6 +2496,13 @@ function tickLive() {
   const each = live.timed.length ? live.timed.reduce((a, b) => a + b, 0) / live.timed.length : live.perTest;
   const left = Math.max(each * (all - done) - (live.current ? (Date.now() - live.current) / 1000 : 0), 0);
   $("live-count").textContent = `${done} of ${all} tests`;
+  const quiet = (Date.now() - live.lastEvent) / 1000;
+  if (quiet > STALL_SECONDS) {
+    const who = live.phase === "agent" ? live.agent : live.judge;
+    const detail = $("live-detail");
+    detail.textContent = `Waiting on ${modelLabel(who)} for ${clock(quiet)}… (it gives up after 2 min a call; Stop ends the run)`;
+    detail.classList.add("stalled");
+  }
   $("live-time").textContent = `${clock(elapsed)} elapsed · ${done === all ? "finishing" : `≈ ${aboutTime(left)} left`}`;
 }
 
@@ -2499,7 +2511,20 @@ function liveRow(caseId) {
   return evals.live?.cases.find((c) => c.id === caseId);
 }
 
-async function startEval(cases, runs, model, judge) {
+function startEval(cases, runs, model, judge) {
+  return watchEval(() =>
+    fetch("/api/evals/run", {
+      method: "POST",
+      headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
+      body: JSON.stringify({ cases, runs, model, judge }),
+    }),
+  );
+}
+
+// Follow a run to its end: one this page started, or one already running when the page
+// opened (after a reload). The server keeps every event, so either way the panel shows the
+// whole run, with Stop (D-119).
+async function watchEval(request) {
   evals.running = true;
   $("evals-run").disabled = true;
   $("evals-reset").disabled = true;
@@ -2514,13 +2539,10 @@ async function startEval(cases, runs, model, judge) {
   let finished = null;
   let ticker = 0;
   try {
-    const response = await fetch("/api/evals/run", {
-      method: "POST",
-      headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ cases, runs, model, judge }),
-    });
+    const response = await request();
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) {
+      if (evals.live) evals.live.lastEvent = Date.now(); // the stall warning starts from here
       if (ev.type === "eval_started") {
         progress.max = Math.max(ev.cases.length * ev.runs, 1);
         const planned = evals.lastPlan?.cost?.seconds;
@@ -2534,11 +2556,18 @@ async function startEval(cases, runs, model, judge) {
           spent: 0,
           paid: 0,
           started: Date.now(),
+          lastEvent: Date.now(),
+          phase: "agent",
           current: 0,
           timed: [],
           perTest: planned ? planned / testRuns : 60,
           cases: ev.cases.map((c) => ({ ...c, status: "waiting", done: 0, missed: new Set(), metrics: {} })),
         };
+        // The cost cards show this run's models (a page that came back may have others picked).
+        for (const [pick, model] of [["evals-model", ev.model], ["evals-judge", ev.judge]]) {
+          if ([...$(pick).options].some((o) => o.value === model)) $(pick).value = model;
+        }
+        refreshCost();
         ticker = setInterval(tickLive, 1000);
         feed(`Started ${testRuns} test${testRuns > 1 ? "s" : ""} · agent ${modelLabel(ev.model)} · judge ${modelLabel(ev.judge)}`);
         renderEvals();
