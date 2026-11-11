@@ -1563,7 +1563,9 @@ main:has(> #view-evals:not([hidden])) { max-width: 1120px; }
 .legend-note { color: var(--muted); }
 .synthetic-tag { margin-left: 10px; padding: 2px 9px; border: 1px solid color-mix(in srgb, var(--skip) 45%, var(--line)); border-radius: 999px; color: var(--skip); font-size: 11.5px; font-weight: 650; letter-spacing: 0.02em; vertical-align: middle; }
 .synthetic-tag[hidden] { display: none; }
-@media (max-width: 760px) { .cost-cards { grid-template-columns: 1fr; } }
+/* Stack by the panel's own width: the sidebar and Harness pane make the window a poor guide. */
+.evals-next { container-type: inline-size; }
+@container (max-width: 640px) { .cost-cards { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .cost-card, .cost-pill, .cost-num, .cost-meter-fill, .cost-split span { transition: none; } }
 @media (max-width: 700px) {
   .evals-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 22px 18px; }
