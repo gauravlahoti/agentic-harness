@@ -1605,10 +1605,14 @@ const metricInfo = (id) => evals.index?.catalog?.metrics?.[id] ?? { name: id, ki
 async function loadEvals(select) {
   try {
     const response = await fetch("/api/evals");
+    // 404 on the list itself: the page is newer than the server process (it predates S10).
+    if (response.status === 404) throw new Error("the server is older than this page. Restart it.");
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     evals.index = await response.json();
   } catch (error) {
     $("evals-summary").textContent = `Couldn't load evals: ${error.message}`;
+    $("evals-summary").className = "evals-summary stopped";
+    $("evals-run").disabled = true; // nothing to start until the server can run evals
     return;
   }
   const id = select ?? evals.result?.id ?? evals.index.results[0]?.id;
