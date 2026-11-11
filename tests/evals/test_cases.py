@@ -40,7 +40,7 @@ def test_s10_ac1_the_core_set_mixes_single_and_multi_turn_cases() -> None:
     assert [c.id for c in cases if c.core and not c.multi_turn] == CORE["single"]
     assert [c.id for c in cases if c.core and c.multi_turn] == CORE["multi"]
     groups = {c.group for c in cases if c.core}
-    assert groups >= {"Sales review", "Approvals", "Never rules", "Injection", "Scope"}
+    assert groups >= {"Sales Review", "Approvals", "Never Rules", "Injection", "Scope"}
 
 
 def test_s10_ac1_fields_come_through() -> None:
@@ -119,3 +119,26 @@ def test_s10_ac1_pick_cases_by_id() -> None:
     assert len(suite.pick(None)) == 16
     with pytest.raises(CaseError, match="no-such"):
         suite.pick(["no-such"])
+
+
+SMALL = {"a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or", "per", "the", "to"}
+
+
+def is_title_case(name: str) -> bool:
+    """Every word capitalised, small words lowercase unless first (CLAUDE.md, UI text casing)."""
+    words = [w for part in name.split() for w in part.split("-")]
+    return all(
+        w[0].isupper() or (i > 0 and w in SMALL) or not w[0].isalpha() for i, w in enumerate(words)
+    )
+
+
+def test_ui_names_are_title_case() -> None:
+    import json
+
+    catalog = json.loads((ROOT / "evals" / "catalog.json").read_text())
+    names = [m["name"] for m in catalog["metrics"].values()]
+    names += [t["title"] for t in catalog["tables"]] + [t["subtitle"] for t in catalog["tables"]]
+    names += [r["name"] for t in catalog["tables"] for r in t["rows"]]
+    names += [c.group for c in load_suite(CLOUDCO).cases]
+    assert [n for n in names if not is_title_case(n)] == []
+    assert not is_title_case("Plan adherence")  # the check itself catches sentence case

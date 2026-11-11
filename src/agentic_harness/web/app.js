@@ -953,7 +953,7 @@ function approvalCard(turn, d) {
   field.placeholder = asking ? "Your answer…" : "Reason if you reject (the agent will read it)";
   if (asking) field.rows = 2;
   field.maxLength = 500;
-  const approve = el("button", "approve", asking ? "Send answer" : d.approver ? `Approve as ${d.approver}` : "Approve");
+  const approve = el("button", "approve", asking ? "Send Answer" : d.approver ? `Approve as ${d.approver}` : "Approve");
   const reject = el("button", "reject", asking ? "Skip" : "Reject");
   for (const b of [approve, reject]) b.type = "button";
   buttons.append(approve, reject);
@@ -1587,7 +1587,7 @@ const evals = { index: null, result: null, live: null, running: false, suite: []
 
 const duration = (s) => (s >= 60 ? `${Math.floor(s / 60)} m ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
 const metricInfo = (id) => evals.index?.catalog?.metrics?.[id] ?? { name: id, kind: "judge", threshold: 0 };
-const STATUS = { passed: "Passed", failed: "Failed", incomplete: "Not finished", running: "Running", waiting: "Waiting", notrun: "Not run" };
+const STATUS = { passed: "Passed", failed: "Failed", incomplete: "Not Finished", running: "Running", waiting: "Waiting", notrun: "Not Run" };
 
 async function loadEvals(select) {
   try {
@@ -1603,9 +1603,13 @@ async function loadEvals(select) {
   }
   if (evals.index.has_cases && !evals.suite.length) {
     const plan = await fetch("/api/evals/plan").then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (plan?.type === "plan") evals.suite = plan.cases;
+    if (plan?.type === "plan") {
+      evals.suite = plan.cases;
+      evals.defaultJudge = plan.judge;
+    }
   }
-  const id = select ?? evals.result?.id ?? evals.index.results[0]?.id;
+  setUpEvalPickers(evals.defaultJudge);
+  const id = select === null ? null : (select ?? evals.result?.id); // nothing chosen: the ready state
   evals.result = null;
   if (id) {
     const response = await fetch(`/api/evals/${encodeURIComponent(id)}`);
@@ -1630,7 +1634,7 @@ function showEvalProblem(text) {
 const SVG = "http://www.w3.org/2000/svg";
 
 // A ring split into passed (green), failed (red) and not finished (grey).
-function passRing(passed, failed, total) {
+function passRing(passed, failed, total, center) {
   const svg = document.createElementNS(SVG, "svg");
   svg.setAttribute("viewBox", "0 0 120 120");
   svg.setAttribute("class", "hero-ring");
@@ -1661,7 +1665,7 @@ function passRing(passed, failed, total) {
   pct.setAttribute("x", "60");
   pct.setAttribute("y", "60");
   pct.setAttribute("class", "ring-pct");
-  pct.textContent = total ? `${Math.round((passed / total) * 100)}%` : "–";
+  pct.textContent = center ?? (total ? `${Math.round((passed / total) * 100)}%` : "–");
   svg.append(pct);
   return svg;
 }
@@ -1700,26 +1704,35 @@ const modelPath = (first, now) => (now && now !== first ? `${modelLabel(first)} 
 function costLabel(models, paid) {
   const claude = models.some((m) => m?.startsWith("claude-"));
   const gemini = models.some((m) => m?.startsWith("gemini-"));
-  if (claude && gemini) return paid ? "cost · Claude paid, Gemini free tier" : "cost · Gemini free tier";
-  return claude ? "cost · Claude, paid" : "cost · Gemini free tier";
+  if (claude && gemini) return paid ? "Cost · Claude Paid, Gemini Free Tier" : "Cost · Gemini Free Tier";
+  return claude ? "Cost · Claude, Paid" : "Cost · Gemini Free Tier";
 }
 
-function hero({ passed, failed, total, headline, sub, tiles, agent, judge }) {
+// The card: ring, words, tiles, and at the bottom the next run's model menus (the same
+// two <select>s every time, moved in, so a menu keeps its state across re-renders).
+function hero({ passed, failed, total, center, kicker, headline, sub, tiles }) {
   const box = el("div", "evals-hero");
   const words = el("div", "hero-words");
+  if (kicker) words.append(el("p", "hero-kicker", kicker));
   words.append(el("h2", "hero-headline", headline), el("p", "hero-sub", sub));
   const row = el("div", "hero-tiles");
   row.append(...tiles);
   words.append(row);
-  const foot = el("dl", "hero-foot");
-  for (const [name, value] of [["Agent", agent], ["Judge", judge]]) {
-    if (!value) continue;
-    const item = el("div");
-    item.append(el("dt", null, name), el("dd", null, value));
-    foot.append(item);
-  }
-  box.append(passRing(passed, failed, total), words, foot);
+  const next = $("evals-next");
+  for (const pick of next.querySelectorAll("select")) pick.disabled = Boolean(evals.live);
+  box.append(passRing(passed, failed, total, center), words, next);
   return box;
+}
+
+// Fill the two menus once: Gemini by default, so nothing paid runs unless picked (D-104).
+function setUpEvalPickers(defaultJudge) {
+  const models = health?.models ?? [];
+  if (!models.length || $("evals-model").options.length) return;
+  const gemini = (m) => m && !m.startsWith("claude-");
+  fillModelPick($("evals-model"), models);
+  fillModelPick($("evals-judge"), models);
+  $("evals-model").value = [$("model").value, health?.model].find(gemini) ?? models.find(gemini) ?? models[0];
+  $("evals-judge").value = models.includes(defaultJudge) ? defaultJudge : models.find(gemini) ?? models[0];
 }
 
 function renderEvalSummary() {
@@ -1738,19 +1751,34 @@ function renderEvalSummary() {
         total,
         headline: `Testing the agent… ${passed + failed} of ${total} tests done`,
         sub: `${runs} of ${total * live.runs} runs finished. Each test is a conversation with a known right answer.`,
+        kicker: "Running Now",
         tiles: [
-          tile(`${passed + failed} / ${total}`, "tests completed"),
-          tile(s == null ? "–" : `${Math.round(s * 100)}%`, "safety rules held", s === 1 ? "good" : s == null ? "" : "bad"),
-          tile(usdText(live.paid ?? 0), `${costLabel([live.agent, live.judge], live.paid)} · so far`),
+          tile(`${passed + failed} / ${total}`, "Tests Completed"),
+          tile(s == null ? "–" : `${Math.round(s * 100)}%`, "Safety Rules Held", s === 1 ? "good" : s == null ? "" : "bad"),
+          tile(usdText(live.paid ?? 0), `${costLabel([live.agent, live.judge], live.paid)} · So Far`),
         ],
-        agent: modelPath(live.firstAgent, live.agent),
-        judge: modelPath(live.firstJudge, live.judge),
       }),
     );
   }
   if (!evals.index?.has_cases) return void box.replaceChildren(el("p", "evals-note", "No eval cases for this agent."));
   const r = evals.result;
-  if (!r) return void box.replaceChildren(el("p", "evals-note", "No evals yet."));
+  if (!r) {
+    // Nothing run or opened yet: no verdict, just what a run will do.
+    const single = evals.suite.filter((c) => c.turns.length === 1).length;
+    const multi = evals.suite.length - single;
+    const core = evals.suite.filter((c) => c.core).length;
+    return void box.replaceChildren(
+      hero({
+        passed: 0,
+        failed: 0,
+        total: 0,
+        center: String(evals.suite.length || "–"),
+        headline: `${evals.suite.length} Tests Ready to Run`,
+        sub: `${single} single-turn and ${multi} multi-turn conversations with known right answers, each scored on 12 metrics.`,
+        tiles: [tile(String(evals.suite.length), "Tests"), tile("12", "Metrics"), tile(String(core), "Core Tests")],
+      }),
+    );
+  }
   const { passed, failed, incomplete, cases } = r.summary;
   const s = safety(r.metrics);
   const paid = r.usd.paid ?? (usedClaude(r) ? r.usd.total : 0);
@@ -1762,12 +1790,13 @@ function renderEvalSummary() {
       : passed === cases
         ? `The agent passed all ${cases} tests`
         : `The agent passed ${passed} of ${cases} tests`;
-  const sub = [
-    `${cases} conversations with known right answers, ${r.runs > 1 ? `each run ${r.runs} times (all must pass)` : "each run once"}, scored on 12 metrics.`,
-    change ? ` ${change > 0 ? "▲" : "▼"} ${Math.abs(change)} since the last eval.` : "",
-  ].join("");
   const agentFirst = r.agent?.first ?? r.model;
   const agentNow = r.agent?.now ?? r.model;
+  const sub = [
+    `${cases} conversations with known right answers, ${r.runs > 1 ? `each run ${r.runs} times (all must pass)` : "each run once"}. `,
+    `Agent ${modelPath(agentFirst, agentNow)}, judged by ${modelPath(r.judge.first, r.judge.now)}.`,
+    change ? ` ${change > 0 ? "▲" : "▼"} ${Math.abs(change)} since the eval before.` : "",
+  ].join("");
   const models = [agentFirst, agentNow, r.judge.first, r.judge.now];
   box.replaceChildren(
     hero({
@@ -1777,13 +1806,12 @@ function renderEvalSummary() {
       headline,
       sub,
       tiles: [
-        tile(`${passed + failed} / ${cases}`, "tests completed", incomplete ? "" : "good"),
-        tile(s == null ? "–" : `${Math.round(s * 100)}%`, "safety rules held", s === 1 ? "good" : s == null ? "" : "bad"),
+        tile(`${passed + failed} / ${cases}`, "Tests Completed", incomplete ? "" : "good"),
+        tile(s == null ? "–" : `${Math.round(s * 100)}%`, "Safety Rules Held", s === 1 ? "good" : s == null ? "" : "bad"),
         tile(usdText(paid), costLabel(models, paid)),
-        tile(duration(r.seconds), "to run"),
+        tile(duration(r.seconds), "Run Time"),
       ],
-      agent: modelPath(agentFirst, agentNow),
-      judge: modelPath(r.judge.first, r.judge.now),
+      kicker: `Eval of ${r.started}`,
     }),
   );
   // No banner for a stop: the headline says it; the reason is one hover away.
@@ -1836,7 +1864,7 @@ function renderMetrics() {
   const totals = metricTotals();
   const head = el("thead");
   const names = el("tr");
-  for (const name of ["Metric", "What it checks", "Score"]) {
+  for (const name of ["Metric", "What It Checks", "Score"]) {
     const th = el("th", null, name);
     th.scope = "col";
     names.append(th);
@@ -1856,7 +1884,7 @@ function renderMetrics() {
         const tr = el("tr");
         const name = el("th", "metric-name", info.name);
         name.scope = "row";
-        name.append(el("span", "metric-cat", `${row.name}${info.kind === "code" ? " · code" : ""}`));
+        name.append(el("span", "metric-cat", `${row.name}${info.kind === "code" ? " · Code" : ""}`));
         tr.append(name, el("td", "metric-does", info.measures ?? ""), scoreCell(info, totals[id]));
         body.append(tr);
       }
@@ -1886,7 +1914,7 @@ function caseLine(row) {
   const ask = el("p", "case-ask", `“${row.ask ?? row.id}”`);
   if (row.turns > 1) ask.append(el("span", "case-more", ` + ${row.turns - 1} more turn${row.turns > 2 ? "s" : ""}`));
   const meta = el("p", "case-meta", `${row.id} · ${labelFor(row.profile)} · ${row.group}`);
-  if (row.core) meta.append(el("span", "case-core", "core"));
+  if (row.core) meta.append(el("span", "case-core", "Core"));
   main.append(ask, meta);
   line.append(main);
   const missed = [...(row.missed ?? [])].map((id) => metricInfo(id).name);
@@ -1936,7 +1964,7 @@ function renderCases() {
   const single = rows.filter((r) => r.turns === 1);
   const multi = rows.filter((r) => r.turns > 1);
   box.replaceChildren(
-    ...[["Single turn", single], ["Multi-turn", multi]].flatMap(([title, group]) =>
+    ...[["Single Turn", single], ["Multi-Turn", multi]].flatMap(([title, group]) =>
       group.length ? [el("h3", "case-kind", `${title} · ${group.length}`), ...group.map(caseItem)] : [],
     ),
   );
@@ -1971,9 +1999,9 @@ function renderEvalHistory() {
         el("span", "history-date", r.started ?? r.id),
         el("span", "history-score", r.summary ? `${r.summary.passed}/${r.summary.cases} passed` : "–"),
         el("span", "history-meta", `${modelLabel(r.model ?? "")} · ${r.runs} run${r.runs > 1 ? "s" : ""} · $${(r.usd?.total ?? 0).toFixed(4)}`),
-        el("span", "history-tag", r.status === "stopped" ? "Stopped early" : ""),
+        el("span", "history-tag", r.status === "stopped" ? "Stopped Early" : ""),
       );
-      pick.addEventListener("click", () => loadEvals(r.id));
+      pick.addEventListener("click", () => loadEvals(r.id === evals.result?.id ? null : r.id));
       li.append(pick);
       return li;
     }),
@@ -2008,13 +2036,7 @@ function fillModelPick(pick, models) {
 }
 
 async function openEvalDialog() {
-  const models = health?.models ?? [];
-  const gemini = (m) => m && !m.startsWith("claude-");
-  fillModelPick($("evals-model"), models);
-  fillModelPick($("evals-judge"), models);
-  // Claude is paid: never the eval's agent or judge unless picked here (D-104).
-  $("evals-model").value = [$("model").value, health?.model].find(gemini) ?? models.find(gemini) ?? models[0];
-  $("evals-judge").value = "";
+  setUpEvalPickers(evals.defaultJudge);
   let plan;
   try {
     plan = await fetchPlan([]);
@@ -2023,7 +2045,6 @@ async function openEvalDialog() {
     showEvalProblem(`Can't start: ${error.message}`);
     return;
   }
-  $("evals-judge").value = plan.judge; // the default judge comes from the server (D-111)
   const list = $("evals-case-list");
   list.replaceChildren();
   let group = "";
@@ -2046,7 +2067,7 @@ function showEstimate(plan) {
   $("evals-start").disabled = n === 0;
   if (!n) return void (est.textContent = "Pick at least one case.");
   est.replaceChildren(
-    el("span", null, `≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · cap $${plan.cap_usd.toFixed(2)}`),
+    el("span", null, `Agent ${modelLabel(plan.model)} · judge ${modelLabel(plan.judge)} · ≈ ${plan.estimate.agent_runs} agent runs · ≈ ${plan.estimate.judge_calls} judge calls · cap $${plan.cap_usd.toFixed(2)}`),
     el("strong", "evals-estimate-cost", costToYou(plan)),
   );
 }

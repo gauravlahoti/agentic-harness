@@ -39,7 +39,7 @@
     <section class="work side-group" id="work" data-group="work" aria-labelledby="work-title" hidden>
       <div class="work-head">
         <h2 id="work-title"><button type="button" class="side-toggle" aria-expanded="true" aria-controls="work-body">Chats <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
-        <button type="button" class="work-new" id="new-task">New conversation</button>
+        <button type="button" class="work-new" id="new-task">New Conversation</button>
       </div>
       <div class="side-body" id="work-body">
         <div class="side-inner">
@@ -145,10 +145,20 @@
     <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
       <header class="page-header evals-head">
         <h1 id="evals-heading">Evals</h1>
-        <button type="button" id="evals-run" class="primary">Run evals</button>
+        <button type="button" id="evals-run" class="primary">Run Evals</button>
       </header>
 
       <div class="evals-summary" id="evals-summary" role="status"></div>
+      <!-- The next run's models: shown inside the summary card (moved there by the script). -->
+      <div class="evals-next" id="evals-next">
+        <span class="evals-next-label">Next Run</span>
+        <label class="evals-model-pick"><span>Agent</span>
+          <select class="model-pick evals-pick" id="evals-model"><button type="button"><selectedcontent></selectedcontent></button></select>
+        </label>
+        <label class="evals-model-pick"><span>Judge</span>
+          <select class="model-pick evals-pick" id="evals-judge"><button type="button"><selectedcontent></selectedcontent></button></select>
+        </label>
+      </div>
 
       <div class="evals-live" id="evals-live" hidden>
         <progress id="evals-progress" max="1" value="0" aria-label="Eval progress"></progress>
@@ -162,30 +172,22 @@
       <h2 class="evals-sub">Cases</h2>
       <div class="evals-cases" id="evals-cases"></div>
 
-      <h2 class="evals-sub">Past evals</h2>
+      <h2 class="evals-sub">Past Evals</h2>
       <ol class="evals-history" id="evals-history"></ol>
 
       <dialog class="evals-dialog" id="evals-dialog" aria-labelledby="evals-dialog-title">
         <form method="dialog" id="evals-form">
-          <h2 id="evals-dialog-title">Run evals</h2>
+          <h2 id="evals-dialog-title">Run Evals</h2>
           <fieldset class="evals-cases-pick">
             <legend>Cases <button type="button" class="evals-link" id="evals-core">Core</button> <button type="button" class="evals-link" id="evals-all">All</button> <button type="button" class="evals-link" id="evals-none">None</button></legend>
             <div class="evals-case-list" id="evals-case-list"></div>
           </fieldset>
           <div class="evals-dialog-row">
             <fieldset class="evals-runs">
-              <legend>Runs per case</legend>
+              <legend>Runs per Case</legend>
               <label><input type="radio" name="runs" value="1" checked> 1</label>
               <label><input type="radio" name="runs" value="3"> 3 (pass only if all 3 pass)</label>
             </fieldset>
-            <div class="evals-models">
-              <label class="evals-model-pick"><span>Agent</span>
-                <select class="model-pick evals-pick" id="evals-model"><button type="button"><selectedcontent></selectedcontent></button></select>
-              </label>
-              <label class="evals-model-pick"><span>Judge</span>
-                <select class="model-pick evals-pick" id="evals-judge"><button type="button"><selectedcontent></selectedcontent></button></select>
-              </label>
-            </div>
           </div>
           <p class="evals-estimate" id="evals-estimate" aria-live="polite"></p>
           <div class="evals-dialog-actions">
@@ -208,10 +210,10 @@
       <div class="panel">
         <div class="panel-bar">
           <div>
-            <h2 id="checks-title">Offline test suite</h2>
+            <h2 id="checks-title">Offline Test Suite</h2>
             <p class="hint">Runs one fixed command: every offline test, no key, no cost.</p>
           </div>
-          <button type="button" id="run-checks" class="primary">Run checks</button>
+          <button type="button" id="run-checks" class="primary">Run Checks</button>
         </div>
 
         <p class="summary" id="summary" role="status">Not run yet.</p>

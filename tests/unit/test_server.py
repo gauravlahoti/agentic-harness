@@ -26,7 +26,7 @@ def test_s00_ac13_serves_the_page_shell(tmp_path: Path) -> None:
     response = client(tmp_path).get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "Run checks" in response.text
+    assert "Run Checks" in response.text
 
 
 def test_s00_ac13_serves_page_assets(tmp_path: Path) -> None:

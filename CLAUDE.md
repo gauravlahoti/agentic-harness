@@ -47,6 +47,7 @@ A learning project: a **general agent harness** built from scratch in plain Pyth
 `make setup` · `make check` (everything CI runs) · `make live` (🔑, costs cents) · `make help` · `uv run agentic-harness serve --workspace workspaces/cloudco` → http://127.0.0.1:8000 · `uv run agentic-harness run --workspace … --profile … "task"`
 
 ## Naming and quality
+- **UI text casing.** Names, headings, buttons, menu items, column headers and short labels use **Title Case**: "Plan Adherence", "Tool Correctness", "Run Evals", "New Conversation". Small words (a, an, and, as, at, by, for, in, of, on, or, per, the, to, via, with) stay lowercase unless first; hyphenated parts are both capitalised ("Multi-Turn"). Sentences, descriptions, answers and questions use **sentence case**: "Gaurav Lahoti is very good." A test enforces it for metric and case-group names.
 - No ALL-CAPS file names. Root docs in Title case (`Decisions.md`); everything else lowercase. Exceptions only: `CLAUDE.md`, `AGENTS.md`, `SKILL.md`. A test enforces it.
 - Package `agentic_harness` (`src/` layout); command `agentic-harness`.
 - `make check` must pass before anything is marked 🟨: ruff, mypy strict, pytest + coverage ≥ 75% (D-33; back to 85% with the S08 evals).

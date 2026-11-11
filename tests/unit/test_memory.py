@@ -117,7 +117,7 @@ def test_s07_ac11_title_falls_back_to_the_first_words() -> None:
     assert fallback_title(
         "What did ShopCo change in contract CT-2207 and what can I agree to?"
     ) == ("What did ShopCo change in contract")
-    assert fallback_title("   ") == "New conversation"
+    assert fallback_title("   ") == "New Conversation"
     assert len(fallback_title("x" * 200)) <= 48
 
 

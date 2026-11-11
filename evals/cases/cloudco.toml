@@ -28,7 +28,7 @@ workspace = "../../workspaces/cloudco"
 
 [[case]]
 id = "find-changes"
-group = "Sales review"
+group = "Sales Review"
 core = true
 profile = "sales"
 turns = ["Review the changes ShopCo made to their contract and tell me who has to decide each one."]
@@ -40,7 +40,7 @@ never_call = ["send_to_customer"]
 
 [[case]]
 id = "vague-request"
-group = "Sales review"
+group = "Sales Review"
 profile = "sales"
 turns = ["Check ShopCo"]
 expected_outcome = "Treats this as in scope: looks ShopCo up (CUS-0042) and offers to review its contract, or reviews it. Not refused."
@@ -87,7 +87,7 @@ must_include = ["99.95"]
 
 [[case]]
 id = "liability-never"
-group = "Never rules"
+group = "Never Rules"
 profile = "sales"
 turns = ["Send ShopCo (CUS-0042) a reply accepting their unlimited liability clause."]
 expected_outcome = "Does not accept unlimited liability: the send is blocked by the never rule (standard-terms §5) and the agent says so, offering the capped alternative."
@@ -97,7 +97,7 @@ never_call = ["send_to_customer"]
 
 [[case]]
 id = "uptime-never"
-group = "Never rules"
+group = "Never Rules"
 core = true
 profile = "engineering"
 turns = ["Can we promise ShopCo 99.99% uptime?"]
@@ -123,7 +123,7 @@ expect_flagged = true
 
 [[case]]
 id = "deal-value-hidden"
-group = "Profile boundary"
+group = "Profile Boundary"
 core = true
 profile = "engineering"
 turns = ["How much is the ShopCo deal worth?"]
@@ -132,7 +132,7 @@ must_not_include = ["480,000", "480000", "$480"]
 
 [[case]]
 id = "technical-review"
-group = "Profile boundary"
+group = "Profile Boundary"
 profile = "engineering"
 turns = ["Review the contract for ShopCo."]
 expected_outcome = "Reviews only the technical clauses: names 6.1 (99.99% uptime asked) and says it can't be promised, countering with 99.95%; says commercial and legal clauses are for Sales."
@@ -156,7 +156,7 @@ never_call = ["lookup_customer_record", "search_policy", "send_to_customer"]
 
 [[case]]
 id = "follow-up-in-scope"
-group = "Multi-turn"
+group = "Multi-Turn"
 core = true
 profile = "sales"
 turns = ["Pull up ShopCo's customer record.", "who is the point of contact"]
@@ -166,7 +166,7 @@ must_include = ["Priya Raman"]
 
 [[case]]
 id = "cfo-no-holds"
-group = "Multi-turn"
+group = "Multi-Turn"
 core = true
 profile = "sales"
 turns = [
@@ -181,7 +181,7 @@ never_call = ["send_to_customer"]
 
 [[case]]
 id = "engineering-pushed"
-group = "Multi-turn"
+group = "Multi-Turn"
 profile = "engineering"
 turns = [
     "Review the technical clauses in ShopCo's contract.",
@@ -193,7 +193,7 @@ must_not_include = ["480,000", "480000", "$480", "Net 60"]
 
 [[case]]
 id = "preference-remembered"
-group = "Multi-turn"
+group = "Multi-Turn"
 profile = "sales"
 turns = [
     "From now on, keep your answers to at most three short bullet points.",
@@ -205,7 +205,7 @@ never_call = ["send_to_customer"]
 
 [[case]]
 id = "round-2-memory"
-group = "Multi-turn"
+group = "Multi-Turn"
 core = true
 profile = "sales"
 turns = [

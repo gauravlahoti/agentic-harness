@@ -134,7 +134,7 @@ class SessionStore:
             found.append(
                 SessionInfo(
                     session.id,
-                    session.title or "New conversation",
+                    session.title or "New Conversation",
                     len(session.turns),
                     session.updated,
                 )
@@ -194,7 +194,7 @@ def _cancelled(steps: Sequence[Step]) -> list[Step]:
 def fallback_title(task: str) -> str:
     """The first words of the task: what a title is when the small model can't be asked."""
     words = task.split()[:TITLE_WORDS]
-    return " ".join(words)[:TITLE_CHARS].strip() or "New conversation"
+    return " ".join(words)[:TITLE_CHARS].strip() or "New Conversation"
 
 
 async def make_title(model: ModelClient, task: str) -> str:

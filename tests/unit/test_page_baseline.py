@@ -113,16 +113,18 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
     # one metrics table (Metric · What it checks · Score), case rows that open, past evals
     for piece in ('id="evals-metrics"', 'id="evals-cases"', 'id="evals-history"'):
         assert piece in HTML, f"S10 piece missing from index.html: {piece}"
-    assert '"Metric", "What it checks", "Score"' in JS
+    assert '"Metric", "What It Checks", "Score"' in JS
     assert "agent_switched" in JS  # the live view says when Claude Haiku takes over (D-116)
     assert 'id="evals-core"' in HTML  # the dialog starts on the core set
     assert 'id="evals-judge"' in HTML  # the judge is picked too, in the same animated menu
+    assert 'id="evals-next"' in HTML  # both menus sit on the summary card, for the next run
+    assert "Tests Ready to Run" in JS  # no verdict until an eval is run or opened
     for heading in (">Profiles <", ">Chats <", ">Workspace <"):  # foldable sidebar groups
         assert heading in HTML
     assert "Cost to you" in JS  # what Claude may cost, before Start
-    assert "tests completed" in JS  # how many of the eval's tests finished
-    assert "Claude paid, Gemini free tier" in JS  # who pays, read from the models used
-    assert "safety rules held" in JS  # the hero: ring, one sentence, three numbers
+    assert "Tests Completed" in JS  # how many of the eval's tests finished
+    assert "Claude Paid, Gemini Free Tier" in JS  # who pays, read from the models used
+    assert "Safety Rules Held" in JS  # the hero: ring, one sentence, three numbers
     for rule in (".evals-metrics", ".case-row", ".evals-hero", ".evals-dialog"):
         assert rule in CSS, f"S10 style missing from app.css: {rule}"
     for gone in (".metric-chip", ".evals-grid", "Not covered:"):  # the clumsy parts, removed

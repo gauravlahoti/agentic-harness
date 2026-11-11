@@ -209,7 +209,7 @@ def create_app(
             raise HTTPException(404, "No such conversation.") from None
         return {
             "id": session.id,
-            "title": session.title or "New conversation",
+            "title": session.title or "New Conversation",
             "turns": [
                 {
                     "task": t.task,
