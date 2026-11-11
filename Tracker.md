@@ -305,3 +305,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Golden Dataset page (your request): the 16 golden cases as cards with their right answers and rules, filterable; no scores. |
 | 2026-11-12 | D-117: Next Run cost panel (Agent, Judge, You Pay cards; free-limit meters; learns from your last 5 evals). "Synthetic Data" tag from a workspace setting. 368 offline tests, coverage 91%. |
 | 2026-11-12 | First full eval reviewed (2 of 9; 5 of 7 failures were ours). D-118: Not Scored / Not Applicable, Turn Faithfulness dropped, clean judge trace, scope check reads the last exchange, reply skill always tries to send; page: activity panel, times, clear rings, Reset, delete, folded groups. 377 offline tests, coverage 92%. |
+| 2026-11-12 | The eval with a Claude Sonnet judge stopped at the $0.50 cap after 7 of 9 tests ($0.57). Your call: the cap is now $3 (D-113 changed). |

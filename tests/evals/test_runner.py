@@ -403,3 +403,13 @@ def test_s10_the_plan_says_how_long_a_run_will_take(tmp_path: Path) -> None:
     assert round(seen["seconds_per_test"]) == 53  # 477 s over 9 tests
     plan = project(est, "gemini-3.8-flash", "gemini-3.5-flash-lite", None, load_prices(), seen)
     assert plan["seconds"] == round(9 * seen["seconds_per_test"])
+
+
+def test_s10_the_cap_is_a_safety_net_of_three_dollars() -> None:
+    """Your call: the person picks the models after seeing the cost, so the cap only stops a
+    runaway eval: $3, not $0.50 (D-113 changed)."""
+    from evals.plan import DEFAULT_CAP_USD
+    from evals.runner import Options
+
+    assert DEFAULT_CAP_USD == 3.0
+    assert Options(model="m").max_usd == 3.0

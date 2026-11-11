@@ -20,7 +20,7 @@ from evals.cases import Case
 JUDGE_MODEL = EVAL_JUDGE_MODEL  # the default; the Run dialog can pick another (D-111)
 FALLBACK_JUDGE = CLAUDE_SMALL_MODEL  # only with a Claude key; the person pays (D-104)
 FALLBACK_AGENT = CLAUDE_SMALL_MODEL  # the agent, when Gemini runs out mid-eval (D-116)
-DEFAULT_CAP_USD = 0.50  # an eval's own money limit, agent + judge (S10-AC6)
+DEFAULT_CAP_USD = 3.00  # a safety net for a runaway eval; the models you pick set the cost (D-113)
 RUNS = (1, 3)  # 1 while building; 3 for pass^3 (D-112)
 # Cautious tokens for the cost estimate. Agent turn: above the 90th percentile of 115 saved
 # runs (about 10k in, 1k out). Judge call: DeepEval's prompt plus the trace (outputs capped).

@@ -892,6 +892,7 @@
 - **Instead of:** results only, run from the terminal
 - **Because:** see, learn and start evals in one place
 - **Cost:** one click spends quota; guarded by the dialog, the cap and one-at-a-time
+- **Changed 2026-11-12** (your call): the cap goes from $0.50 to **$3**. The person picks the agent and judge after seeing the projected cost, so the cap is only a safety net for a runaway eval. Found when a Claude Sonnet judge (≈ $1.10 projected) was stopped at $0.57 after 7 of 9 tests
 
 ### D-114 · 12 metrics, not all of DeepEval's
 ✅ Accepted · S10 · your review of DeepEval's categories
