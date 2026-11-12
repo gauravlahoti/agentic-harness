@@ -39,4 +39,4 @@ All companies, people, contracts and numbers are **made up**. No real customer d
 
 ## Reporting
 
-Found a problem? Email 56424876+gauravlahoti@users.noreply.github.com. Please don't open a public issue for security problems.
+Found a problem? Report it privately on GitHub: the repository's **Security** tab → **Report a vulnerability**. Please don't open a public issue for security problems.

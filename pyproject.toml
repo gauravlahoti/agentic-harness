@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A general agent harness built from scratch on Gemini. Agents run on it as workspaces."
 readme = "Readme.md"
 authors = [
-    { name = "Gaurav Lahoti", email = "56424876+gauravlahoti@users.noreply.github.com" }
+    { name = "Gaurav Lahoti" }
 ]
 requires-python = ">=3.12"
 dependencies = [
