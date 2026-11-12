@@ -14,8 +14,16 @@
 
 ## Network
 
-- The server binds to **127.0.0.1 only**: nothing on your network can reach it.
-- The public version is a **static replay page**: no backend, no key, no API calls (D-14).
+- Local mode (the default) binds to **127.0.0.1 only**: nothing on your network can reach it (D-20).
+- **Public tour mode** (`HARNESS_PUBLIC=1`, S14, D-189) is how the guided tour is hosted:
+
+| Rule | Guard |
+|---|---|
+| Nothing can be changed or run | One middleware: only GET and HEAD are answered; anything else gets 403 |
+| No key, ever | `config.py` reads none in public mode; `Settings` reports none even if given one |
+| Only its own names answer | `TrustedHostMiddleware`: localhost + `HARNESS_ALLOWED_HOSTS` |
+| Secrets never reach the build | `.gcloudignore` and `.dockerignore` are allowlists; the Dockerfile copies named folders only |
+| A small blast radius | Non-root container; Cloud Run max 1 instance, no secrets mounted |
 
 ## Agent safety model
 

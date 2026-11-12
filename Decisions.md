@@ -1402,3 +1402,25 @@
 - **Not possible yet:** secret scanning, push protection and private vulnerability reporting are refused on a private repo (HTTP 422/404). Turn them on right after making it public (Settings → Code security). Until then, the local gitleaks hook and the gitleaks step in CI guard every commit.
 - **Cost:** every commit id changed: any other clone must be re-cloned. GitHub keeps a read-only ref for closed PR #1 (old author email, no clips) and may cache old commits for a while; only GitHub Support can purge those.
 - **Done 2026-11-13, your request ("make it public"):** the repo is public after one more clean gitleaks scan; secret scanning, push protection and private vulnerability reporting are on.
+
+## D-189 · Public tour mode: the page hosted for anyone, read-only and keyless (2026-11-13)
+- **Your request:** add the harness to gauravlahoti.dev as an AI Lab, hosted on Cloud Run at min instances 0 like the Agentic RAG lab. Visitors won't type their own API keys, so the hosted copy plays the guided tour only.
+- **Amends D-20 (localhost only) and D-14 (static replay page).** D-20 still holds for local mode, which stays the default. The tour is hosted by the harness's own server instead of a static export (S13-AC2, AC7 stay 🟦 for you to decide).
+- **Blocking writes:**
+  - **Options:** a guard on each route · one rule for the whole server.
+  - **Chose:** one middleware. In public mode the server answers only GET and HEAD. Anything else gets 403, on every route that exists now or is added later. The page's `X-Harness-Page` header doesn't help, since anyone can send it from outside a browser.
+  - **Cost:** a future public action needs a deliberate exception.
+- **Keys:**
+  - **Options:** trust that none is deployed · also ignore any key in public mode.
+  - **Chose:** both. `config.py` reads no key when `HARNESS_PUBLIC=1`, and `Settings` reports none even if one is passed in by hand. A key set by mistake still can't be spent.
+  - **Cost:** none.
+- **Where it listens:**
+  - **Options:** add `serve --host` · let public mode choose.
+  - **Chose:** public mode chooses. It listens on 0.0.0.0 (a container is reached from outside) and on `$PORT`. There is still no `--host` option (S00-AC13), so a local harness can't be opened to the network by a typo.
+  - **Cost:** none.
+- **Names:** `HARNESS_ALLOWED_HOSTS` (comma list) adds names to localhost. These names count only in public mode.
+- **The page:** in public mode it opens on the tour, waiting on Start Tour, because browsers play sound only after a click. A sidebar note says the tour is read-only, explains how to run the agent live, and links to the source (from `pyproject.toml`'s Repository URL, so no domain in code). Workspace and Observability, Exit Tour, the recorder and the invite are hidden. Escape doesn't leave the tour.
+- **Hosting:** a `Dockerfile` with an allowlist COPY (`src/`, `workspaces/cloudco/`, lock files) and no dev or eval packages, running as non-root with `HARNESS_PUBLIC=1` baked in. `.gcloudignore` is also an allowlist: without it gcloud follows `.gitignore` and drops the voice clips, and `.env*` never leaves the machine. `make deploy-tour PROJECT=… HOSTS=…` runs `gcloud run deploy --source .` with min 0, max 1, 512 MiB and no secrets.
+- **Why not `agents-cli deploy`:** it copies the project `.env` into the service's environment, which here holds the Gemini key. It also expects an ADK project manifest. The other services on gauravlahoti.dev deploy the same way, with `gcloud run deploy --source .`.
+- **Voice clips** are cached for a year in public mode (their URL carries `?v=`, which changes with each take); the page itself stays `no-cache`.
+- **Cost:** about nothing. It scales to zero and makes no model calls, so it stays inside the Cloud Run free tier.

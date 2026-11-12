@@ -34,6 +34,10 @@ The first agent is the **CloudCo Contract Agent**. It reviews a customer's chang
 | Guardrails | Tools and fields per profile, hard limits, a person approves sends | Engineering never sees prices; sending to ShopCo waits for you | Available |
 | Memory | Saved tasks you can resume, per-profile notes, context trimming | In round 2 it recalls that the CFO approved 20% in round 1 | Planned |
 
+## The hosted tour
+
+The guided tour also runs hosted, in **public tour mode** (`HARNESS_PUBLIC=1`). The server answers only reads, holds no key and opens on the tour. Visitors watch a recorded run; to run the agent live, use your own copy and key. `make deploy-tour PROJECT=<project> HOSTS=<names>` hosts it on Cloud Run with no secrets, scaling to zero. Details: [Security](Security.md), D-189.
+
 ## Build your own agent
 
 A workspace declares everything domain-specific. The harness reads `workspace.toml`; the model never sees it.

@@ -7,18 +7,23 @@ Security (D-20): answers only to the names 127.0.0.1 and localhost (blocks
 DNS rebinding); actions need a custom header that other websites can't send
 without our permission (blocks cross-site requests); strict browser headers.
 
-Does not: bind the network address (the CLI does, always 127.0.0.1), or read secrets.
+Public tour mode (S14, D-189): hosted for anyone. The server also answers to the names it
+is given, refuses every request but GET and HEAD (nothing can be changed or run), and holds
+no key. Voice clips are cached by version there, since a hosted page pays for each byte.
+
+Does not: bind the network address (the CLI does), or read secrets.
 """
 
 import asyncio
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
+from importlib.metadata import PackageNotFoundError, metadata
 from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -79,6 +84,31 @@ PROJECT_ROOT = Path(agentic_harness.__file__).resolve().parents[2]  # src/ layou
 # Page actions send this header. A plain cross-site form or fetch can't add it without
 # a CORS preflight, and this server allows no cross-origin requests.
 PAGE_HEADER = {"X-Harness-Page": "1"}
+# Public tour mode (D-189): the only methods a hosted page answers. Everything else is a change.
+READ_METHODS = frozenset({"GET", "HEAD"})
+PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on your own machine."
+
+
+def _repository() -> str | None:
+    """The source link from the package's own metadata, for the page's public note."""
+    try:
+        urls = metadata("agentic-harness").get_all("Project-URL") or []
+    except PackageNotFoundError:
+        return None
+    for entry in urls:
+        label, _, url = str(entry).partition(",")
+        if label.strip().lower() == "repository" and url.strip().startswith("https://"):
+            return url.strip()
+    return None
+
+
+REPOSITORY = _repository()
+
+
+def _versioned_clip(request: Request) -> bool:
+    """A voice clip asked for by version: its bytes never change at that URL."""
+    return request.url.path.startswith("/api/tour/audio/") and "v" in request.query_params
+
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -174,7 +204,20 @@ def create_app(
         for m in load_prices().models()
         if not m.startswith(CLAUDE_PREFIX) or settings.has_anthropic_key
     ]
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+    # Extra names count only in public mode: local mode stays localhost only (D-20, D-189).
+    hosts = ["127.0.0.1", "localhost", *(settings.allowed_hosts if settings.public else ())]
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
+
+    if settings.public:
+
+        @app.middleware("http")
+        async def read_only(
+            request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
+            # One rule for every route, present and future: a hosted tour changes nothing.
+            if request.method not in READ_METHODS:
+                return JSONResponse({"detail": PUBLIC_REFUSAL}, status_code=403)
+            return await call_next(request)
 
     @app.middleware("http")
     async def add_security_headers(
@@ -185,6 +228,9 @@ def create_app(
         # Re-check page files on every load (a cheap 304 when unchanged); without it the
         # browser guesses a freshness time and runs an old app.js after an update.
         response.headers["Cache-Control"] = "no-cache"
+        if settings.public and _versioned_clip(request) and response.status_code == 200:
+            # A new take gets a new ?v=, so a hosted page may keep a clip for good.
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
@@ -378,6 +424,9 @@ def create_app(
         return {
             "server": "up",
             "key": "present" if settings.has_key or settings.has_anthropic_key else "missing",
+            # Public tour mode (D-189): the page shows the tour and hides what it can't do.
+            "mode": "public" if settings.public else "local",
+            "repository": REPOSITORY,
             "version": __version__,
             "model": settings.model,
             "models": priced_models,

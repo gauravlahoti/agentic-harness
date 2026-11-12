@@ -1,0 +1,13 @@
+# What a local `docker build` sees (S14, D-189). An allowlist, like .gcloudignore.
+*
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!Readme.md
+!src/
+!workspaces/cloudco/
+workspaces/cloudco/tasks/
+workspaces/cloudco/outbox/
+**/__pycache__/
+**/.DS_Store
+**/.env*

@@ -41,6 +41,7 @@ A learning project: a **general agent harness** built from scratch in plain Pyth
 - Never read or print `.env`. The user fills it in. Only `src/agentic_harness/config.py` loads it.
 - The key never reaches logs, traces, exports, the page or tool results.
 - The server binds to `127.0.0.1` only. Actions write to a local outbox, never real email.
+- The one exception is public tour mode (`HARNESS_PUBLIC=1`, D-189): the hosted tour listens on every address but answers only GET/HEAD and holds no key. Keep it that way: never add a write route that works in public mode, and never deploy with `agents-cli deploy` (it uploads `.env`).
 - All CloudCo data is made up; label it so.
 
 ## Commands

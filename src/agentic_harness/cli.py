@@ -20,6 +20,9 @@ from agentic_harness.gate import ApprovalRequest
 
 # Fixed, not an option: nothing on your network can reach the harness (D-20).
 HOST = "127.0.0.1"
+# Public tour mode only (D-189): a container must listen on every address to be reached.
+# It is still not an option: only HARNESS_PUBLIC=1, which also makes the server read-only.
+PUBLIC_HOST = "0.0.0.0"  # noqa: S104 (read-only and keyless in public mode)
 DEFAULT_PORT = 8000
 
 
@@ -33,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command")
 
     serve = commands.add_parser("serve", help=f"open the local page on http://{HOST}:PORT")
-    serve.add_argument("--port", type=int, default=DEFAULT_PORT, help="default: %(default)s")
+    serve.add_argument("--port", type=int, help=f"default: $PORT if set, else {DEFAULT_PORT}")
     serve.add_argument("--workspace", type=Path, help="the agent to run from the page")
 
     run = commands.add_parser("run", help="run one task in the terminal")
@@ -50,19 +53,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def serve(port: int, workspace: Path | None) -> int:
-    """Start the local server. Imports stay inside so ``--version`` stays instant."""
+def serve(port: int | None, workspace: Path | None) -> int:
+    """Start the server. Imports stay inside so ``--version`` stays instant.
+
+    Local mode listens on 127.0.0.1 only. Public tour mode (HARNESS_PUBLIC=1) listens on
+    every address, because a container is reached from outside it (D-189)."""
     import uvicorn
 
     from agentic_harness import config
     from agentic_harness.server.app import create_app
     from agentic_harness.workspace import Workspace
 
-    app = create_app(
-        config.load_settings(), workspace=Workspace.load(workspace) if workspace else None
-    )
-    print(f"agentic-harness → http://{HOST}:{port}  (Ctrl+C to stop)")
-    uvicorn.run(app, host=HOST, port=port, log_level="info")
+    settings = config.load_settings()
+    app = create_app(settings, workspace=Workspace.load(workspace) if workspace else None)
+    host = PUBLIC_HOST if settings.public else HOST
+    port = port or settings.port or DEFAULT_PORT
+    mode = "  public tour: read-only, no key" if settings.public else ""
+    print(f"agentic-harness → http://{host}:{port}{mode}  (Ctrl+C to stop)")
+    uvicorn.run(app, host=host, port=port, log_level="info")
     return 0
 
 

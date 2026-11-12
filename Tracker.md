@@ -34,6 +34,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
 | [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 13/14 | 0/14 | 1 |
 | [S13](spec/stages/S13-guided-tour.md) | Guided Tour | 🟦 | 6/9 | 0/9 | 1 |
+| [S14](spec/stages/S14-public-tour.md) | Public Tour Mode | 🟦 | 6/7 | 0/7 | – |
 
 ## Checks
 
@@ -284,6 +285,18 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC8 | Audio total ≤ 15 MB; a step without a clip advances on reading time | 🧪 | 🟨 | `test_tour.py::test_s13_ac8_*` (4): reading time without a clip, a new take replaces the old, clip checks, 15 MB in all |
 | AC9 | It works at phone width | 👀 | 🟨 | 👀 Chrome at 390 px: no sideways scroll, the pane stays closed, the tour bar fits |
 
+### S14 · Public Tour Mode
+
+| ID | Check | How | Status | Evidence |
+|---|---|---|---|---|
+| AC1 | Public mode refuses every change (POST, PUT, PATCH, DELETE → 403), even with the page header; a refused clip leaves the voice alone | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac1_*` (12) |
+| AC2 | The page, tour and clips are served under an allowed name; other names get 400; extra names don't count in local mode; clips are cached by version | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac2_*` (5) |
+| AC3 | Public mode holds no key, whatever the environment says; the switch and `PORT` must be clear | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac3_*` (8) |
+| AC4 | Public mode listens on every address; local mode stays on 127.0.0.1 even with `$PORT`; `--port` wins | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac4_*` (3) |
+| AC5 | Health reports the mode; the page opens on the tour with the read-only note and hides what it can't do | 🧪 👀 | 🟨 | `test_public_mode.py::test_s14_ac5_*` (3) · 👀 Chrome: opens on Start Tour, note + View the Code, no Exit, voice plays, no console errors |
+| AC6 | Local mode is unchanged | 🧪 | 🟨 | all 596 offline tests pass (`make check`, 89% coverage) |
+| AC7 | Hosted on Cloud Run: the same checks pass against the live URL; the service has no secrets, min 0, max 1 | 👀 | 🟦 |  |
+
 ## Product goals
 
 | ID | Goal | Status |
@@ -418,3 +431,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | S13 (your review): every approval card fits on screen in the tour (email body, header lines and note field folded; subject and terms table kept). Chrome: Sales 704, Engineering 656, Finance 738, CFO 757 px, all inside 821 px. D-187. AC5 waits for your re-check. |
 | 2026-11-13 | Security audit for a public repo: no key ever committed (gitleaks + key-format search over all commits). Voice clips removed from history, commits on the no-reply email, `main` and tags force-pushed. Secret scanning waits until the repo is public. D-188. |
 | 2026-11-12 | Your review → D-178/D-179: the tour is presented by a voice orb (no name) with subtitles, chapter titles, a living diagram and a spotlight; 10-second pause between steps; dark + cyan theme for the whole page; Observability stays visible. AC5 waits for your look. |
+| 2026-11-13 | S14 · Public Tour Mode, your request: host the tour on gauravlahoti.dev via Cloud Run (min 0), with no key because visitors won't type their own. Brief approved → 🟦 (plan approval). Built 6/7 🟨: GET/HEAD-only middleware, keyless config, public bind, page note, Dockerfile + allowlist `.gcloudignore` (upload preview: 10 clips, no `.env`). `test_public_mode.py` (29); 596 offline tests. D-189. AC7 waits for the deploy. |

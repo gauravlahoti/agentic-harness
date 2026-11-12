@@ -2186,6 +2186,19 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .tour-invite[hidden], .tour-mode .tour-invite { display: none; }
+/* Public tour mode (S14, D-189): nothing here can run, record or change, so it isn't offered. */
+.public-mode :is(.views.side-group, #tour-exit, #tour-rec-box, .tour-invite) { display: none; }
+.public-note {
+  margin: 4px 0 18px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+}
+.public-note[hidden] { display: none; }
+.public-note a { color: var(--accent); font-weight: 600; }
 .tour-invite:hover { border-color: var(--accent); transform: translateY(-1px); }
 .tour-invite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .tour-invite-pointer { flex: none; width: 22px; height: 22px; color: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }

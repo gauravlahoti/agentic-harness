@@ -751,9 +751,21 @@ addEventListener("popstate", () => {
   $("tour-rec").addEventListener("click", toggleRecord);
   $("tour-exit").addEventListener("click", exitTour);
   addEventListener("keydown", (event) => {
-    if (TOUR && event.key === "Escape" && !event.defaultPrevented) exitTour();
+    // A hosted copy is the tour (D-189): Escape has nothing to go back to.
+    if (TOUR && health?.mode !== "public" && event.key === "Escape" && !event.defaultPrevented) exitTour();
   });
-  const begin = TOUR ? setUpTour : offerTour;
+  // A hosted copy opens on the tour, waiting on Start Tour: browsers play sound only after a click.
+  const begin = () => {
+    if (health?.mode === "public" && !TOUR) {
+      history.replaceState(null, "", `?tour${location.hash}`);
+      TOUR = true;
+      currentSession = null;
+      clearThread();
+      workItems = [];
+      renderWork();
+    }
+    return TOUR ? setUpTour() : offerTour();
+  };
   if (health) begin();
   else addEventListener("harness-ready", begin, { once: true });
 }

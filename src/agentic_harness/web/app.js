@@ -31,6 +31,7 @@ async function loadHealth() {
     key.textContent = health.key === "present" ? "Key present ✓" : "Key skipped";
     key.className = health.key === "present" ? "pill ok" : "pill skip";
     $("version").textContent = `v${health.version}`;
+    if (health.mode === "public") showPublicMode();
   } catch {
     server.textContent = "Server down";
     server.className = "pill bad";
@@ -40,8 +41,23 @@ async function loadHealth() {
 }
 
 // ── Views: Agent, Memory, Evals and Checks, chosen by the URL hash ─────────────────────────
+// Public tour mode (S14, D-189): a hosted, keyless copy that only plays the tour. The server
+// refuses every change; the page hides what would need one, and says how to run it for real.
+function showPublicMode() {
+  document.body.classList.add("public-mode");
+  const note = $("public-note");
+  note.append("This is a hosted, read-only tour. To run the agent live, run the harness on your own machine with your own Gemini key.");
+  if (health.repository) {
+    const link = Object.assign(document.createElement("a"), { href: health.repository, textContent: "View the Code", target: "_blank", rel: "noopener" });
+    note.append(" ", link);
+  }
+  note.hidden = false;
+  showView();
+}
+
 function showView() {
-  const view = { "#checks": "checks", "#memory": "memory", "#online": "online", "#evals": "evals", "#golden": "golden" }[location.hash] ?? "agent";
+  const views = { "#checks": "checks", "#memory": "memory", "#online": "online", "#evals": "evals", "#golden": "golden" };
+  const view = health?.mode === "public" ? "agent" : views[location.hash] ?? "agent";
   for (const name of ["agent", "memory", "online", "evals", "golden", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }

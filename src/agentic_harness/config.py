@@ -3,6 +3,9 @@
 Harness part: setup. Every other module gets a ``Settings`` object and never
 looks at files or environment variables for the key itself. One place to audit.
 
+Public tour mode (S14, D-189) is set here too: ``HARNESS_PUBLIC=1`` makes the harness a
+read-only showcase that holds no key, whatever the environment says.
+
 Does not: put the key into ``os.environ`` (child processes would inherit it),
 call Gemini, or fail when the key is missing. Offline work never needs it.
 """
@@ -67,24 +70,28 @@ class Settings:
     # How hard the model thinks: Gemini's ``thinking_level``. None: the model's own default.
     thinking: str | None = None
     anthropic_key: Secret | None = None  # Claude's key, if the person added one (D-104)
+    # Public tour mode (D-189): hosted for anyone, read-only, keyless. Off by default.
+    public: bool = False
+    allowed_hosts: tuple[str, ...] = ()  # the names it answers to, besides localhost (public only)
+    port: int | None = None  # where to listen when --port isn't given: a container's $PORT
 
     @property
     def has_key(self) -> bool:
-        return self.api_key is not None
+        return self.api_key is not None and not self.public
 
     @property
     def has_anthropic_key(self) -> bool:
-        return self.anthropic_key is not None
+        return self.anthropic_key is not None and not self.public
 
     def require_anthropic_key(self) -> str:
         """Return Claude's key for a call the person chose, or explain how to add one."""
-        if self.anthropic_key is None:
+        if self.anthropic_key is None or self.public:
             raise MissingKeyError(MISSING_ANTHROPIC_KEY)
         return self.anthropic_key.reveal()
 
     def require_key(self) -> str:
         """Return the key for a live call, or explain how to add one."""
-        if self.api_key is None:
+        if self.api_key is None or self.public:
             raise MissingKeyError(MISSING_KEY_MESSAGE)
         return self.api_key.reveal()
 
@@ -104,12 +111,28 @@ def load_settings(
     if backend not in get_args(Backend):
         raise ValueError(f"HARNESS_BACKEND must be one of {get_args(Backend)}, not {backend!r}")
 
-    key = next((v for name in SECRET_ENV_NAMES if (v := get(name))), None)
+    switch = get("HARNESS_PUBLIC") or "0"
+    if switch not in {"0", "1"}:
+        raise ValueError(f"HARNESS_PUBLIC must be 1 (public tour) or 0, not {switch!r}")
+    public = switch == "1"
+    port = get("PORT")
+    if port is not None and not port.isdigit():
+        raise ValueError(f"PORT must be a whole number, not {port!r}")
+
+    # Public mode never holds a key: a key set by mistake still can't be spent (D-189).
+    key = None if public else next((v for name in SECRET_ENV_NAMES if (v := get(name))), None)
+    claude = None if public else get(ANTHROPIC_KEY_NAME)
+    hosts = tuple(
+        h for part in (get("HARNESS_ALLOWED_HOSTS") or "").split(",") if (h := part.strip())
+    )
     return Settings(
         api_key=Secret(key) if key else None,
         backend=cast(Backend, backend),  # checked against Backend just above
         model=get("HARNESS_MODEL") or DEFAULT_MODEL,
         project=get("GOOGLE_CLOUD_PROJECT"),
         location=get("GOOGLE_CLOUD_LOCATION") or "global",
-        anthropic_key=Secret(claude) if (claude := get(ANTHROPIC_KEY_NAME)) else None,
+        anthropic_key=Secret(claude) if claude else None,
+        public=public,
+        allowed_hosts=hosts,
+        port=int(port) if port else None,
     )

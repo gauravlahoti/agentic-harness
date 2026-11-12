@@ -1,6 +1,6 @@
 # One entry point for every routine task. CI runs `make check`, so local and CI never differ.
 .DEFAULT_GOAL := help
-.PHONY: help setup hooks format lint type test check live eval clean
+.PHONY: help setup hooks format lint type test check live eval clean deploy-tour
 
 help: ## Show the commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-7s %s\n", $$1, $$2}'
@@ -35,3 +35,18 @@ clean: ## Remove caches and coverage files
 
 eval: ## Run the evals (🔑 spends quota or money): make eval CASES=off-topic RUNS=1
 	uv run python -m evals.run $(if $(CASES),--cases $(CASES),) --runs $(or $(RUNS),1)
+
+# The hosted guided tour (S14, D-189). Your own project and names, given on the command line.
+PROJECT ?=
+REGION ?= us-central1
+SERVICE ?= agentic-harness
+HOSTS ?=
+
+deploy-tour: ## Host the read-only tour on Cloud Run (no key): make deploy-tour PROJECT=… HOSTS=…
+	@test -n "$(PROJECT)" || { echo "Set PROJECT=<your Google Cloud project>"; exit 2; }
+	@test -n "$(HOSTS)" || { echo "Set HOSTS=<names it answers to, comma-separated>"; exit 2; }
+	gcloud run deploy $(SERVICE) --project $(PROJECT) --region $(REGION) --source . \
+		--allow-unauthenticated --min-instances 0 --max-instances 1 \
+		--memory 512Mi --cpu 1 --concurrency 20 --cpu-throttling --cpu-boost \
+		--execution-environment gen2 \
+		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)'

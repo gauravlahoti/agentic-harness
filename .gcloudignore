@@ -1,0 +1,17 @@
+# What `make deploy-tour` uploads to Cloud Build (S14, D-189). An allowlist: everything is
+# left out unless named below. Without this file gcloud would follow .gitignore, which drops
+# the tour's voice clips (kept out of git on purpose). Secrets never leave this machine.
+/*
+!/Dockerfile
+!/pyproject.toml
+!/uv.lock
+!/Readme.md
+!/src/
+!/workspaces/
+/workspaces/*
+!/workspaces/cloudco/
+/workspaces/cloudco/tasks/
+/workspaces/cloudco/outbox/
+**/__pycache__/
+**/.DS_Store
+**/.env*
