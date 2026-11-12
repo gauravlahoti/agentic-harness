@@ -534,7 +534,6 @@ function drawOrb(time) {
 function markPart(part) {
   tour.show = part;
   for (const section of document.querySelectorAll("#pane-body .pane-part")) {
-    section.classList.remove("tour-glow");
     if (section.dataset.tourOpened) {
       section.open = false;
       delete section.dataset.tourOpened;
@@ -545,10 +544,10 @@ function markPart(part) {
   if (!part) return;
   if (roomForPane()) setPaneOpen(true, false);
   if (part === "pane") return;
-  const sections = part === "pane" ? [...document.querySelectorAll("#pane-body .pane-part")] : [...document.querySelectorAll(`#pane-body .pane-part.part-${part}`)];
+  // The part the voice is talking about opens; no tint or edge, so the pane keeps its look (your review).
+  const sections = [...document.querySelectorAll(`#pane-body .pane-part.part-${part}`)];
   for (const section of sections) {
-    section.classList.add("tour-glow");
-    if (part !== "pane" && !section.open) {
+    if (!section.open) {
       section.open = true;
       section.dataset.tourOpened = "1";
     }
