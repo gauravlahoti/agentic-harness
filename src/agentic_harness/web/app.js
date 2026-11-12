@@ -1504,7 +1504,9 @@ function renderPane() {
   const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} steps · $${l.max_usd} · ${time}`, [
     facts([
       ["How it works", "Thinks, uses a tool, reads the result, and repeats until it has an answer"],
-      ["Thinks with", modelLabel($("model").value || health.model)],
+      // Picked per run in the chat box, so it follows the menu (with the Thinking level).
+      ["Model", `${modelLabel($("model").value || health.model)} · Thinking: ${$("effort")?.selectedOptions[0]?.textContent.replace(/^Thinking:\s*/, "") || "Auto"}. You pick both in the chat box; each run can use a different one`],
+      ["Small jobs", smallJobs(l.small_models ?? [])],
       ["Stops", `When it has an answer, or after ${l.max_steps} steps, $${l.max_usd} or ${time}, whichever comes first`],
       ["Helpers get", `Up to ${share(l.helper_slice.time)} the time left and ${share(l.helper_slice.money)} of the budget`],
       // Planning (S11): part of the loop, not a step before it.
@@ -1550,6 +1552,14 @@ function renderPane() {
   $("pane-body").replaceChildren(...sections);
 }
 
+// Who does the small jobs (helpers, the off-topic check, titles, summaries) for the model
+// picked now: Claude Haiku on a Claude run (D-103), else the workspace's small model.
+function smallJobs(gemini) {
+  const claude = ($("model").value || "").startsWith("claude-") && health.claude_small_model;
+  const names = claude ? [modelLabel(health.claude_small_model)] : gemini.map(modelLabel);
+  return `${names.join(", ") || "the same model"}: the helper, the off-topic check, titles and summaries`;
+}
+
 function resetOff() {
   saveOff({ tools: [], skills: [], subagents: [], checks: [] });
   renderPane();
@@ -1582,6 +1592,7 @@ $("effort").addEventListener("change", () => {
 });
 $("profile").addEventListener("change", switchProfile);
 $("model").addEventListener("change", () => paneInfo && renderPane());
+$("effort").addEventListener("change", () => paneInfo && renderPane());
 $("pane-toggle").addEventListener("click", () => setPaneOpen(true));
 $("pane-close").addEventListener("click", () => setPaneOpen(false));
 $("off-chip").addEventListener("click", () => setPaneOpen(true));

@@ -318,6 +318,20 @@ def describe_harness(
                 "max_steps": MAX_CHILD_STEPS,
             },
             "prompt_id": context.prompt_id,
+            # The main model is picked per run on the page; these do the small jobs (helpers,
+            # the off-topic check, titles, summaries) on a Gemini run (D-62, D-81, D-91, D-93).
+            "small_models": sorted(
+                {a.model for a in workspace.subagents if a.model}
+                | {
+                    m
+                    for m in (
+                        workspace.scope.model if workspace.scope else None,
+                        workspace.title_model,
+                        workspace.summary_model,
+                    )
+                    if m
+                }
+            ),
         },
         # Guardrails in three parts (S05): Permissions, Never allowed, Human in the loop.
         "guardrails": {

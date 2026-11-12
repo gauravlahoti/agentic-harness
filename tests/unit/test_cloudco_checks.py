@@ -197,3 +197,13 @@ def tmp_dir() -> Path:
     import tempfile
 
     return Path(tempfile.mkdtemp())
+
+
+def test_the_pane_names_the_small_jobs_model_not_a_fixed_main_model() -> None:
+    """The main model is picked per run on the page; the pane data says only which model
+    does the small jobs on a Gemini run (D-62, D-81, D-91, D-93). Your report, 2026-11-12."""
+    from agentic_harness.api import describe_harness
+
+    loop = describe_harness(WS, "sales")["loop"]
+    assert loop["small_models"] == ["gemini-3.5-flash-lite"]
+    assert "model" not in loop
