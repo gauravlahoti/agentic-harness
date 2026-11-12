@@ -2117,3 +2117,16 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 .ref-chip.ref-based { color: var(--part-guard); border-color: color-mix(in srgb, var(--part-guard) 45%, var(--line)); background: color-mix(in srgb, var(--part-guard) 8%, var(--surface)); }
 .ref-chip.ref-free { color: var(--muted); }
 .case-score { font-variant-numeric: tabular-nums; color: var(--text-soft); font-size: 12.5px; white-space: nowrap; }
+
+/* Next Run cards, compact (your request): same content, less height. */
+.evals-next { margin-top: 12px; padding-top: 12px; }
+.cost-cards { gap: 10px; }
+.cost-card { gap: 2px; padding: 10px 14px; border-radius: 13px; }
+.cost-card .model-pick { margin-block: -2px; }
+.cost-does { margin: 0; font-size: 12.5px; }
+.cost-big { margin: 2px 0 0; }
+.cost-num { font-size: 24px; }
+.cost-card.total .cost-num { font-size: 28px; }
+.cost-list, .cost-work, .cost-meter-text, .cost-range { font-size: 12px; line-height: 1.35; }
+.cost-meter { height: 4px; margin-top: 4px; }
+.cost-split { height: 7px; margin-top: 6px; }
