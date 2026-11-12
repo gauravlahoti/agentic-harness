@@ -198,6 +198,10 @@ def test_s09_ac12_claude_calls_are_priced_with_cache_reads_and_writes() -> None:
     assert prices.cost("claude-sonnet-5-5", read) == pytest.approx(0.20)
     write = usage | {"total_cache_write_tokens": 1_000_000}
     assert prices.cost("claude-sonnet-5-5", write) == pytest.approx(2.50)  # 1.25x input
+    # Claude Opus 5.5 (D-140): $4 / $20, cache reads $0.20, writes 1.25x input.
+    assert prices.cost("claude-opus-5-5", usage) == pytest.approx(4.00)
+    assert prices.cost("claude-opus-5-5", read) == pytest.approx(0.20)
+    assert prices.cost("claude-opus-5-5", write) == pytest.approx(5.00)
 
 
 async def test_s09_ac10_a_run_on_claude_goes_through_the_same_loop() -> None:
@@ -272,7 +276,7 @@ def test_s09_ac10_claude_is_offered_only_when_its_key_is_set(tmp_path: Path) -> 
         .get("/api/health")
         .json()
     )
-    assert {"claude-haiku-5-5", "claude-sonnet-5-5"} <= set(with_key["models"])
+    assert {"claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"} <= set(with_key["models"])
     assert with_key["claude_small_model"] == CLAUDE_SMALL_MODEL  # the pane shows helpers' model
     assert without["claude_small_model"] is None
     refused = page(tmp_path, Settings(api_key=Secret("g")), []).post(

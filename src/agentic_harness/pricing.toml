@@ -36,3 +36,11 @@ cached_input = 0.01
 input = 2.00
 output = 10.00
 cached_input = 0.20
+
+# The current Opus, added at your request (2026-11-12; D-140). Checked in the claude-api
+# reference that day: $4 / $20, cache reads $0.20, 1M context, 128K output. Thinking is always
+# on (effort is the control, default medium), so our request shape needs no change.
+[models."claude-opus-5-5"]
+input = 4.00
+output = 20.00
+cached_input = 0.20

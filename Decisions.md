@@ -1099,3 +1099,10 @@
 - **Instead of:** 10 minutes
 - **Because:** time to switch persona and decide
 - **Cost:** a stuck run waits longer (Stop still works)
+
+### D-140 · Claude Opus 5.5 is a choice for the agent and in Evals
+✅ Accepted · S09 · your request ("introduce opus model as a selection in evals as well as agent"), 2026-11-12
+- **Chose:** `claude-opus-5-5` priced in `pricing.toml` ($4 / $20 per million tokens, cache reads $0.20, writes 1.25x), checked in the claude-api reference that day. Menus are built from priced models, so it appears in the chat's model menu and in Evals as both agent and judge. The request needs no change: thinking is always on for Opus 5.5 (we send no thinking setting), effort maps to `output_config.effort` as for Sonnet and Haiku, and we never force a tool. Its default effort is medium (Auto keeps the model's default)
+- **Instead of:** Haiku and Sonnet only (D-102)
+- **Because:** your call; the strongest current Claude model for comparing the agent and judging
+- **Cost:** twice Sonnet's price; still a paid, person-chosen option (D-104: never in tests or `make live`); the $3 eval cap (D-113) still stops a costly eval. Small jobs on a Claude run still use Haiku (D-103)
