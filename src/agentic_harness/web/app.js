@@ -449,7 +449,6 @@ function pastTurn(t) {
     // The finished line of a live run, chips included; addActivity only needs a list to add to.
     const r = { ...t.checks, retrying: false, round: t.checks.rounds };
     const check = startCheck({ activity: shown }, r.round, r.results);
-    for (const x of r.results) settleRow(check.rows.get(x.name), x.status);
     finishCheck(check, r, { past: true });
   }
   if (shown.children.length) agent.append(shown);
@@ -738,6 +737,7 @@ function onEvent(ev, turn) {
   // A helper's events carry agent_id (D-63): they go to its own lane, not the main list.
   if (d.agent_id) return onLaneEvent(ev, turn);
   if (ev.type === "run_started") {
+    turn.planOn = (d.tools ?? []).includes("write_plan");
     const off = d.off ?? {};
     const switchedOff = [...(off.tools ?? []), ...(off.skills ?? []), ...(off.subagents ?? [])];
     addActivity(turn, {
@@ -841,6 +841,8 @@ function onEvent(ev, turn) {
     });
   } else if (ev.type === "plan_updated") {
     // One To-Do card per task, redrawn on every update (S11).
+    turn.direct?.li.remove(); // it planned after all
+    turn.direct = null;
     if (!turn.todo) {
       turn.todo = el("li", "act part-plan todo-row");
       turn.activity.append(turn.todo);
@@ -864,7 +866,7 @@ function onEvent(ev, turn) {
     const shown = d.results.filter((r) => r.status !== "skipped");
     turn.holding = true;
     turn.queue ??= [];
-    shown.forEach((r, i) => setTimeout(() => settleRow(check.rows.get(r.name), r.status), wait + i * step));
+    shown.forEach((r, i) => setTimeout(() => settleRow(rowFor(check, r), r.status), wait + i * step));
     setTimeout(() => {
       finishCheck(check, d);
       turn.holding = false;
@@ -875,6 +877,19 @@ function onEvent(ev, turn) {
   } else if (ev.type === "tool_finished" && turn.tools.get(d.call_id)?.plan) {
     if (d.is_error) addActivity(turn, { text: `Plan not saved · ${d.output}`, part: "plan", state: "error", raw: d });
   } else if (ev.type === "tool_started") {
+    if (turn.planOn && !turn.todo && !turn.direct) {
+      // Direct or To-Do: the model decides (D-121). Say which, so a missing plan reads as its
+      // choice, not as something skipped (your request, D-147).
+      turn.direct = addActivity(turn, {
+        text: "No To-Do plan · the model chose to work directly",
+        part: "plan",
+        state: "done",
+        facts: [
+          ["Who decides", "The model. It writes a To-Do plan for 3 or more parts, or 2 or more asks in one message; otherwise it works directly"],
+          ["Checked", "Plan Complete applies only when a plan was made"],
+        ],
+      });
+    }
     const args = argText(d.arguments);
     const part = d.name === "delegate_task" ? "sub-agent" : d.part === "context" ? "context" : "tool";
     // load_skill is the harness's own context tool: name it for what it does.
@@ -1023,29 +1038,35 @@ function todoCard(items) {
 }
 
 // A check round as a card, built like the To-Do card (S11, your request): a title, a count,
-// one row per check. Rows start pending (○) and tick to ✓ or ✗; a failure's reason sits under
-// its row. ``checks``: [{name, label}] (results work too). Returns what verify_finished fills.
+// then one row per check that applied, added as it ticks to ✓ or ✗; a failure's reason sits
+// under its row. No names while checking: listing them all, then dropping the ones that didn't
+// apply, read like a plan that vanished (your note, D-147). Returns what verify_finished fills.
 function startCheck(turn, round, checks) {
   const li = el("li", "act part-verify todo-row");
   const card = el("div", "todo-card check-card is-checking");
   const head = el("div", "card-head");
   const title = el("span", "card-title", round > 1 ? "Checking the new answer…" : "Checking the answer…");
   const count = el("span", "card-count", `${checks.length} checks`);
-  head.append(title, count);
+  head.append(el("span", "check-spin", ""), title, count);
   head.title = "Before you see an answer, the harness checks it with the workspace's rules: plain code, not a model. A failure goes back to the agent once.";
   const list = el("ul", "todo-list");
   const rows = new Map();
-  for (const c of checks) {
-    const row = el("li", "todo-item is-pending");
-    row.append(el("span", "todo-box", "○"), el("span", "todo-text", c.label));
-    list.append(row);
-    rows.set(c.name, row);
-  }
   card.append(head, list);
   li.append(card);
   turn.activity.append(li);
   li.scrollIntoView({ block: "nearest" });
   return { card, title, count, list, rows, since: performance.now() };
+}
+
+// The row for one check's result, made when it is first shown.
+function rowFor(check, x) {
+  if (!check.rows.has(x.name)) {
+    const row = el("li", "todo-item is-pending");
+    row.append(el("span", "todo-box", "○"), el("span", "todo-text", x.label));
+    check.list.append(row);
+    check.rows.set(x.name, row);
+  }
+  return check.rows.get(x.name);
 }
 
 function settleRow(row, status) {
@@ -1070,10 +1091,10 @@ function finishCheck(check, r, { past = false } = {}) {
   check.count.textContent = count;
   check.card.className = `todo-card check-card is-${state}`;
   for (const x of r.results) {
-    const row = check.rows.get(x.name);
-    if (!row) continue;
-    if (x.status === "skipped") row.remove();
-    else if (x.status !== "passed") row.append(el("span", "todo-note", x.status === "error" ? `The check itself broke (not sent back): ${x.message}` : x.message));
+    if (x.status === "skipped") continue;
+    const row = rowFor(check, x);
+    settleRow(row, x.status);
+    if (x.status !== "passed") row.append(el("span", "todo-note", x.status === "error" ? `The check itself broke (not sent back): ${x.message}` : x.message));
     else row.title = x.message; // a pass says why on hover
   }
   const skipped = r.results.filter((x) => x.status === "skipped");

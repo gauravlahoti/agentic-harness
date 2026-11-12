@@ -245,6 +245,11 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
     A "wrong person named" rule is gone: on summaries ("on the discount and payment, the CFO
     and Finance…") a term's number is often missing, so it blamed correct answers.
     """
+    # A pull only quotes the contract: nobody asked what we can agree to, so no one needs
+    # naming. Found live 2026-11-12: it failed "a 25% discount" in a plain pull (D-147).
+    pull = record.outputs("read_contract") and not record.outputs("review_contract")
+    if pull and not _sent(record):
+        return skipped("A contract pull: it quotes the contract, with no decision to name.")
     tables = _tables()
     approvals, rules = tables.get("approvals", []), tables.get("rules", [])
     roles = {a["approver"] for a in approvals}

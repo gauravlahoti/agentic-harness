@@ -196,3 +196,9 @@ def test_s12_ac7_the_page_has_you_are_and_the_switch_on_a_card_you_cant_answer()
     assert "`Switch to ${roleOf(p)}`" in JS  # "Switch to Dana Whitfield (CFO)"
     assert "person: currentPerson()?.id" in JS  # the server is told who answers
     assert ".approval-handoff" in CSS
+
+
+def test_d147_the_page_says_when_the_model_works_without_a_plan() -> None:
+    """Direct or To-Do: a missing plan reads as the model's choice (your request)."""
+    assert "the model chose to work directly" in JS
+    assert "rowFor(check, x)" in JS  # check rows appear with results, not as names first

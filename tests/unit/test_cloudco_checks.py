@@ -496,3 +496,12 @@ def test_d146_pull_checks_never_fail_a_real_review_or_send() -> None:
         for name in ("records_match", "sections_are_real"):
             v = verdict(name, file.read_text(), *records)
             assert v.ok or not v.applies, f"{name} on {file.name}: {v.message}"
+
+
+def test_d147_right_approver_skips_a_pull_but_not_a_review() -> None:
+    """Found live: a plain pull failed for "3.2: a 25% discount" with no CFO named."""
+    pulled = verdict("right_approver", PULLED, *PULL)
+    assert not pulled.applies, pulled.message
+    reviewed = verdict("right_approver", "- 3.2 · 25% discount: fine.", REVIEW)
+    assert reviewed.applies
+    assert not reviewed.ok

@@ -1150,3 +1150,8 @@
 - **Chose:** (1) the plan tool also plans when the person asks two or more things in one message, and the team files no longer say "no plan"; (2) the outline gives each section's `key_terms`, the clauses that set a real term (2.1, 3.2, 4.1, 6.1, 9.2 for CT-2207), told apart from the boilerplate by its "relating to" wording in this made-up contract; (3) two checks: **Records Match** (record IDs came back from a tool; in a pull, a quoted term matches its clause) and **Sections Are Real** (named clauses exist in what read_contract returned, so nothing Engineering can't see).
 - **Why the term half only in a pull:** reviews put our counter-offers on the same line as the clause ID; on the 14 real answers that gave 13 false failures, now 0 (a test keeps it at 0).
 - **Cost:** a two-part question costs one more model call (the plan). D-143's "no plan" wording was wrong and is removed.
+
+## D-147 · Pulls skip Right Approver; the page says Direct vs To-Do; check names appear with results (2026-11-12)
+- **Found live:** Right Approver failed a plain pull ("25% needs the CFO, not named"), so the retry added approval verdicts nobody asked for; the check card listed every check name (Plan Complete included) and then dropped the ones that didn't apply, which read as a plan that vanished; and nothing said whether the model chose not to plan.
+- **Chose:** Right Approver skips when the run read the contract with `read_contract`, ran no review and sent nothing. The check card shows a spinner and the count while checking; a row appears only with its result. Planning stays the model's choice (D-121, you kept it), and the first tool call without a plan adds "No To-Do plan · the model chose to work directly"; it is removed if a plan follows.
+- **Cost:** none.
