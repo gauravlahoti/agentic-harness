@@ -1137,3 +1137,9 @@
 - **Chose:** 4 Sales facts (reply tone and signature, lead with what we can offer, "Net 45" wording, ShopCo trade-before-refusal) and 3 Engineering facts (uptime as measured with UP- IDs, headroom to the 99.95% record, commercial questions go to Sales). Kept in `workspaces/cloudco/demo-memory/*.txt` and copied into `.agentic-harness/notes/cloudco/` (git-ignored runtime state).
 - **Why .txt:** a note file is read line by line as facts, so it can't carry a "fictional" header; `.txt` skips the scan that wants one on every `.md`.
 - **Cost:** "ShopCo renews in Q1" is made up and not in the customer record.
+
+## D-145 · The scope check leans to IN and is told our names (2026-11-12)
+- **Problem:** "what is Shopco ?" was refused as "a general company" with 0 model calls. The check saw only the `covers` sentence, so it couldn't know ShopCo is our customer.
+- **Options:** (a) lean to IN when unsure; (b) a workspace `[scope] knows` text of names; (c) load the customer file into the check.
+- **Chose:** (a) and (b). The check says OUT only when clearly unrelated, and a name it doesn't recognise counts as IN. `knows` is appended as "Also in scope". (c) rejected: it couples the harness to data files and costs tokens every task.
+- **Cost:** a few more off-topic questions may reach the agent, whose own Scope prompt still declines clearly unrelated ones. The names are the workspace's to keep current.

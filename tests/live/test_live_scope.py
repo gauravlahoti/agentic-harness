@@ -47,6 +47,18 @@ async def test_s05_ac14_real_questions_still_get_answered(tmp_path: Path) -> Non
     assert result.outcome == "completed", result.reason
 
 
+@pytest.mark.parametrize(
+    "task",
+    ["what is Shopco ?", "Who is Priya Raman?", "tell me about FreshMart", "what is CT-2207?"],
+)
+async def test_d145_questions_naming_our_own_records_are_not_refused(
+    task: str, tmp_path: Path
+) -> None:
+    """Found live: "what is Shopco ?" was refused as "a general company"."""
+    result = await run(task, tmp_path)
+    assert result.reason != "outside_scope", result.answer
+
+
 async def test_s05_ac14_vague_requests_on_the_job_are_not_refused(tmp_path: Path) -> None:
     """Found live: "pull in customer details" passed the check, then the agent refused."""
     result = await run("pull in customer details", tmp_path)

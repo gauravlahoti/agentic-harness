@@ -344,7 +344,11 @@ def describe_harness(
         "guardrails": {
             **workspace.gate(profile).summary(tools),
             "scope": (
-                {"covers": workspace.scope.covers, "refusal": workspace.scope.refusal}
+                {
+                    "covers": workspace.scope.covers,
+                    "refusal": workspace.scope.refusal,
+                    "knows": workspace.scope.knows,
+                }
                 if workspace.scope
                 else None
             ),

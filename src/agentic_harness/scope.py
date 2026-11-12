@@ -28,6 +28,7 @@ class Scope:
     covers: str  # what the agent helps with, in plain words
     refusal: str  # what it says to anything else
     model: str | None = None  # the check's model; None: the run's model
+    knows: str = ""  # names the check can't guess are in scope (records, people), in plain words
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,11 +58,21 @@ def scope_prompt(scope: Scope) -> str:
 CHECK_PROMPT = (
     "You decide whether a request is inside an assistant's scope. You do not answer it.\n"
     "The assistant only helps with: {covers}\n"
-    "Reply with IN or OUT, a colon, and a reason of a few words. Greetings, questions "
+    "Reply with IN or OUT, a colon, and a reason of a few words. Say OUT only when the request "
+    "is clearly about something unrelated. A name you don't recognise may be one of the "
+    "assistant's own records, so a question about it is IN. Greetings, questions "
     "about what the assistant can do, and the person's preferences about how it should "
     "answer them (format, length, tone) are IN. A follow-up to an earlier exchange that "
     'was in scope ("and send it", "who is the contact") is IN.'
 )
+
+
+def check_prompt(scope: Scope) -> str:
+    """The check's instructions: the job, plus the names the workspace says belong to it (D-145)."""
+    text = CHECK_PROMPT.format(covers=scope.covers)
+    if scope.knows:
+        text += f"\nAlso in scope, though they may look like general topics: {scope.knows}"
+    return text
 
 
 def parse_verdict(text: str) -> tuple[bool, str]:
@@ -82,7 +93,7 @@ def scope_check(scope: Scope, model: ModelClient, prices: Prices) -> ScopeCheck:
             else task
         )
         steps = [{"type": "user_input", "content": [{"type": "text", "text": text}]}]
-        reply = await model.create(CHECK_PROMPT.format(covers=scope.covers), steps, [])
+        reply = await model.create(check_prompt(scope), steps, [])
         in_scope, reason = parse_verdict(reply.text)
         return Verdict(in_scope, reason, prices.cost(model.name, reply.usage))
 

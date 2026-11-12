@@ -15,7 +15,15 @@ from agentic_harness.limits import Limits
 from agentic_harness.loop import Harness
 from agentic_harness.model import GeminiModel
 from agentic_harness.pricing import load_prices
-from agentic_harness.scope import Scope, Verdict, parse_verdict, scope_prompt
+from agentic_harness.scope import (
+    CHECK_PROMPT,
+    Scope,
+    Verdict,
+    check_prompt,
+    parse_verdict,
+    scope_check,
+    scope_prompt,
+)
 from agentic_harness.workspace import Workspace
 
 SCOPE = Scope(covers="Widgets: ordering and repairs.", refusal="I only help with widgets.")
@@ -137,3 +145,53 @@ async def test_s10_the_check_model_sees_the_earlier_exchange() -> None:
     assert "Order a widget." in text
     assert "and send it now" in text
     assert "follow-up" in CHECK_PROMPT.lower()
+
+
+def test_d145_the_check_leans_to_in_when_unsure() -> None:
+    """Found live: "what is Shopco ?" was refused as "a general company" (D-145)."""
+    assert "clearly" in CHECK_PROMPT
+    assert "records" in CHECK_PROMPT  # a name it doesn't know may be one of the assistant's own
+
+
+def test_d145_knows_goes_into_the_check_prompt_only_when_set() -> None:
+    plain = check_prompt(SCOPE)
+    assert "Widgets: ordering and repairs." in plain
+    assert "Also in scope" not in plain
+    with_names = check_prompt(Scope(SCOPE.covers, SCOPE.refusal, knows="customers such as Acme"))
+    assert "Also in scope" in with_names
+    assert "customers such as Acme" in with_names
+
+
+def test_d145_knows_is_read_from_workspace_toml(tmp_path: Path) -> None:
+    toml = '[scope]\ncovers = "Widgets."\nrefusal = "No."\nknows = "customers such as Acme"\n'
+    (tmp_path / "workspace.toml").write_text(toml)
+    assert Workspace.load(tmp_path).scope == Scope(
+        "Widgets.", "No.", None, "customers such as Acme"
+    )
+
+
+class _Reply:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.usage = {"total_input_tokens": 1, "total_output_tokens": 1}
+
+
+class _Model:
+    """Answers IN only when the workspace's own names reached it: a stand-in for a real model."""
+
+    name = "gemini-3.5-flash-lite"
+
+    async def create(self, system: str, steps: list[Any], tools: list[Any]) -> _Reply:
+        return _Reply("IN: a known customer" if "Acme" in system else "OUT: a general company")
+
+
+async def test_d145_the_names_reach_the_model_and_change_its_answer() -> None:
+    prices = load_prices()
+    bare = scope_check(SCOPE, _Model(), prices)  # type: ignore[arg-type]
+    named = scope_check(
+        Scope(SCOPE.covers, SCOPE.refusal, knows="customers such as Acme"),
+        _Model(),  # type: ignore[arg-type]
+        prices,
+    )
+    assert (await bare("what is Acme?", "")).in_scope is False
+    assert (await named("what is Acme?", "")).in_scope is True

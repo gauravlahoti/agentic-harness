@@ -67,6 +67,8 @@ summary_model = "gemini-3.5-flash-lite"
 [scope]
 covers = "CloudCo's customer contracts: what a customer changed, checking terms against CloudCo's policies, customer, deal, uptime and payment records, and replies to customers."
 refusal = "I'm CloudCo's Contract Agent, so I can only help with customer contracts, terms and replies to customers."
+# Names the small check can't guess are ours: without them "what is ShopCo?" was refused (D-145).
+knows = "customers such as ShopCo, FreshMart and Northwind Outdoor; contract IDs like CT-2207; our people Priya Raman, Elena Brandt, Farid Aziz and Dana Whitfield"
 model = "gemini-3.5-flash-lite"  # a tiny yes/no check: the cheapest model
 
 # Permissions: what each profile may use (allow-list) and must not see (D-75, D-76).

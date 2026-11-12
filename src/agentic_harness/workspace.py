@@ -457,4 +457,9 @@ def _scope(table: Any) -> Scope | None:
         return None
     if not isinstance(table, dict) or not _text(table, "covers") or not _text(table, "refusal"):
         raise WorkspaceError("workspace.toml: [scope] needs text for covers and refusal.")
-    return Scope(_text(table, "covers"), _text(table, "refusal"), _text(table, "model") or None)
+    return Scope(
+        _text(table, "covers"),
+        _text(table, "refusal"),
+        _text(table, "model") or None,
+        _text(table, "knows"),
+    )

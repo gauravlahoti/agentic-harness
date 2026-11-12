@@ -1861,7 +1861,7 @@ function renderPane() {
   ]);
   const notAllowedCard = card("no", "✕", "Not allowed", "always blocked", [
     list([
-      ...(g.scope ? [line("Off-topic questions", "", `Only: ${g.scope.covers}`)] : []),
+      ...(g.scope ? [line("Off-topic questions", "", `Only: ${g.scope.covers}${g.scope.knows ? ` Also in scope: ${g.scope.knows}.` : ""}`)] : []),
       ...g.not_allowed.map((t) => line(`Using ${t}`, "", `${g.profile} can't use ${t}`)),
       ...(g.hidden_fields.length ? [line(`Seeing ${plural(g.hidden_fields.length, "field")}`, "", g.hidden_fields.join("\n"))] : []),
       ...g.never.map((r) => line(r.label, r.because)),
