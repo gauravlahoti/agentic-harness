@@ -1376,3 +1376,9 @@
   - **Step 2** opens on a new `build` scene: the jar lifts away and the model stands alone. Each part (and its spoke) springs in as the voice names it (pop marks, D-184). A new **scene mark**, `{scene:harness}`, then shows the whole harness and "AI Agent = Model + Harness" at "You can see each one on the right."
   - Scene marks are checked when the tour loads, like pop marks.
 - **Cost:** step 1 re-voiced (~1,000 credits, 2 takes). For about 25 s of step 2 the diagram is the model alone, while the voice explains why it needs a layer around it.
+
+## D-186 · Hide Guide: the strip folds to the orb (2026-11-12)
+- **Your request:** "give a way to hide this section if required, so my focus remains on the screen".
+- **Options:** hide everything (no way back but a key) · fold to the orb with a Show Guide button · make the strip smaller only.
+- **Chose:** a **Hide Guide** button (chevron) next to Mute. The subtitles and controls fold away; the orb (still moving with the voice) and a **Show Guide** button stay. The voice and the replay carry on. The page gains ~86 px and the spotlight uses it. Exit Tour reloads the page, so the guide always starts shown.
+- **Cost:** while hidden there are no subtitles and no Pause or Next; Show Guide is one click back.

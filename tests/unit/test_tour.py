@@ -357,3 +357,17 @@ def test_s13_ac6_a_pop_must_name_a_diagram_part(ws_copy: Path) -> None:
     edit_tour(ws_copy, "{pop:tools}", "{pop:wheels}")
     with pytest.raises(TourError, match="wheels"):
         load_tour(ws_copy)
+
+
+def test_s13_ac5_the_guide_can_be_hidden_and_shown_again() -> None:
+    """D-186, your request: hide the guide strip to keep your focus on the page; the voice
+    and the replay carry on, and Show Guide brings it back."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    page = (web / "index.html").read_text()
+    assert 'id="tour-hide"' in page
+    assert ">Hide Guide<" in page
+    assert 'id="tour-show"' in page
+    assert ">Show Guide<" in page
+    tour_js = (web / "tour.js").read_text()
+    assert "function tuckGuide(" in tour_js
+    assert ".is-tucked" in (web / "app.css").read_text()

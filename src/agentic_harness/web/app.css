@@ -2309,6 +2309,12 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   padding-top: 34px;
   background: linear-gradient(to bottom, transparent, light-dark(#f5f7f6, #020505) 30px);
 }
+/* The guide tucked away (D-186): only the orb and Show Guide; the page gets the room back. */
+.tour-guide.is-tucked { gap: 10px; }
+.tour-guide.is-tucked .guide-talk { display: none; }
+.tour-guide.is-tucked .guide-orb { width: 40px; height: 40px; margin: 0; }
+.tour-mode .dock:has(.tour-guide.is-tucked) { padding-top: 10px; }
+.tour-show[hidden] { display: none; }
 /* Both side panels stay bright (your review): the spotlight dims the chat column only. */
 .tour-mode #harness-pane, .tour-mode #sidebar { z-index: 50; }
 /* With the pane hidden, its show button must stay above the dim too, or it can't be found. */

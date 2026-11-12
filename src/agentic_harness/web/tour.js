@@ -404,6 +404,14 @@ function pop(part) {
   fire(part);
 }
 
+// Hide the guide strip to keep your eyes on the page (D-186): the subtitles and controls fold
+// away, the orb stays; the voice and the replay carry on. Show Guide brings it back.
+function tuckGuide(tucked) {
+  $("tour-bar").classList.toggle("is-tucked", tucked);
+  $("tour-show").hidden = !tucked;
+  $(tucked ? "tour-show" : "tour-hide").focus();
+}
+
 // Every frame: the diagram's place, the spotlight's frame and the orb's voice.
 function frame(time) {
   placeStage();
@@ -723,6 +731,8 @@ addEventListener("popstate", () => {
     mute.title = tour.muted ? "Unmute" : "Mute";
     mute.querySelector(".visually-hidden").textContent = mute.title;
   });
+  $("tour-hide").addEventListener("click", () => tuckGuide(true));
+  $("tour-show").addEventListener("click", () => tuckGuide(false));
   $("tour-rec").addEventListener("click", toggleRecord);
   $("tour-exit").addEventListener("click", exitTour);
   addEventListener("keydown", (event) => {
