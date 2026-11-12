@@ -230,8 +230,11 @@ async def test_s11_ac4_a_light_question_makes_no_plan_and_skips_the_plan_check()
     result = await h.run("Is Net 45 OK?")
     assert of(events, "plan_updated") == []
     assert len(model.sent) == 1
-    assert result.verified is None
-    assert of(events, "verify_finished") == []
+    assert result.verified is None  # nothing applied: neither verified nor not
+    (round_,) = of(events, "verify_finished")  # every switched-on check is accounted for
+    assert round_["passed"] is None
+    assert [r["status"] for r in round_["results"]] == ["skipped"]
+    assert "No plan was made" in round_["results"][0]["message"]
 
 
 # ── AC5 · a skip needs a reason ──────────────────────────────────────────────────────────
@@ -275,8 +278,11 @@ async def test_s11_ac6_checks_run_after_the_draft_and_before_the_finish() -> Non
     verdict = of(events, "verify_finished")[0]
     assert verdict["passed"] is True
     assert verdict["round"] == 1
-    assert [r["name"] for r in verdict["results"]] == ["names_owner"]  # plan check: not applicable
-    assert verdict["results"][0] == {
+    assert [(r["name"], r["status"]) for r in verdict["results"]] == [
+        ("plan_complete", "skipped"),  # no plan: shown as skipped, with why
+        ("names_owner", "passed"),
+    ]
+    assert verdict["results"][1] == {
         "name": "names_owner",
         "label": "Names the Owner",
         "status": "passed",
@@ -327,11 +333,11 @@ async def test_s11_ac6_a_broken_check_is_shown_and_never_sent_back() -> None:
     h, events = harness(model, checks=[broken])
     result = await h.run("Hi")
     verdict = of(events, "verify_finished")[0]
-    assert verdict["results"][0]["status"] == "error"
-    assert "bug in the check" in verdict["results"][0]["message"]
-    assert verdict["passed"] is True
+    assert verdict["results"][1]["status"] == "error"  # [0] is the skipped plan check
+    assert "bug in the check" in verdict["results"][1]["message"]
+    assert verdict["passed"] is None  # only a broken check and a skipped one: nothing verified
     assert len(model.sent) == 1
-    assert result.verified is True
+    assert result.verified is None
 
 
 # ── AC7 · one retry, then "Not verified" ─────────────────────────────────────────────────
@@ -350,6 +356,8 @@ async def test_s11_ac7_a_failed_check_is_sent_back_once_and_the_retry_can_pass()
     rounds = of(events, "verify_finished")
     assert [r["passed"] for r in rounds] == [False, True]
     assert rounds[0]["draft"] == "The owner is Bob."  # the page folds the first draft
+    assert rounds[0]["note"].startswith(NOTE_PREFIX)  # the page shows what the agent was told
+    assert rounds[1]["note"] == ""
     assert result.answer == "The owner is Ada."
     assert result.verified is True
 
@@ -368,11 +376,17 @@ async def test_s11_ac7_a_second_failure_goes_out_marked_not_verified() -> None:
         "rounds": 2,
         "results": [
             {
+                "name": "plan_complete",
+                "label": "Plan Complete",
+                "status": "skipped",
+                "message": "No plan was made: the agent treated the task as simple.",
+            },
+            {
                 "name": "names_owner",
                 "label": "Names the Owner",
                 "status": "failed",
                 "message": "The tool said the owner is Ada.",
-            }
+            },
         ],
     }
 

@@ -57,6 +57,7 @@ class Record:
 class Verdict:
     ok: bool
     message: str
+    applies: bool = True  # False: nothing to check in this answer (shown, never counted)
 
 
 def passed(message: str) -> Verdict:
@@ -67,7 +68,12 @@ def failed(message: str) -> Verdict:
     return Verdict(False, message)
 
 
-CheckFn = Callable[[str, Record], Verdict | None]
+def skipped(message: str) -> Verdict:
+    """Nothing to check this time, and why: "Nothing was sent this run"."""
+    return Verdict(True, message, applies=False)
+
+
+CheckFn = Callable[[str, Record], Verdict | None]  # None = skipped, no reason given
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,14 +93,14 @@ def check(label: str, description: str) -> Callable[[CheckFn], Check]:
     return wrap
 
 
-Status = Literal["passed", "failed", "error"]
+Status = Literal["passed", "failed", "error", "skipped"]
 
 
 @dataclass(frozen=True, slots=True)
 class Result:
     name: str
     label: str
-    status: Status  # "error": the check itself broke; shown, never sent back
+    status: Status  # "error": the check broke; "skipped": nothing to check. Neither is sent back
     message: str
 
     def to_dict(self) -> dict[str, str]:
@@ -109,7 +115,7 @@ class Result:
 @check("Plan Complete", "If the agent wrote a plan, every item is done or skipped with a reason")
 def plan_complete(answer: str, record: Record) -> Verdict | None:
     if record.plan is None:
-        return None  # no plan: a light task (D-121)
+        return skipped("No plan was made: the agent treated the task as simple.")
     left = unfinished(record.plan)
     if not left:
         n = len(record.plan)
@@ -125,8 +131,9 @@ PLAN_CHECK = plan_complete
 
 
 def run_checks(checks: Sequence[Check], answer: str, record: Record) -> list[Result]:
-    """Every check that applies, in order. A check that raises is an error, not a failure:
-    a bug in a check must not make the model rewrite a good answer."""
+    """Every switched-on check, in order, so the page can account for each one. A check that
+    doesn't apply is "skipped" with its reason. A check that raises is an error, not a
+    failure: a bug in a check must not make the model rewrite a good answer."""
     results = []
     for c in checks:
         try:
@@ -134,9 +141,12 @@ def run_checks(checks: Sequence[Check], answer: str, record: Record) -> list[Res
         except Exception as error:
             results.append(Result(c.name, c.label, "error", f"{type(error).__name__}: {error}"))
             continue
-        if verdict is not None:
-            status: Status = "passed" if verdict.ok else "failed"
-            results.append(Result(c.name, c.label, status, verdict.message))
+        if verdict is None or not verdict.applies:
+            why = verdict.message if verdict else "Nothing to check in this answer."
+            results.append(Result(c.name, c.label, "skipped", why))
+            continue
+        status: Status = "passed" if verdict.ok else "failed"
+        results.append(Result(c.name, c.label, status, verdict.message))
     return results
 
 

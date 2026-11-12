@@ -1908,3 +1908,12 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
   .receipt-grid { flex-wrap: wrap; }
   .receipt-tokens, .receipt-fill { padding-left: 0; border-left: 0; }
 }
+.checks-card.is-retrying { border-color: color-mix(in srgb, var(--skip) 50%, var(--line)); background: color-mix(in srgb, var(--skip) 6%, var(--surface)); }
+.checks-card.is-retrying .card-title { color: var(--skip); }
+.checks-intro { margin: 0 0 8px; color: var(--text-soft); font-size: 12.5px; }
+.checks-next { margin: 8px 0 0; color: var(--skip); font-size: 12.5px; font-weight: 600; }
+.check-note { margin: 4px 0 0; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, var(--text) 5%, transparent); white-space: pre-wrap; font-size: 12px; }
+.check-item.is-skipped { opacity: 0.7; }
+.check-item.is-skipped .check-mark, .check-item.is-skipped .check-label { color: var(--muted); font-weight: 500; }
+.checks-card.is-skipped { border-color: var(--line); background: var(--surface); }
+.checks-card.is-skipped .card-title { color: var(--muted); }

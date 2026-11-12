@@ -288,23 +288,27 @@ class Harness:
             if reply.status == "completed" and not calls:
                 # VERIFY (S11): check the draft before the person sees it.
                 verdicts = run_checks(self.checks, reply.text, run.record(self.profile))
-                if not verdicts:
+                if not verdicts:  # no checks switched on
                     return finish("completed", "answered", reply.text)
                 rounds += 1
                 failures = [r for r in verdicts if r.status == "failed"]
                 retrying = bool(failures) and rounds <= self.retries
+                applied = any(r.status in ("passed", "failed") for r in verdicts)
                 checked = {
-                    "passed": not failures,
+                    # None: every check was skipped, so the answer is neither verified nor not.
+                    "passed": (not failures) if applied else None,
                     "rounds": rounds,
                     "results": [r.to_dict() for r in verdicts],
                 }
                 run.emit(
                     "verify_finished",
                     round=rounds,
-                    passed=not failures,
+                    passed=checked["passed"],
                     retrying=retrying,
                     results=checked["results"],
                     draft=reply.text if retrying else "",
+                    # What the agent is told, so the page can show it (S11).
+                    note=feedback(failures) if retrying else "",
                 )
                 if not retrying:
                     return finish("completed", "answered", reply.text)

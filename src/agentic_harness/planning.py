@@ -32,7 +32,9 @@ DESCRIPTION = (
     "a simple question directly, with no plan. Send the whole list every time. Mark an item "
     "doing when you start it and done when it is finished; you can update the list in the "
     "same reply as another tool call. If an item turns out to be unnecessary, mark it "
-    "skipped and say why in its note. Finish every item before you give your final answer."
+    "skipped and say why in its note. Finish every item before you give your final answer. "
+    "When you follow a skill's steps for such a task, write them here first: the skill is "
+    "the recipe, this list is your progress on it."
 )
 
 

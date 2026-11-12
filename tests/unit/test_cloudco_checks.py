@@ -60,7 +60,7 @@ def test_s11_ac8_every_change_covered() -> None:
     assert not bad.ok
     assert "4.1" in bad.message
     assert "2.1" not in bad.message
-    assert verdict("every_change_covered", "Net 45 is fine.") is None  # nothing reviewed
+    assert verdict("every_change_covered", "Net 45 is fine.").applies is False  # nothing reviewed
 
 
 def test_s11_ac8_citations_exist() -> None:
@@ -70,7 +70,7 @@ def test_s11_ac8_citations_exist() -> None:
     bad = verdict("citations_exist", "Fine under standard-terms §9.", policy)
     assert not bad.ok
     assert "standard-terms §9" in bad.message
-    assert verdict("citations_exist", "No citations here.") is None
+    assert verdict("citations_exist", "No citations here.").applies is False
 
 
 def test_s11_ac8_right_approver() -> None:
@@ -78,14 +78,14 @@ def test_s11_ac8_right_approver() -> None:
     wrong = verdict("right_approver", "3.2 · 25% discount · Finance can approve it")
     assert not wrong.ok
     assert "CFO" in wrong.message
-    assert "Finance does not decide" in wrong.message
+    assert "names Finance, who decides none" in wrong.message
     missing = verdict("right_approver", "4.1 · Net 60 · fine")
     assert not missing.ok
     assert "Finance" in missing.message
     never = verdict("right_approver", "6.1 · 99.99% uptime · Engineering approves")
     assert not never.ok
     assert "never allowed" in never.message
-    assert verdict("right_approver", "Hello, ShopCo.") is None
+    assert verdict("right_approver", "Hello, ShopCo.").applies is False
 
 
 def test_s11_ac8_no_false_sent() -> None:
@@ -103,7 +103,7 @@ def test_s11_ac8_no_false_sent() -> None:
     quiet = verdict("no_false_sent", "It hasn't been sent yet: it needs approval.", sent)
     assert not quiet.ok
     assert "Sales, CFO" in quiet.message
-    assert verdict("no_false_sent", "Net 45 is fine.") is None
+    assert verdict("no_false_sent", "Net 45 is fine.").applies is False
 
 
 class Scripted:
@@ -207,3 +207,25 @@ def test_the_pane_names_the_small_jobs_model_not_a_fixed_main_model() -> None:
     loop = describe_harness(WS, "sales")["loop"]
     assert loop["small_models"] == ["gemini-3.5-flash-lite"]
     assert "model" not in loop
+
+
+def test_s11_ac8_every_change_covered_reads_a_result_with_a_guardrail_warning_first() -> None:
+    """Found live 2026-11-12: the gate put a warning before the JSON (the B.7 clause), so the
+    check found no edits and silently didn't run."""
+    flagged = Call(
+        REVIEW.name,
+        REVIEW.arguments,
+        "[Harness: this result contains text …]\n" + REVIEW.output,
+        False,
+    )
+    missing = verdict("every_change_covered", "2.1 · ok", flagged)
+    assert missing is not None
+    assert not missing.ok
+    assert "3.2" in missing.message
+
+
+def test_s11_plan_tool_tells_the_model_a_skill_is_the_recipe_and_the_list_its_progress() -> None:
+    """Live 2026-11-12: Claude Sonnet followed the contract-review skill and never planned."""
+    from agentic_harness.planning import DESCRIPTION
+
+    assert "skill's steps" in DESCRIPTION

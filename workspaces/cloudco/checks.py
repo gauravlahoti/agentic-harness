@@ -3,7 +3,7 @@
 Not part of the harness: ``workspace.toml`` names this file under ``[verify]``; the harness
 runs whatever ``CHECKS`` lists and knows none of these words. Each check is plain code
 (D-126): free, exact, the same every time. It returns passed, failed (with a reason the
-agent can act on) or None when there is nothing to check.
+agent can act on) or skipped (with why there was nothing to check).
 
 - Every Change Covered  each contract change that matters gets a line in the answer
 - Citations Exist       every policy section the answer cites came back from a tool
@@ -19,7 +19,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from agentic_harness.verify import Record, Verdict, check, failed, passed
+from agentic_harness.verify import Record, Verdict, check, failed, passed, skipped
 
 HERE = Path(__file__).resolve().parent
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
@@ -32,8 +32,10 @@ def _edits(record: Record) -> list[dict[str, str]]:
     """Every edit review_contract returned (the agent's or its helper's), by clause."""
     found: dict[str, dict[str, str]] = {}
     for output in record.outputs("review_contract"):
+        # The gate may put a warning line first (an instruction found in the text, D-78):
+        # read the JSON from its first brace. Found live, 2026-11-12.
         try:
-            data = json.loads(output)
+            data, _ = json.JSONDecoder().raw_decode(output[output.find("{") :])
         except ValueError:
             continue
         for edit in data.get("edits", []) if isinstance(data, dict) else []:
@@ -59,7 +61,7 @@ def mentions(answer: str, clause: str) -> bool:
 def every_change_covered(answer: str, record: Record) -> Verdict | None:
     changes = [e for e in _edits(record) if matters(e)]
     if not changes:
-        return None  # no contract was reviewed in this run
+        return skipped("No contract was reviewed in this run.")
     missing = [e for e in changes if not mentions(answer, e["clause"])]
     if not missing:
         n = len(changes)
@@ -78,7 +80,7 @@ RETURNED = re.compile(r'"policy":\s*"([a-z-]+)",\s*"section":\s*"§(\d+)"')
 def citations_exist(answer: str, record: Record) -> Verdict | None:
     cited = {(p, n) for p, n in CITED.findall(answer)}
     if not cited:
-        return None
+        return skipped("The answer cites no policy section.")
     seen: set[tuple[str, str]] = set()
     for call in record.calls:
         if not call.is_error:  # search_policy's JSON, the skill's table, a helper's lines
@@ -113,13 +115,34 @@ def _terms(line: str) -> list[tuple[str, float | bool]]:
         arg = "discount_pct" if discount else "uptime_pct"
         terms += [(arg, p) for p in percents]
     terms += [("payment_days", float(n)) for n in re.findall(r"\bnet\s*(\d+)", low)]
-    if "liabilit" in low:
-        terms += [
-            ("liability_cap_months", float(n)) for n in re.findall(r"(\d+)[\s-]*months?", low)
-        ]
+    # "a 24-month cap" is a liability term too (found live: it was missed without "liability").
+    if "liabilit" in low or re.search(r"\bcap\b", low):
+        months = re.findall(r"(\d+)[\s-]*months?", low)
+        terms += [("liability_cap_months", float(n)) for n in months]
         if "unlimited" in low:
             terms.append(("unlimited_liability", True))
     return terms
+
+
+def _said(arg: str, value: float | bool) -> str:
+    """A term in the answer's own words: "99.95% uptime", "Net 60", "a 25% discount"."""
+    number = f"{value:g}" if not isinstance(value, bool) else ""
+    return {
+        "discount_pct": f"a {number}% discount",
+        "payment_days": f"Net {number}",
+        "uptime_pct": f"{number}% uptime",
+        "liability_cap_months": f"a {number}-month liability cap",
+        "unlimited_liability": "unlimited liability",
+    }[arg]
+
+
+def _where(line: str) -> str:
+    """Which line, briefly: its clause ID if it starts with one, else its first words."""
+    found = re.match(r"\W*(?:clause\s+)?([A-Z]?\d*\.\d+|[A-Z]\.\d+)\b", line, re.I)
+    if found:
+        return f"Line {found[1]}"
+    words = re.sub(r"[`*]", "", line).split()
+    return f'The line "{" ".join(words[:6])}…"'
 
 
 def _crosses(rule: dict[str, Any], arg: str, value: float | bool) -> bool:
@@ -130,36 +153,46 @@ def _crosses(rule: dict[str, Any], arg: str, value: float | bool) -> bool:
     return bool(value == rule.get("equals"))
 
 
+def _join(names: set[str]) -> str:
+    return " and ".join(sorted(names))
+
+
 @check("Right Approver", "Each term's decider matches CloudCo's approval chart")
 def right_approver(answer: str, record: Record) -> Verdict | None:
+    """Per line: a term that is never allowed must be refused; otherwise each term that
+    needs someone must name them; and no one may be named who decides none of the terms.
+    Sales is always fine to name: Sales approves every send (approval-chart §3)."""
     tables = _tables()
     approvals, rules = tables.get("approvals", []), tables.get("rules", [])
     roles = {a["approver"] for a in approvals}
     problems, checked = [], 0
     for line in (x.strip() for x in answer.splitlines()):
-        terms = _terms(line)
+        terms = list(dict.fromkeys(_terms(line)))  # once each, in order
         if not terms:
             continue
         checked += 1
-        never = any(_crosses(r, arg, v) for r in rules for arg, v in terms)
-        deciders = {a["approver"] for a in approvals for arg, v in terms if _crosses(a, arg, v)}
+        where = _where(line)
         named = {r for r in roles if re.search(rf"\b{re.escape(r)}\b", line)}
-        short = line[:80]
-        if never and not NEVER_WORDS.search(line):
-            problems.append(f'"{short}": this term is never allowed; say so')
-        elif not never and deciders and not named & deciders:
+        needs = {t: {a["approver"] for a in approvals if _crosses(a, *t)} for t in terms}
+        never = [t for t in terms if any(_crosses(r, *t) for r in rules)]
+        for t in never:
+            if not NEVER_WORDS.search(line):
+                problems.append(f"{where}: {_said(*t)} is never allowed, and it doesn't say so")
+        if not never:  # a refusal line may mention a counter-offer without its approver
+            for t, who in needs.items():
+                if who and not who & named:
+                    problems.append(f"{where}: {_said(*t)} needs {_join(who)}, not named")
+        deciders = set().union(*needs.values())
+        if wrong := named - deciders - {"Sales"}:
+            what = "; ".join(f"{_said(*t)} → {_join(w)}" for t, w in needs.items() if w)
             problems.append(
-                f'"{short}": needs {" and ".join(sorted(deciders))} (approval-chart §1)'
-            )
-        if wrong := named - deciders - {"Sales"}:  # Sales approves every send (§3)
-            problems.append(
-                f'"{short}": {", ".join(sorted(wrong))} does not decide this; '
-                f"{' and '.join(sorted(deciders)) or 'Sales'} does"
+                f"{where} names {_join(wrong)}, who decides none of its terms"
+                + (f" ({what})" if what else "")
             )
     if not checked:
-        return None
+        return skipped("The answer names no discount, payment, uptime or liability term.")
     if problems:
-        return failed("; ".join(problems) + ".")
+        return failed(". ".join(problems) + ". See approval-chart §1.")
     return passed(f"The deciders on {checked} line{'s' if checked > 1 else ''} match the chart.")
 
 
@@ -181,7 +214,7 @@ def no_false_sent(answer: str, record: Record) -> Verdict | None:
     worked = [c for c in sends if not c.is_error and '"status": "sent"' in c.output]
     claims = SAYS_SENT.search(answer) is not None and not NOT_SENT.search(answer)
     if not sends and not claims:
-        return None
+        return skipped("Nothing was sent, and the answer doesn't say it was.")
     if claims and not worked:
         return failed("The answer says it was sent, but no send worked this run.")
     if worked and not claims:
