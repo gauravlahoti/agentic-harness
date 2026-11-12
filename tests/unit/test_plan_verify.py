@@ -427,3 +427,39 @@ def test_s11_ac11_a_saved_turn_keeps_its_plan_and_checks(tmp_path: Path) -> None
     assert first.checks == checks
     assert second.plan is None
     assert second.checks is None
+
+
+def test_s11_trimming_keeps_a_skills_text_whole() -> None:
+    """Found live: stubbed mid-run, the reply skill's instructions vanished (D-123 extended)."""
+    from agentic_harness.skills import SKILL_TOOL
+
+    steps: list[Step] = [
+        *call(SKILL_TOOL, {"name": "reply"}, "s1"),
+        {
+            "type": "function_result",
+            "name": SKILL_TOOL,
+            "call_id": "s1",
+            "result": [{"type": "text", "text": "Step 1 " * 80}],
+        },
+        *call("find", {}, "f1"),
+        {
+            "type": "function_result",
+            "name": "find",
+            "call_id": "f1",
+            "result": [{"type": "text", "text": "x" * 500}],
+        },
+        *call("find", {}, "f2"),
+        {
+            "type": "function_result",
+            "name": "find",
+            "call_id": "f2",
+            "result": [{"type": "text", "text": "y" * 500}],
+        },
+    ]
+    out, cleared = prune(steps, keep_recent=1)
+    texts = {
+        s["call_id"]: s["result"][0]["text"] for s in out if s.get("type") == "function_result"
+    }
+    assert texts["s1"].startswith("Step 1")
+    assert texts["f1"].startswith("[")
+    assert cleared == 1

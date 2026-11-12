@@ -32,6 +32,11 @@ def verdict(name: str, answer: str, *calls: Call) -> Any:
     return CHECKS[name].fn(answer, Record(tuple(calls)))
 
 
+def review_format(answer: str) -> Any:
+    """Answer Format applies to a contract review: give it a run that reviewed one."""
+    return CHECKS["answer_format"].fn(answer, Record((REVIEW,)))
+
+
 REVIEW = out("review_contract", contract_id="CT-2207")
 GOOD = """2.1 · three-year term with prices fixed · OK for Sales (standard-terms §1)
 3.2 · 25% discount · needs the CFO (standard-terms §2)
@@ -78,14 +83,17 @@ def test_s11_ac8_right_approver() -> None:
     assert verdict("right_approver", GOOD).ok
     wrong = verdict("right_approver", "3.2 · 25% discount · Finance can approve it")
     assert not wrong.ok
-    assert "CFO" in wrong.message
-    assert "names Finance, who decides none" in wrong.message
+    assert "a 25% discount needs CFO, not named" in wrong.message
     missing = verdict("right_approver", "4.1 · Net 60 · fine")
     assert not missing.ok
     assert "Finance" in missing.message
-    never = verdict("right_approver", "6.1 · 99.99% uptime · Engineering approves")
+    never = verdict("right_approver", "6.1 · 99.99% uptime · OK, Engineering approves")
     assert not never.ok
-    assert "never allowed" in never.message
+    assert "never allowed, but it is accepted" in never.message
+    # Refused, with a counter-offer: fine, even without naming the counter's approver.
+    assert verdict(
+        "right_approver", "6.1 · 99.99% uptime is never allowed; counter with 99.95%."
+    ).ok
     assert verdict("right_approver", "Hello, ShopCo.").applies is False
 
 
@@ -249,24 +257,22 @@ def test_s11_ac14_answer_format() -> None:
   - Sales can offer 15% on its own.
 - **6.1 · Uptime**: 99.99%. Never; counter with 99.95% (`standard-terms §4`).
 Next: ask the CFO about 3.2."""
-    ok = verdict("answer_format", good)
+    ok = review_format(good)
     assert ok.ok
     assert "every decision among 2 items" in ok.message
-    starts_with_list = verdict(
-        "answer_format", "- **3.2 · Discount**: needs the CFO (`approval-chart §1`)\nmore\nmore"
+    starts_with_list = review_format(
+        "- **3.2 · Discount**: needs the CFO (`approval-chart §1`)\nmore\nmore"
     )
     assert not starts_with_list.ok
     assert "begin with one sentence" in starts_with_list.message
-    no_source = verdict("answer_format", good.replace(" (`standard-terms §4`)", ""))
+    no_source = review_format(good.replace(" (`standard-terms §4`)", ""))
     assert not no_source.ok
     assert "6.1" in no_source.message
     assert "3.2" not in no_source.message
     # Lists without IDs (next steps, a counter-offer) need no source; short answers are skipped.
     plain = "Here is the counter-offer.\n- **Net 45:** Sales approves.\n- Ask the CFO."
-    assert verdict("answer_format", plain).ok
-    assert (
-        verdict("answer_format", "Yes: Net 45 is standard (`standard-terms §3`).").applies is False
-    )
+    assert review_format(plain).ok
+    assert review_format("Yes: Net 45 is standard (`standard-terms §3`).").applies is False
 
 
 # Found live 2026-11-12 (Claude Haiku): the answer came as prose paragraphs.
@@ -288,7 +294,7 @@ def test_s11_ac8_right_approver_reads_sentences_not_paragraphs() -> None:
 
 
 def test_s11_ac14_answer_format_wants_a_list_for_several_clauses() -> None:
-    bad = verdict("answer_format", PROSE)
+    bad = review_format(PROSE)
     assert not bad.ok
     assert "own list line" in bad.message
 
@@ -304,3 +310,56 @@ def test_s11_a_loaded_skill_asks_for_a_plan_only_when_planning_is_on() -> None:
 
     assert "write_plan" in skill_text()
     assert "write_plan" not in skill_text(Off(tools=("write_plan",)))
+
+
+def test_s11_ac8_checks_on_follow_ups_and_drafts() -> None:
+    """Found live 2026-11-12, in follow-up turns and a customer email draft."""
+    # A section read in an earlier turn of the conversation counts.
+    policy = out("search_policy", query="discount")
+    cited = "25% needs the CFO (`standard-terms §2`)."
+    assert not CHECKS["citations_exist"].fn(cited, Record()).ok
+    assert CHECKS["citations_exist"].fn(cited, Record(earlier=(policy.output,))).ok
+    # "Nothing has been sent" and "once it is sent" are not claims that it was sent.
+    for text in (
+        "Nothing has been sent.",
+        "It goes out once it has been sent for approval.",
+        "It is not sent yet.",
+    ):
+        assert verdict("no_false_sent", text).applies is False, text
+    assert not verdict("no_false_sent", "The reply has been sent to ShopCo.").ok
+    sent = Call(
+        "send_to_customer", {}, json.dumps({"status": "sent", "approved_by": ["Sales"]}), False
+    )
+    assert verdict("no_false_sent", "Sent, approved by Sales.", sent).ok
+    # A customer email is not a review: Answer Format doesn't apply.
+    email = (
+        "Hi,\n- **9.2 · Liability**: we can offer a cap of 24 months. [PENDING: CFO]\nBest regards"
+    )
+    assert verdict("answer_format", email).applies is False
+
+
+def test_s11_the_prompt_names_the_switched_on_checks_before_the_agent_writes() -> None:
+    """D-132: found live, the agent learned the bar only from a failed check."""
+    from agentic_harness.api import Off
+
+    on = create_harness(Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None)
+    assert "## Before your answer reaches the person" in on.system
+    assert "- Right Approver: " in on.system
+    assert "- Plan Complete: " in on.system
+    off = Off(checks=("right_approver",))
+    h = create_harness(
+        Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
+    )
+    assert "- Right Approver: " not in h.system
+    assert "- Answer Format: " in h.system
+    child = on.tools["delegate_task"].function.make_child(WS.subagents[0], Limits())
+    assert "Before your answer reaches the person" not in child.system  # helpers aren't checked
+
+
+def test_s11_the_plan_reply_reminds_the_agent_to_close_items() -> None:
+    from agentic_harness.planning import Item, show
+
+    assert "before your final answer" in show([Item("Look up", "done"), Item("Answer", "open")])
+    assert "before your final answer" not in show(
+        [Item("Look up", "done"), Item("Answer", "skipped", "n/a")]
+    )

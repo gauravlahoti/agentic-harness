@@ -94,6 +94,8 @@ def find_skills(folders: Iterable[Path], root: Path) -> list[Skill]:
     return skills
 
 
+SKILL_TOOL = "load_skill"  # trimming keeps its results whole: they are instructions (S11)
+
 # Added after a skill's steps when the agent can keep a plan (S11). Found live: Sonnet and
 # Haiku both followed the skill and never planned; the skill is the recipe, the plan the progress.
 PLAN_HINT = (
@@ -115,7 +117,7 @@ def load_skill_tool(skills: Sequence[Skill], *, plan: bool = False) -> Tool:
         return text + (PLAN_HINT if plan else "")
 
     return Tool(
-        name="load_skill",
+        name=SKILL_TOOL,
         description="Read the full steps of one of your skills before doing that task.",
         risk="read",
         parameters={

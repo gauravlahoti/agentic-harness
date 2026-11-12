@@ -106,6 +106,7 @@ def create_harness(
         else off.skills,
         notes=notes,
         not_allowed=not_allowed_prompt(workspace, gate),
+        checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # D-132
     )
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.

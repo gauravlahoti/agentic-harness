@@ -978,6 +978,7 @@
 - **Instead of:** rewriting the system prompt each turn; adding a note at the end of every turn
 - **Because:** the prompt stays fixed (prompt caching, S02-AC8) and nothing invented enters the history
 - **Cost:** the plan sits where it was written, not at the end
+- **Extended 2026-11-12, live run:** a skill's text is never stubbed either. Stubbed mid-run, the reply skill's step to call the send tool vanished, and nothing was sent.
 
 ### D-124 · Stop rule: one reminder, then finish
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
@@ -1034,6 +1035,7 @@
 - **Cost:** a retry when the format slips
 - **Changed 2026-11-12, live run** (Haiku answered in paragraphs and the check passed it): three or more clauses written as paragraphs now fail ("put each on its own list line"). Right Approver now reads sentence by sentence, because a paragraph mixed terms and people and gave a false failure.
 - **Changed again 2026-11-12, your report** ("the right approver check is failing miserably"): both earlier units were wrong. A whole line mixed clauses in a paragraph; a sentence split "**3.2 · Discount**: 10% → 25%. Needs the CFO." in two. Right Approver now reads **claims**: a list item with its indented lines, or in prose the sentences from one "Clause X" to the next. Answer Format asks a source only of items that decide something (a term, a role or a verdict). A test runs both checks on six real answers from today's runs, each labelled by hand (`tests/unit/test_real_answers.py`); a change that flips any verdict fails it.
+- **Changed a third time 2026-11-12, your four live runs** (most failures were the checks'): Right Approver keeps only two real mistakes, a term whose decider isn't named and a never-allowed term that is *accepted*; the "wrong person named" rule is gone. Each percentage belongs to its nearest "discount" or "uptime"; a claim also starts at "Term 2.1" or "On uptime (6.1)". Answer Format applies only to a run that reviewed a contract, and stops at a heading after the review (a customer email is prose). No False "Sent" ignores "Nothing has been sent", "once it is sent"; reads "Sent, approved by …". Citations Exist counts sources read in earlier turns of the conversation. Fourteen real answers, labelled by hand, are the test.
 
 ### D-131 · The page does the styling
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
@@ -1041,3 +1043,17 @@
 - **Instead of:** asking the model for HTML or fixed headings
 - **Because:** styling is the page's job; the model writes simple markdown and every answer looks the same
 - **Cost:** a few more rules in `renderProse`
+
+### D-132 · The prompt names the checks before the agent writes
+✅ Accepted · S11 · your report ("human approvals not happening at all", "why the verifier always works the second time"), approved plan 2026-11-12
+- **Chose:** `build_context` adds "Before your answer reaches the person" with each switched-on check's label and description (helpers get none); `write_plan`'s reply asks to close open items before the final answer
+- **Instead of:** letting the agent learn the bar from a failed check
+- **Because:** found live: the first draft nearly always went back, and the note then told it exactly what to fix. The checks are the rules, so they belong in front of the agent
+- **Cost:** about 120 prompt tokens per call (cached)
+
+### D-133 · Sending is how approval starts (CloudCo wording)
+✅ Accepted · S11 · your report ("human approvals not happening at all", "why the verifier always works the second time"), approved plan 2026-11-12
+- **Chose:** the Sales file says: when asked to send, draft and call `send_to_customer` in the same task; the harness asks Sales, then Engineering, Finance or the CFO; don't wait for approvals or ask permission first. The reply skill: "send the contract" means send the counter-offer reply
+- **Instead of:** "Nothing is sent to a customer without a person approving it first"
+- **Because:** found live: that sentence read as "get approval, then send", so the agent never called the send tool and no approval card ever appeared. The harness gate was fine; the words weren't
+- **Cost:** none in the harness; a test locks the path (send → Sales → Engineering → CFO → outbox)

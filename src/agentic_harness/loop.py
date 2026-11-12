@@ -162,6 +162,12 @@ class Harness:
         budget = Budget(self.limits)
         declarations = [tool.declaration() for tool in self.visible_tools()]
         steps: list[Step] = [*history, user_input(task)]
+        # What tools returned in earlier turns, whole as saved: a check may count it (S11).
+        earlier = tuple(
+            "".join(p.get("text", "") for p in s.get("result", []) if isinstance(p, dict))
+            for s in history
+            if s.get("type") == "function_result" and not s.get("is_error")
+        )
         # A question with no reply is not kept: it would leave a dangling turn in the history.
         unsaved: list[Step] = [steps[-1]]
 
@@ -294,7 +300,8 @@ class Harness:
                         round=rounds + 1,
                         checks=[{"name": c.name, "label": c.label} for c in self.checks],
                     )
-                verdicts = run_checks(self.checks, reply.text, run.record(self.profile))
+                # ("record" is the save-steps callback here: this is what the checks read.)
+                verdicts = run_checks(self.checks, reply.text, run.record(self.profile, earlier))
                 if not verdicts:  # no checks switched on
                     return finish("completed", "answered", reply.text)
                 rounds += 1
@@ -538,9 +545,9 @@ class _Run:
         self.calls: list[Call] = []
         self._started: dict[tuple[str, str], tuple[str, dict[str, Any]]] = {}
 
-    def record(self, profile: str | None = None) -> Record:
+    def record(self, profile: str | None = None, earlier: tuple[str, ...] = ()) -> Record:
         plan = tuple(self.plan) if self.plan is not None else None
-        return Record(tuple(self.calls), plan, profile)
+        return Record(tuple(self.calls), plan, profile, earlier)
 
     def emit(self, type_: str, **data: Any) -> None:
         key = (str(data.get("agent_id", "")), str(data.get("call_id", "")))

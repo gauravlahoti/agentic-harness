@@ -42,11 +42,13 @@ class Call:
 
 @dataclass(frozen=True, slots=True)
 class Record:
-    """What a check may look at: every call of the run, the plan, who asked."""
+    """What a check may look at: every call of the run, the plan, who asked, and what tools
+    returned in earlier turns of the conversation (a follow-up may rely on them)."""
 
     calls: tuple[Call, ...] = ()
     plan: tuple[Item, ...] | None = None
     profile: str | None = None
+    earlier: tuple[str, ...] = ()  # tool outputs from earlier turns, as saved (not trimmed)
 
     def outputs(self, name: str) -> list[str]:
         """What a tool returned, for each call that worked, in order."""
@@ -112,7 +114,7 @@ class Result:
         }
 
 
-@check("Plan Complete", "If the agent wrote a plan, every item is done or skipped with a reason")
+@check("Plan Complete", "If a plan was written, every item is done or skipped with a reason")
 def plan_complete(answer: str, record: Record) -> Verdict | None:
     if record.plan is None:
         return skipped("No plan was made: the agent treated the task as simple.")

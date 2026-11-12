@@ -21,7 +21,14 @@ from typing import Any
 from agentic_harness.loop import SYSTEM_PROMPT
 from agentic_harness.scope import scope_prompt
 from agentic_harness.skills import Skill
+from agentic_harness.verify import Check
 from agentic_harness.workspace import MemoryFile, Workspace
+
+CHECKS_HEADER = (
+    "## Before your answer reaches the person\n\n"
+    "The harness checks every final answer; a failure comes back to you once. Make sure yours "
+    "passes:"
+)
 
 SKILLS_HEADER = (
     "## Skills\n"
@@ -66,6 +73,7 @@ def build_context(
     skip_skills: Collection[str] = (),
     notes: str = "",
     not_allowed: str = "",
+    checks: Collection[Check] = (),
 ) -> Context:
     files = workspace.memory_files(profile)
     # A switched-off skill is not even listed: the model can't ask for it (D-70).
@@ -80,6 +88,11 @@ def build_context(
     if skills:
         lines = [f"- {s.name}: {s.description} ({s.source})" for s in skills]
         parts.append(SKILLS_HEADER + "\n" + "\n".join(lines))
+    if checks:
+        # The bar, before the agent writes (D-132): found live, it learned it only from a
+        # failed check, so the first draft nearly always went back.
+        lines = [f"- {c.label}: {c.description}" for c in checks]
+        parts.append(CHECKS_HEADER + "\n" + "\n".join(lines))
     if notes.strip():
         # Last, so the start of the prompt is the same with or without notes (caching, D-92).
         parts.append(f"## Notes from earlier tasks\n\n{notes.strip()}")

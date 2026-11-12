@@ -117,6 +117,8 @@ def show(items: Sequence[Item]) -> str:
     lines = [f"Plan saved ({done} of {len(items)} done):"]
     for i in items:
         lines.append(f"{BOXES[i.status]} {i.text}" + (f" ({i.note})" if i.note else ""))
+    if unfinished(items):  # found live: the agent answered with items still open
+        lines.append("Mark every item done, or skipped with why, before your final answer.")
     return "\n".join(lines)
 
 
