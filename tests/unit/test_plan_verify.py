@@ -463,3 +463,10 @@ def test_s11_trimming_keeps_a_skills_text_whole() -> None:
     assert texts["s1"].startswith("Step 1")
     assert texts["f1"].startswith("[")
     assert cleared == 1
+
+
+def test_d146_two_questions_in_one_message_are_worth_a_plan() -> None:
+    """Found live: "is ShopCo a customer? If yes, pull the contract" made no plan."""
+    from agentic_harness.planning import DESCRIPTION
+
+    assert "two or more things in one message" in DESCRIPTION

@@ -397,3 +397,19 @@ async def test_d143_engineering_reads_only_technical_sections(tools: dict[str, T
             tools, "read_contract", engineering, contract_id="CT-2207", section=section
         )
         assert set(hidden) == {"contract_id", "section", "hidden"}  # no text, no titles
+
+
+async def test_d146_the_outline_shows_each_sections_key_term(tools: dict[str, Tool]) -> None:
+    """Found live: the outline had only section names; the substance is in five short clauses."""
+    theirs = await call(tools, "read_contract", SALES, contract_id="CT-2207")
+    keys = {k["clause"]: k["text"] for x in theirs["sections"] for k in x["key_terms"]}
+    assert set(keys) == MATERIAL
+    assert "25%" in keys["3.2"]
+    assert "Net 60" in keys["4.1"]
+    assert len(json.dumps(theirs)) < 3500
+    ours = await call(tools, "read_contract", SALES, contract_id="CT-2207", version="standard")
+    standard = {k["clause"]: k["text"] for x in ours["sections"] for k in x["key_terms"]}
+    assert "10%" in standard["3.2"]
+    engineering = ToolContext("run-1", CLOUDCO, profile="engineering")
+    eng = await call(tools, "read_contract", engineering, contract_id="CT-2207")
+    assert [k["clause"] for x in eng["sections"] for k in x["key_terms"]] == ["6.1"]

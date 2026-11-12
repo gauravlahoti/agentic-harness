@@ -10,6 +10,8 @@ agent can act on) or skipped (with why there was nothing to check).
 - Right Approver        the decider named for a term matches CloudCo's approval tables
 - No False "Sent"       says sent only if a send worked, and says so when one did
 - Answer Format         bottom line first; every item line cites a source (answer-style.md)
+- Records Match         every record ID came back from a tool; a quoted key term matches its clause
+- Sections Are Real     every clause the answer names exists in the contract it read
 
 All of CloudCo is made up.
 """
@@ -442,5 +444,127 @@ def body_matches_terms(arguments: dict[str, Any], record: Record) -> Verdict | N
     return failed("Not sent: " + "; ".join(problems) + ".")
 
 
-CHECKS = [every_change_covered, citations_exist, right_approver, no_false_sent, answer_format]
+# ── Records Match / Sections Are Real (D-146): a pull of a record or a contract ──────────
+# Found live: "is ShopCo a customer? pull the contract" had "6 didn't apply", nothing checked.
+
+RECORD_ID = re.compile(r"\b(?:CUS|CT|DL|UP|INV)-\d{4}(?:-\d{2})?\b")
+# A clause ID like 3.2 or B.7, never part of a number like 99.99 or a range's "1.12" digits.
+CLAUSE_ID = re.compile(r"(?<![\w.$])((?:\d{1,2}|[A-Z])\.\d{1,2})(?![\d%.]|x\b)")
+TERM_NUMBER = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|years?|months?)|Net\s*(\d+)", re.I)
+
+
+def _outputs(record: Record) -> list[str]:
+    return [c.output for c in record.calls if not c.is_error] + list(record.earlier)
+
+
+def _contract_reads(record: Record) -> list[dict[str, Any]]:
+    """Every read_contract result in this run, parsed."""
+    found = []
+    for output in record.outputs("read_contract"):
+        try:
+            data, _ = json.JSONDecoder().raw_decode(output[output.find("{") :])
+        except ValueError:
+            continue
+        if isinstance(data, dict):
+            found.append(data)
+    return found
+
+
+def _clause_texts(record: Record) -> dict[str, str]:
+    """Clause ID → every text a tool returned for it (both versions, if both were read)."""
+    texts: dict[str, str] = {}
+
+    def add(cid: str, text: str) -> None:
+        texts[cid] = f"{texts.get(cid, '')} {text}"
+
+    for data in _contract_reads(record):
+        for section in data.get("sections", []):
+            for key in section.get("key_terms", []):
+                add(key["clause"], key["text"])
+        for clause in data.get("clauses", []):
+            add(clause["clause"], clause["text"])
+    for edit in _edits(record):
+        add(edit["clause"], f"{edit.get('removed', '')} {edit.get('added', '')}")
+    return texts
+
+
+@check(
+    "Records Match",
+    "Every record ID in the answer came back from a tool, and a key term quoted from a "
+    "contract clause matches that clause",
+)
+def records_match(answer: str, record: Record) -> Verdict | None:
+    ids = set(RECORD_ID.findall(answer))
+    texts = _clause_texts(record)
+    if not ids and not texts:
+        return skipped("The answer names no record and no contract was read.")
+    seen = " ".join(_outputs(record))
+    unknown = sorted(i for i in ids if i not in seen)
+    wrong = []
+    # Term quotes are checked only in a pull: a review's lines also carry counter-offers
+    # ("99.99% → counter with 99.95%"), which are ours, not the clause's (tested on 14 answers).
+    pull = bool(_contract_reads(record)) and not record.outputs("review_contract")
+    other = " ".join(c.output for c in record.calls if c.name != "read_contract")
+    for unit in _units(answer) if pull else []:
+        clauses = [c for c in CLAUSE_ID.findall(unit) if c in texts]
+        if len(clauses) != 1:
+            continue  # one clause per line, or the numbers can't be tied to it
+        cid = clauses[0]
+        clause_numbers = set(NUMBER.findall(texts[cid].replace("(", " ")))
+        words = {"three": "3", "one": "1", "twelve": "12", "two": "2"}
+        clause_numbers |= {n for w, n in words.items() if w in texts[cid].lower()}
+        clause_numbers |= set(NUMBER.findall(other))  # a record or policy the answer also cites
+        for match in TERM_NUMBER.finditer(unit):
+            number = match[1] or match[2]
+            if number not in clause_numbers:
+                wrong.append(f"{cid} says {match[0].strip()}, but the clause doesn't")
+    problems = [f"never returned by a tool: {', '.join(unknown)}"] if unknown else []
+    problems += wrong
+    if problems:
+        return failed("; ".join(problems) + ". Use only what the tools returned.")
+    parts = [f"{len(ids)} record ID{'s' if len(ids) != 1 else ''} found in tool results"]
+    if texts:
+        parts.append("quoted terms match their clauses")
+    return passed(", ".join(parts) + ".")
+
+
+@check(
+    "Sections Are Real",
+    "Every clause the answer names exists in the contract read_contract returned",
+)
+def sections_are_real(answer: str, record: Record) -> Verdict | None:
+    reads = _contract_reads(record)
+    if not reads:
+        return skipped("No contract was read with read_contract in this run.")
+    valid: set[str] = set()
+    for data in reads:
+        for section in data.get("sections", []):
+            first, _, last = section.get("clauses", "").partition(" to ")
+            if first and last:
+                head = first.split(".")[0]
+                lo, hi = int(first.split(".")[1]), int(last.split(".")[1])
+                valid |= {f"{head}.{n}" for n in range(lo, hi + 1)}
+        valid |= {c["clause"] for c in data.get("clauses", [])}
+    valid |= {e["clause"] for e in _edits(record)}
+    named = set(CLAUSE_ID.findall(answer))
+    invented = sorted(named - valid)
+    if invented:
+        return failed(
+            f"Not in the contract as read: {', '.join(invented)}. Name only clauses "
+            "read_contract returned."
+        )
+    return passed(
+        f"{len(named)} clause{'s' if len(named) != 1 else ''} named, all in the contract."
+    )
+
+
+CHECKS = [
+    every_change_covered,
+    citations_exist,
+    right_approver,
+    no_false_sent,
+    answer_format,
+    records_match,
+    sections_are_real,
+]
 ACTION_CHECKS = [body_matches_terms]

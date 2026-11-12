@@ -1143,3 +1143,10 @@
 - **Options:** (a) lean to IN when unsure; (b) a workspace `[scope] knows` text of names; (c) load the customer file into the check.
 - **Chose:** (a) and (b). The check says OUT only when clearly unrelated, and a name it doesn't recognise counts as IN. `knows` is appended as "Also in scope". (c) rejected: it couples the harness to data files and costs tokens every task.
 - **Cost:** a few more off-topic questions may reach the agent, whose own Scope prompt still declines clearly unrelated ones. The names are the workspace's to keep current.
+
+## D-146 · A contract pull is planned, checked and shows the substance (2026-11-12)
+- **Found live:** "is ShopCo a customer? If yes, pull the contract" made no plan, all 6 checks "didn't apply", and the answer listed only section names.
+- **Causes:** my D-143 team wording said "no plan"; the plan tool said "3 or more parts" (this was two); every CloudCo check was about a review or a send; the outline had titles and clause ranges only.
+- **Chose:** (1) the plan tool also plans when the person asks two or more things in one message, and the team files no longer say "no plan"; (2) the outline gives each section's `key_terms`, the clauses that set a real term (2.1, 3.2, 4.1, 6.1, 9.2 for CT-2207), told apart from the boilerplate by its "relating to" wording in this made-up contract; (3) two checks: **Records Match** (record IDs came back from a tool; in a pull, a quoted term matches its clause) and **Sections Are Real** (named clauses exist in what read_contract returned, so nothing Engineering can't see).
+- **Why the term half only in a pull:** reviews put our counter-offers on the same line as the clause ID; on the 14 real answers that gave 13 false failures, now 0 (a test keeps it at 0).
+- **Cost:** a two-part question costs one more model call (the plan). D-143's "no plan" wording was wrong and is removed.

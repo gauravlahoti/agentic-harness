@@ -24,7 +24,8 @@ CTX = ToolContext("t", ROOT, profile="sales")
 
 
 def out(name: str, **args: Any) -> Call:
-    value = TOOLS[name].function(**args, ctx=CTX)
+    tool = TOOLS[name]
+    value = tool.function(**args, ctx=CTX) if tool.takes_ctx else tool.function(**args)
     return Call(name, args, json.dumps(value, ensure_ascii=False), False)
 
 
@@ -53,6 +54,8 @@ def test_s11_ac8_the_workspace_declares_its_checks_and_the_plan() -> None:
         "right_approver",
         "no_false_sent",
         "answer_format",
+        "records_match",
+        "sections_are_real",
     ]
     assert WS.plan
     assert WS.verify_retries == 1
@@ -175,6 +178,8 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
         "citations_exist",
         "no_false_sent",
         "answer_format",
+        "records_match",
+        "sections_are_real",
     ]
     pane = describe_harness(WS, "sales")["verify"]
     assert pane["plan_on"]
@@ -417,3 +422,77 @@ def test_the_retry_note_asks_for_an_answer_written_for_the_person() -> None:
 
     note = feedback([Result("x", "X", "failed", "wrong")])
     assert "don't mention these checks or your earlier draft" in note
+
+
+# ── A contract pull (D-146): found live, a pull had "6 didn't apply" and nothing checked it ──
+
+CUSTOMER = out("lookup_customer_record", record="customer", customer="ShopCo")
+OUTLINE = out("read_contract", contract_id="CT-2207")
+PULL = (CUSTOMER, OUTLINE)
+PULLED = """Yes, ShopCo is an existing customer `CUS-0042`, with one contract, CT-2207 `CT-2207`.
+- **2 · Term and renewal**: 2.1 three years, prices fixed.
+- **3 · Fees and discounts**: 3.2 a 25% discount.
+- **4 · Invoicing and payment**: 4.1 Net 60.
+- **6 · Service levels**: 6.1 99.99% uptime.
+- **9 · Liability**: 9.2 unlimited.
+- **10 · Confidentiality**: 10.1 to 10.12, standard wording."""
+
+
+def test_d146_records_match_passes_a_true_pull() -> None:
+    v = verdict("records_match", PULLED, *PULL)
+    assert v.applies, v.message
+    assert v.ok, v.message
+
+
+def test_d146_records_match_fails_an_invented_id() -> None:
+    v = verdict("records_match", PULLED.replace("CUS-0042", "CUS-9999"), *PULL)
+    assert not v.ok
+    assert "CUS-9999" in v.message
+
+
+def test_d146_records_match_fails_a_misquoted_term() -> None:
+    v = verdict("records_match", PULLED.replace("a 25% discount", "a 20% discount"), *PULL)
+    assert not v.ok
+    assert "3.2" in v.message
+    assert "20" in v.message
+
+
+def test_d146_sections_are_real_passes_a_true_pull_and_fails_an_invented_clause() -> None:
+    good = verdict("sections_are_real", PULLED, *PULL)
+    assert good.applies, good.message
+    assert good.ok, good.message
+    bad = verdict(
+        "sections_are_real", PULLED + "\n- **13 · Escrow**: 13.1 source code escrow.", *PULL
+    )
+    assert not bad.ok
+    assert "13.1" in bad.message
+
+
+def test_d146_sections_are_real_knows_what_engineering_may_see() -> None:
+    engineering = ToolContext("t", ROOT, profile="engineering")
+    value = TOOLS["read_contract"].function(contract_id="CT-2207", ctx=engineering)
+    outline = Call("read_contract", {"contract_id": "CT-2207"}, json.dumps(value), False)
+    assert verdict("sections_are_real", "6.1 says 99.99% uptime.", outline).ok
+    assert not verdict("sections_are_real", "3.2 gives 25% off.", outline).ok
+
+
+def test_d146_pull_checks_skip_a_review_and_a_plain_chat() -> None:
+    assert not verdict("sections_are_real", GOOD, REVIEW).applies  # no read_contract
+    assert not verdict("records_match", "Hello! How can I help?").applies
+
+
+def test_d146_pull_checks_never_fail_a_real_review_or_send() -> None:
+    """The 14 real answers (reviews, sends) put counter-offers by clause IDs: no false fail."""
+    records = (
+        REVIEW,
+        out("search_policy", query="discount payment uptime liability term"),
+        out("lookup_customer_record", record="customer", customer="ShopCo"),
+        out("lookup_customer_record", record="uptime"),
+        out("lookup_customer_record", record="payments", customer="ShopCo"),
+    )
+    answers = sorted((Path(__file__).parents[1] / "fixtures" / "answers").glob("*.md"))
+    assert len(answers) == 14
+    for file in answers:
+        for name in ("records_match", "sections_are_real"):
+            v = verdict(name, file.read_text(), *records)
+            assert v.ok or not v.applies, f"{name} on {file.name}: {v.message}"
