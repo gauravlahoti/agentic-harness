@@ -391,24 +391,48 @@ class Harness:
                 approved, note, who = True, "", ""
                 given: list[dict[str, str]] = []  # who approved, in order: the tool may record it
                 if decision and decision.kind == "ask":
-                    asks = decision.approvals
-                    for number, ask in enumerate(asks, 1):
+                    # One request per person, in order: a role with several rules is asked
+                    # once for all of them. Every card shows the whole chain and what each
+                    # person decides (your request, 2026-11-12: the first card listed every
+                    # term, so it read as if the first approver decided them all).
+                    steps: dict[str, list[Any]] = {}
+                    for ask in decision.approvals:
+                        steps.setdefault(ask.approver, []).append(ask)
+                    chain = [
+                        {
+                            "approver": who_,
+                            "rules": [
+                                {
+                                    "label": r.label or r.tool,
+                                    "because": r.because,
+                                    "arg": r.arg,
+                                    "value": arguments.get(r.arg) if r.arg else None,
+                                }
+                                for r in rules
+                            ],
+                        }
+                        for who_, rules in steps.items()
+                    ]
+                    for number, (approver, rules) in enumerate(steps.items(), 1):
+                        labels = "; ".join(r.label or r.tool for r in rules)
                         request = ApprovalRequest(
                             run.id,
                             call_id or "",
                             name,
                             dict(arguments),
-                            ask.because,
-                            approver=ask.approver,
+                            "; ".join(dict.fromkeys(r.because for r in rules if r.because)),
+                            approver=approver,
                             step=number,
-                            of=len(asks),
+                            of=len(steps),
                         )
-                        approved, note = await self._pause(run, request, budget, rule=ask.label)
-                        who = ask.approver
+                        approved, note = await self._pause(
+                            run, request, budget, rule=labels, chain=chain
+                        )
+                        who = approver
                         given.append(
                             {
-                                "approver": ask.approver,
-                                "rule": ask.label or ask.tool,
+                                "approver": approver,
+                                "rule": labels,
                                 "at": time.strftime("%Y-%m-%d %H:%M:%S"),
                                 "note": note,
                                 "approved": "yes" if approved else "no",

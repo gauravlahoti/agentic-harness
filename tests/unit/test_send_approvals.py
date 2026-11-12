@@ -76,3 +76,57 @@ async def test_d133_a_send_asks_sales_then_engineering_then_the_cfo(tmp_path: Pa
     assert asked == ["Sales", "Engineering", "CFO"]  # from the sender up (D-120)
     assert list((tmp_path / "cloudco" / "outbox").glob("*CUS-0042.md"))
     assert result.outcome == "completed"
+
+
+async def test_each_person_is_asked_once_and_every_card_shows_the_chain(tmp_path: Path) -> None:
+    """Your report: card 1 of 4 (Sales) listed the 25% discount, so it read as if Sales
+    approved it. Now: one card per person (the CFO once, for both rules), and every card
+    carries the chain with what each person decides."""
+    workspace = Workspace.load(shutil.copytree(ROOT, tmp_path / "cloudco"))
+    asked: list[str] = []
+
+    async def approve(request: ApprovalRequest) -> tuple[bool, str]:
+        asked.append(request.approver)
+        return True, ""
+
+    send: Step = {
+        "type": "function_call",
+        "id": "s1",
+        "name": "send_to_customer",
+        "arguments": {
+            "customer_id": "CUS-0042",
+            "subject": "Counter-offer",
+            "body": "We can offer a 25% discount, 99.95% uptime and a liability cap of 24 months.",
+            "discount_pct": 25,
+            "uptime_pct": 99.95,
+            "liability_cap_months": 24,
+        },
+    }
+    answer: Step = {
+        "type": "model_output",
+        "content": [{"type": "text", "text": "Sent, approved by all."}],
+    }
+    harness = create_harness(
+        Scripted([send], [answer]),
+        Limits(),
+        workspace,
+        profile="sales",
+        trace_dir=None,
+        memory_dir=None,
+        approver=approve,
+    )
+    harness.scope_check = None
+    events: list[Any] = []
+    harness.subscribe(events.append)
+    await harness.run("Send ShopCo the counter-offer.")
+    assert asked == ["Sales", "Engineering", "CFO"]  # the CFO once, not twice
+    cards = [e.data for e in events if e.type == "approval_requested"]
+    assert [(c["step"], c["of"]) for c in cards] == [(1, 3), (2, 3), (3, 3)]
+    chain = cards[0]["chain"]
+    assert [c["approver"] for c in chain] == ["Sales", "Engineering", "CFO"]
+    cfo = chain[2]["rules"]
+    assert [(r["arg"], r["value"]) for r in cfo] == [
+        ("discount_pct", 25),
+        ("liability_cap_months", 24),
+    ]
+    assert cards[0]["rule"] == "Any message to a customer"  # what Sales approves: the send

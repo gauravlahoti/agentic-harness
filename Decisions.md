@@ -955,6 +955,7 @@
 - **Instead of:** specialists first, Sales last; a "not sent" status
 - **Because:** a person reads approvals as an escalation, owner first and most senior last; and the agent can only report what the tool tells it
 - **Cost:** none in the harness (CloudCo's data and tool only); the eval test that scripts "CFO rejects" now sees Sales approve first
+- **Changed 2026-11-12, your report** ("I thought 25% can't be approved by Sales"): each person is asked **once**, for all their rules (the CFO: discount and liability cap together, so 3 steps, not 4), still from the sender up. Every card says what that person approves (their rules and their terms as chips), shows the whole chain with each step's state, and folds the email with every term → who decides. The first card had listed every term next to "Approve as Sales".
 
 ### D-121 · The model decides when a task needs a plan
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)

@@ -1968,3 +1968,49 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .part-memory .act-text { color: var(--part-memory); }
 .file-row { list-style: none; margin: 4px 0 10px 31px; }
 @media (max-width: 600px) { .file-row { margin-left: 0; } }
+/* An approval card (your request, 2026-11-12): who, what this person decides, the chain. */
+.approval-v2 { padding: 0; overflow: hidden; border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 8px 24px -16px color-mix(in srgb, var(--part-guard) 45%, transparent); }
+.approval-v2 > * { margin-left: 18px; margin-right: 18px; }
+.approval-v2 .approval-head { margin: 0; padding: 14px 18px; gap: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--part-guard) 10%, var(--surface)), var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--part-guard) 18%, var(--line)); margin-left: 0; margin-right: 0; }
+.approval-avatar { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--part-guard); color: var(--surface); font-weight: 700; font-size: 16px; }
+.approval-who { display: grid; gap: 1px; min-width: 0; }
+.approval-name { font-size: 15px; }
+.approval-sub { color: var(--muted); font-size: 12px; }
+.approval-v2 .approval-clock { align-self: start; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text) 5%, transparent); }
+.approval-focus { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--part-guard); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--part-guard) 6%, var(--surface)); }
+.approval-kicker { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.approval-what { margin: 3px 0 0; font-size: 16.5px; font-weight: 650; line-height: 1.35; }
+.approval-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.approval-term { padding: 3px 11px; border-radius: 999px; background: var(--part-guard); color: var(--surface); font-size: 13px; font-weight: 650; }
+.approval-rule { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.approval-chain { display: flex; gap: 0; margin-top: 16px; padding: 0; list-style: none; counter-reset: none; }
+.chain-step { position: relative; flex: 1 1 0; display: grid; justify-items: center; gap: 3px; min-width: 0; text-align: center; }
+.chain-step + .chain-step::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+.chain-step.is-done + .chain-step::before, .chain-step.is-now::before { background: color-mix(in srgb, var(--pass) 55%, var(--line)); }
+.chain-node { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.chain-step.is-done .chain-node { border-color: var(--pass); background: var(--pass); color: var(--surface); }
+.chain-step.is-now .chain-node { border-color: var(--part-guard); background: var(--part-guard); color: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--part-guard) 22%, transparent); }
+.chain-step.is-stopped .chain-node { border-color: var(--fail); background: var(--fail); color: var(--surface); }
+.chain-name { font-size: 13px; }
+.chain-step.is-next .chain-name { color: var(--muted); font-weight: 600; }
+.chain-what { max-width: 100%; padding: 0 4px; color: var(--muted); font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.chain-step.is-now .chain-what { color: var(--text-soft); }
+.approval-all { margin-top: 14px; font-size: 13px; }
+.approval-all > summary { cursor: pointer; color: var(--text-soft); font-weight: 600; }
+.approval-all .facts { margin-top: 8px; }
+.approval-all .facts dd { white-space: pre-wrap; max-height: 220px; overflow: auto; }
+.approval-v2 .approval-field { display: block; box-sizing: border-box; width: calc(100% - 36px); margin-top: 12px; }
+.approval-v2 .approval-actions { margin-top: 10px; }
+.approval-v2 .approval-demo { margin-top: 8px; margin-bottom: 14px; }
+.approval-v2 .approval-result, .approval-v2 .approval-nothing { margin-bottom: 14px; }
+.approval-v2.approved { box-shadow: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .chain-step.is-now .chain-node { animation: chain-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes chain-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--part-guard) 10%, transparent); } }
+@media (max-width: 600px) {
+  .approval-chain { display: grid; gap: 10px; }
+  .chain-step { grid-template-columns: 28px auto; justify-items: start; text-align: left; column-gap: 10px; }
+  .chain-step + .chain-step::before { display: none; }
+  .chain-what { grid-column: 2; }
+}

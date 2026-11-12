@@ -1146,24 +1146,43 @@ function onLaneEvent(ev, turn) {
   }
 }
 
+// "rate_pct", 5 → "rate 5%"; "notice_days", 30 → "notice 30 days". Generic: it
+// reads only the name's ending, never a workspace's terms.
+function termText(arg, value) {
+  const unit = { pct: "%", days: " days", months: " months" }[arg.match(/_(pct|days|months)$/)?.[1]] ?? "";
+  const name = arg.replace(/_(pct|days|months)$/, "").replaceAll("_", " ");
+  return value === true ? name : `${name} ${value}${unit}`;
+}
+
+// What one person in the chain decides: their terms, or the rule's name when it has none.
+function decides(step) {
+  const own = step.rules.filter((r) => r.arg);
+  return own.length ? own.map((r) => termText(r.arg, r.value)).join(" · ") : step.rules.map((r) => r.label).join(" · ");
+}
+
 // ⏸ Human in the loop (D-79): the run waits here until you approve or reject.
 function approvalCard(turn, d) {
   const asking = d.kind === "question";
   const role = d.approver || "you";
+  const mine = (d.chain ?? []).find((c) => c.approver === d.approver);
+  const what = mine ? decides(mine) : d.rule || d.name;
   const row = addActivity(turn, {
-    text: asking ? "⏸ The agent has a question for you" : `⏸ Waiting for ${role}${d.of > 1 ? ` · ${d.step} of ${d.of}` : ""} · ${d.name}`,
+    text: asking ? "⏸ The agent has a question for you" : `⏸ Waiting for ${role}${d.of > 1 ? ` · step ${d.step} of ${d.of}` : ""} · ${what}`,
     part: "guard",
     facts: [["Why", d.because]],
     raw: d,
   });
-  const card = el("div", "approval-card");
+  const card = el("div", asking ? "approval-card" : "approval-card approval-v2");
   const head = el("div", "approval-head");
   const countdown = el("span", "approval-clock");
-  head.append(
-    el("span", "approval-role", asking ? "Question" : `Needs ${d.approver || "a person"}`),
-    ...(d.of > 1 ? [el("span", "approval-step", `${d.step} of ${d.of}`)] : []),
-    countdown,
-  );
+  if (asking) {
+    head.append(el("span", "approval-role", "Question"), countdown);
+  } else {
+    // Who, and which step: an avatar, the role, "Step 1 of 3".
+    const who = el("div", "approval-who");
+    who.append(el("strong", "approval-name", d.approver || "A person"), el("span", "approval-sub", d.of > 1 ? `Step ${d.step} of ${d.of} · approval needed` : "Approval needed"));
+    head.append(el("span", "approval-avatar", (d.approver || "?").charAt(0).toUpperCase()), who, countdown);
+  }
   const buttons = el("div", "approval-actions");
   const field = el(asking ? "textarea" : "input", "approval-field");
   field.setAttribute("aria-label", asking ? "Your answer" : "Reason, shown to the agent if you reject");
@@ -1178,13 +1197,36 @@ function approvalCard(turn, d) {
   if (asking) {
     card.append(head, el("p", "approval-question", d.arguments?.question ?? ""), field, buttons);
   } else {
-    const terms = facts(
-      Object.entries(d.arguments ?? {})
-        .filter(([, v]) => v !== null && v !== false && v !== "")
-        .map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)]),
+    // What THIS person decides, as the headline; the rule behind it underneath.
+    const focus = el("div", "approval-focus");
+    const chips = el("div", "approval-terms");
+    const own = (mine?.rules ?? []).filter((r) => r.arg);
+    if (own.length) chips.append(...own.map((r) => el("span", "approval-term", termText(r.arg, r.value))));
+    focus.append(el("span", "approval-kicker", "You're approving"), el("p", "approval-what", own.length ? (mine.rules.map((r) => r.label).join(" · ")) : d.rule || d.name), ...(own.length ? [chips] : []), el("p", "approval-rule", d.because));
+    // The whole chain, so no one reads the others' terms as theirs.
+    const chain = el("ol", "approval-chain");
+    chain.setAttribute("aria-label", "Approval chain");
+    (d.chain ?? []).forEach((c, i) => {
+      const state = i + 1 < d.step ? "done" : i + 1 === d.step ? "now" : "next";
+      const li = el("li", `chain-step is-${state}`);
+      li.append(el("span", "chain-node", state === "done" ? "✓" : String(i + 1)), el("strong", "chain-name", c.approver || "A person"), el("span", "chain-what", decides(c)));
+      chain.append(li);
+    });
+    // Everything in the call, folded: the email and every term with who decides it.
+    const all = el("details", "approval-all");
+    all.append(el("summary", null, "See what will be sent"));
+    const owner = new Map((d.chain ?? []).flatMap((c) => c.rules.filter((r) => r.arg).map((r) => [r.arg, c.approver])));
+    all.append(
+      facts(
+        Object.entries(d.arguments ?? {})
+          .filter(([, v]) => v !== null && v !== false && v !== "")
+          .map(([k, v]) => [k.replaceAll("_", " "), `${typeof v === "string" ? v : JSON.stringify(v)}${owner.has(k) ? `  → ${owner.get(k)}` : ""}`]),
+      ),
     );
-    card.append(head, el("p", "approval-why", d.rule ? `${d.rule}: ${d.because}` : d.because), terms, field, buttons);
+    approve.textContent = `Approve as ${d.approver}`;
+    card.append(head, focus, ...((d.chain ?? []).length > 1 ? [chain] : []), all, field, buttons);
     if (d.approver) card.append(el("p", "approval-demo", `Demo: you are acting as ${d.approver}. This project has no logins.`));
+    card.chainNode = chain.children[d.step - 1]?.querySelector(".chain-node");
   }
   row.li.append(card);
   card.scrollIntoView({ block: "nearest" });
@@ -1244,6 +1286,10 @@ function approvalCard(turn, d) {
           : `✗ ${noAnswer ? `No answer from ${role}` : `Rejected as ${role}`}`;
       setActivity(row, { text: `${label} · ${d.name}`, state: result.approved ? "done" : "error" });
       card.classList.add(result.approved ? "approved" : "rejected");
+      if (card.chainNode) {
+        card.chainNode.textContent = result.approved ? "✓" : "✗";
+        card.chainNode.parentElement.className = `chain-step is-${result.approved ? "done" : "stopped"}`;
+      }
       if (asking && result.approved) card.append(el("p", "approval-result", result.note));
       if (!asking && !result.approved) {
         card.append(el("p", "approval-result", `${result.note || "Rejected"}`), el("p", "approval-nothing", "Nothing ran. The agent has been told why."));
