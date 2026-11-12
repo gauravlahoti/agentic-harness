@@ -144,8 +144,8 @@ role = "CFO"
 [[approvals]]
 tool = "send_to_customer"
 approver = "Sales"
-label = "Any message to a customer"
-because = "approval-chart §3: sending anything to the customer always needs a person"
+label = "Sign-Off to Send"
+because = "approval-chart §3: every email to a customer needs Sales to sign it off before it goes"
 
 [[approvals]]
 tool = "send_to_customer"

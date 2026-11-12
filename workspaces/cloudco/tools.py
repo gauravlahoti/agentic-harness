@@ -419,11 +419,17 @@ def contract_terms(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     in their markup, and whether our offer goes up or down from today. Read from the
     customer's contract files, not from the model."""
     row = _customer(str(arguments.get("customer_id", "")))
+    contact = row["contact"]
+    # The message's header on the card: who it goes to, which customer, which contract.
+    rows: list[dict[str, Any]] = [
+        {"fact": "To", "value": f"{contact['name']}, {contact['role']} <{contact['email']}>"},
+        {"fact": "Customer", "value": f"{row['name']} · {row['id']}"},
+    ]
     contract = next((c for c in _records("contracts") if c["customer_id"] == row["id"]), None)
     if contract is None:
-        return []
+        return rows
+    rows.append({"fact": "Contract", "value": contract["id"]})
     ours, theirs = _clauses(contract["standard_file"]), _clauses(contract["customer_file"])
-    rows = []
     for arg, (clause, pattern, shown) in TERM_CLAUSES.items():
         offered = arguments.get(arg)
         if offered is None:

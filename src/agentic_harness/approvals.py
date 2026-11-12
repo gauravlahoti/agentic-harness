@@ -43,7 +43,9 @@ class ApprovalContext:
     """A workspace function that tells an approver where each term of a call started: what
     the current agreement says and what the other side asked. The harness only carries its
     rows to the card; it never reads them. Each row: {"arg", "current", "asked", "change",
-    "ref"} with "change" one of "up", "down", "same" or "" (compared with "current")."""
+    "ref"} with "change" one of "up", "down", "same" or "" (compared with "current").
+    A row may instead be {"fact", "value"}: a line for the message's header, like who it
+    goes to, in the workspace's own words (your request: name who and what it is about)."""
 
     name: str
     tool: str

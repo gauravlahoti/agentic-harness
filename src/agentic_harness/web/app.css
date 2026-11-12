@@ -2023,7 +2023,10 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .approval-mail { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .approval-mail-subject { margin: 0; padding: 10px 14px 0; font-size: 15px; font-weight: 650; }
 .approval-mail-meta { display: grid; gap: 2px; padding: 4px 14px 10px; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: 12.5px; }
-.approval-mail-key { display: inline-block; min-width: 72px; color: var(--muted); text-transform: capitalize; }
+/* One grid for every header line, so the values line up ("Payment Days45" ran together). */
+.approval-mail-meta { grid-template-columns: max-content 1fr; column-gap: 14px; }
+.approval-mail-line { display: contents; }
+.approval-mail-key { color: var(--muted); text-transform: capitalize; }
 .approval-mail-body { max-height: 320px; overflow: auto; padding: 10px 14px 4px; font-size: 14px; line-height: 1.6; }
 .approval-mail-body p { margin: 0 0 10px; white-space: pre-line; }
 .approval-mail-body ul, .approval-mail-body ol { margin: 0 0 10px; padding-left: 20px; }

@@ -1383,16 +1383,26 @@ function approvalCard(turn, d) {
     const args = d.arguments ?? {};
     const owner = new Map((d.chain ?? []).flatMap((c) => c.rules.filter((r) => r.arg).map((r) => [r.arg, c.approver])));
     const shown = (v) => v !== null && v !== undefined && v !== false && v !== "";
+    // From the workspace (D-141): header facts ("To", "Customer"), and where each term started.
+    const facts = (d.context ?? []).filter((r) => r.fact);
+    const started = new Map((d.context ?? []).filter((r) => r.arg).map((r) => [r.arg, r]));
+    // A term goes in the table: one someone decides, or one the workspace knows the start of.
+    const isTerm = (k) => owner.has(k) || started.has(k);
     const all = el("section", "approval-message");
     if (typeof args.body === "string" || typeof args.subject === "string") {
       all.append(el("h5", "approval-section", "Message to approve"));
       const mail = el("div", "approval-mail");
       const meta = el("div", "approval-mail-meta");
-      // Everything that isn't the subject, body or a decided term: who it goes to, and so on.
-      for (const [k, v] of Object.entries(args)) {
-        if (["subject", "body"].includes(k) || owner.has(k) || !shown(v)) continue;
-        const line = el("div");
-        line.append(el("span", "approval-mail-key", k.replace(/_id$/, "").replaceAll("_", " ")), el("span", null, String(v)));
+      // The workspace's header facts when it gives them; else every argument that isn't the
+      // subject, body or a term.
+      const lines = facts.length
+        ? facts.map((f) => [f.fact, f.value])
+        : Object.entries(args)
+            .filter(([k, v]) => !["subject", "body"].includes(k) && !isTerm(k) && shown(v))
+            .map(([k, v]) => [k.replace(/_id$/, "").replaceAll("_", " "), String(v)]);
+      for (const [key, value] of lines) {
+        const line = el("div", "approval-mail-line");
+        line.append(el("span", "approval-mail-key", key), el("span", null, value));
         meta.append(line);
       }
       if (args.subject) mail.append(el("p", "approval-mail-subject", args.subject));
@@ -1402,11 +1412,10 @@ function approvalCard(turn, d) {
       mail.append(body);
       all.append(mail);
     }
-    const terms = Object.entries(args).filter(([k, v]) => owner.has(k) && shown(v));
+    const terms = Object.entries(args).filter(([k, v]) => isTerm(k) && shown(v));
     if (terms.length) {
       // Where each term started, when the workspace knows (D-141): today's agreement, the
       // other side's ask, and which way this offer moves from today.
-      const started = new Map((d.context ?? []).map((r) => [r.arg, r]));
       const withStart = started.size > 0;
       all.append(el("h5", "approval-section", "Terms in this message"));
       const table = el("table", "approval-table");
@@ -1440,7 +1449,8 @@ function approvalCard(turn, d) {
           termCell,
           ...(withStart ? [el("td", "approval-was", s0?.current ?? "—"), el("td", "approval-was", s0?.asked ?? "—")] : []),
           offerCell,
-          el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · this step` : owner.get(k)),
+          // No rule on it: within what the sender may offer, so no one else decides.
+          el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · this step` : owner.get(k) ?? "Within limits"),
         );
         table.tBodies[0].append(tr);
       }
@@ -1455,7 +1465,12 @@ function approvalCard(turn, d) {
     card.chainNode = chain.children[d.step - 1]?.querySelector(".chain-node");
   }
   row.li.append(card);
-  card.scrollIntoView({ block: "nearest" });
+  // Show what you act on (your report): the next card is taller than the screen, and scrolling
+  // to its top hid the buttons. Centre the buttons, or the "Switch to" box, after refresh().
+  const showActions = () => {
+    const target = asking || buttons.hidden === false ? buttons : hand;
+    requestAnimationFrame(() => target.scrollIntoView({ block: "center", behavior: "smooth" }));
+  };
   announce(asking ? "The agent has a question for you" : `${d.name} is waiting for ${role}`);
 
   // Who may answer (D-137): someone with the card's role. Anyone else is told who to switch to.
@@ -1472,12 +1487,16 @@ function approvalCard(turn, d) {
     for (const p of people().filter((x) => x.role === d.approver)) {
       const sw = el("button", "handoff-switch", `Switch to ${roleOf(p)}`);
       sw.type = "button";
-      sw.addEventListener("click", () => setPerson(p.id));
+      sw.addEventListener("click", () => {
+        setPerson(p.id);
+        showActions(); // after the switch, the Approve button is where you look
+      });
       hand.append(sw);
     }
   }
   pendingCards.add(refresh);
   refresh();
+  showActions();
 
   // A countdown to the time-out: no answer in time counts as no.
   const ends = Date.now() + (d.timeout_s ?? 0) * 1000;

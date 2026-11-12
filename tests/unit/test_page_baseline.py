@@ -256,3 +256,15 @@ def test_online_evals_card_is_folded_by_default() -> None:
     assert 'el("details", "todo-card check-card quality-card' in card
     assert 'el("summary", "card-head")' in card
     assert ".open = true" not in card
+
+
+def test_approval_card_header_terms_and_buttons_in_view() -> None:
+    """Your report (2026-11-12): the card's header shows the workspace's facts (customer,
+    contract) with its values lined up; every offered term is in the table; after an approval,
+    the next card scrolls to its buttons, not its top."""
+    card = JS.split("function approvalCard")[1].split("\nfunction ")[0]
+    assert "(d.context ?? []).filter((r) => r.fact)" in card
+    assert 'owner.get(k) ?? "Within limits"' in card
+    assert 'scrollIntoView({ block: "center"' in card
+    assert "card.scrollIntoView" not in card
+    assert ".approval-mail-line { display: contents; }" in CSS
