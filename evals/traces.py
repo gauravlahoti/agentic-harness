@@ -110,6 +110,20 @@ def read_run(path: Path) -> RunView:
                     helpers[helper_id].output = data.get("answer", "")
             else:
                 finished = data
+        elif kind == "verify_finished" and data.get("retrying") and not helper_id:
+            # The harness sent the draft back (D-160): the rewrite that follows is required,
+            # not a redundant step, and the judge must be able to see why.
+            failed = [
+                r.get("label", "") for r in data.get("results", []) if r.get("status") == "failed"
+            ]
+            root.children.append(
+                Span(
+                    "tool",
+                    "harness check",
+                    None,
+                    f"Sent the draft back to fix: {', '.join(failed)}",
+                )
+            )
         elif kind == "scope_checked" and not helper_id:
             scope_in, scope_reason = bool(data.get("in_scope")), str(data.get("reason", ""))
         elif kind == "model_replied":

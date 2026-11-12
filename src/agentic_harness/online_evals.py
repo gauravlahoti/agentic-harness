@@ -99,8 +99,10 @@ STYLE_FORMAT = Metric(
 ASK = {
     "groundedness": "the share of the ANSWER's factual claims that the CONTEXT supports. List "
     'each claim it does not support in "unsupported" (short quotes). No factual claims: 1',
-    "context_relevancy": "how much of the CONTEXT was relevant to the QUESTION (1: all of it "
-    "was needed or useful; 0: none of it)",
+    "context_relevancy": "whether the tools the agent called fetched what the QUESTION needs "
+    "(1: every record or document fetched was needed; 0: none was). Tools return whole records, "
+    "so unused fields of a needed record don't lower it; the agent's own instructions "
+    "(load_skill) and to-do notes (write_plan) don't count either way",
     "answer_relevancy": "whether the ANSWER addresses every part of the QUESTION, with the "
     "detail asked for (1: fully; lower for each part missed or answered only in name)",
     "style_format": "how well the ANSWER follows the STYLE GUIDE (1: fully)",
@@ -257,7 +259,9 @@ def hallucination(answer: str, context: str, ids: str = DEFAULT_IDS) -> Score:
         if kind in ("id", "date"):
             ok = text in context
         elif kind == "percent":
-            ok = _value(text) in percents
+            # Data often stores a percent as a plain number ("percent": 99.98). A decimal
+            # is rarely there by chance; a whole number ("20") still needs its % (D-159).
+            ok = _value(text) in percents or ("." in text and _value(text) in numbers)
         else:
             ok = _value(text) in numbers
         if not ok:

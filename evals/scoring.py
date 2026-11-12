@@ -233,8 +233,11 @@ async def one_metric(
     per_turn: list[tuple[int, Score]] = []
     for n, view in ran:
         task = None
-        if metric == "task_completion" and n == len(views):
-            task = f"{view.task}\nA correct result: {case.expected_outcome}"
+        if metric == "task_completion":
+            # Every turn is told what the conversation should end with (D-160): turn 1 of a
+            # refusal case was graded on what the person wished, not what was right.
+            whole = "" if n == len(views) else " (by the end of the conversation)"
+            task = f"{view.task}\nA correct result{whole}: {case.expected_outcome}"
         per_turn.append(
             (n, await measure(metric, llm_test_case(view, task), judge, task=task, topics=topics))
         )

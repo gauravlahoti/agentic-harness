@@ -413,7 +413,13 @@ function clearThread() {
   for (const turn of $("thread").querySelectorAll(".turn")) turn.remove();
 }
 
+// A conversation lives on the Agent page: starting or opening one goes there from any page.
+function toAgent() {
+  if (location.hash && location.hash !== "#agent") location.hash = "#agent";
+}
+
 function newConversation() {
+  toAgent();
   currentSession = null;
   clearThread();
   $("empty-state").hidden = false;
@@ -422,6 +428,7 @@ function newConversation() {
 }
 
 async function openSession(id) {
+  toAgent();
   const response = await fetch(`/api/sessions/${encodeURIComponent(id)}${withProfile()}`);
   if (!response.ok) return refreshWork();
   const session = await response.json();

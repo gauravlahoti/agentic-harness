@@ -243,3 +243,8 @@ def test_online_and_offline_evals_sit_under_observability_not_the_harness() -> N
     assert 'data-view="checks"' not in HTML  # the test suite is off the sidebar
     assert 'paneSection("online"' not in JS
     assert 'switchFor("checks", id)' in JS  # each metric's switch is on the Online Evals page
+
+
+def test_new_or_opened_conversation_goes_to_the_agent_page() -> None:
+    """Your request: from Memory or the evals, a chat click shows the chat, no detour."""
+    assert JS.count("toAgent();") >= 2

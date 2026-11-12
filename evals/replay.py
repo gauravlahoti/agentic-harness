@@ -63,7 +63,13 @@ def trace_dict(span: Span, *, for_judge: bool = False) -> dict[str, Any]:
             plan = f"The plan (the skill it loaded):\n{skill}"
         # Reading the skill and updating the to-do list are bookkeeping, not steps of the
         # task (D-156): the judge counted them as wasted or "unplanned" steps.
-        children = nest_helpers([unbooked(c) for c in children if c.name not in BOOKKEEPING])
+        children = nest_helpers(
+            [
+                b
+                for c in children
+                if c.name not in BOOKKEEPING and (b := unbooked(c)).output != "updates its notes"
+            ]
+        )
     given = span.input
     if plan:
         given = f"{span.input}\n\n{plan}"

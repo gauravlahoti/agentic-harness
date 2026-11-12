@@ -49,6 +49,7 @@ def test_s11_ac8_the_workspace_declares_its_checks_and_the_plan() -> None:
         "every_change_covered",
         "right_approver",
         "no_false_sent",
+        "answer_length",  # D-159: the style guide's length, in code
     ]
     assert [c.name for c in WS.metrics] == ["citations"]
     assert CHECKS["citations"].label == "Citations"
@@ -166,7 +167,7 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
         model, Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
     )
     assert "write_plan" not in h2.tools
-    assert [c.name for c in h2.checks] == ["every_change_covered", "no_false_sent"]
+    assert [c.name for c in h2.checks] == ["every_change_covered", "no_false_sent", "answer_length"]
     pane = describe_harness(WS, "sales")["verify"]
     assert pane["plan_on"]
     assert pane["retries"] == 1
@@ -395,3 +396,21 @@ def test_d147_right_approver_skips_a_pull_but_not_a_review() -> None:
     reviewed = verdict("right_approver", "- 3.2 · 25% discount: fine.", REVIEW)
     assert reviewed.applies
     assert not reviewed.ok
+
+
+def test_d159_a_section_named_in_shorthand_counts_as_read() -> None:
+    skill = Call("load_skill", {}, "Cite `standard-terms §4`, `approval-chart §1`/`§2`.", False)
+    v = verdict("citations", "Never (`approval-chart §2`).", skill)
+    assert v.ok, v.message
+
+
+def test_d159_answer_length_is_a_gate() -> None:
+    assert [c.name for c in WS.checks][-1] == "answer_length"
+    short = verdict("answer_length", "No: 99.99% is above our record. Offer 99.95%.")
+    assert short.ok
+    long = verdict("answer_length", "word " * 100)
+    assert not long.ok
+    assert "at most 90" in long.message
+    review = verdict("answer_length", "word " * 190, REVIEW)
+    assert review.ok  # a review may run to 200
+    assert not verdict("answer_length", "Hi ShopCo,\n" + "word " * 200).applies

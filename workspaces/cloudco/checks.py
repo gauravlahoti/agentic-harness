@@ -99,6 +99,16 @@ def every_change_covered(answer: str, record: Record) -> Verdict | None:
 
 CITED = re.compile(r"(standard-terms|approval-chart)\s*§\s*(\d+)")
 RETURNED = re.compile(r'"policy":\s*"([a-z-]+)",\s*"section":\s*"§(\d+)"')
+# "approval-chart §1`/`§2": a second section of the same policy, named by its number only
+# (the uptime-check skill writes it so; found in the eval of 2026-11-12, D-159).
+SHORTHAND = re.compile(r"(standard-terms|approval-chart)\s*§\s*\d+((?:\W{1,4}§\s*\d+)+)")
+
+
+def cited_in(text: str) -> set[tuple[str, str]]:
+    found = set(CITED.findall(text))
+    for policy, more in SHORTHAND.findall(text):
+        found |= {(policy, n) for n in re.findall(r"§\s*(\d+)", more)}
+    return found
 
 
 @check(
@@ -115,7 +125,7 @@ def citations(answer: str, record: Record) -> Verdict | None:
     outputs = [c.output for c in record.calls if not c.is_error] + list(record.earlier)
     seen: set[tuple[str, str]] = set()
     for output in outputs:
-        seen |= set(RETURNED.findall(output)) | set(CITED.findall(output))
+        seen |= set(RETURNED.findall(output)) | cited_in(output)
     unsupported = sorted(cited - seen)
     if not unsupported:
         n = len(cited)
@@ -393,7 +403,40 @@ def body_matches_terms(arguments: dict[str, Any], record: Record) -> Verdict | N
 # ── Records Match / Sections Are Real (D-146): a pull of a record or a contract ──────────
 # Found live: "is ShopCo a customer? pull the contract" had "6 didn't apply", nothing checked.
 
-CHECKS = [every_change_covered, right_approver, no_false_sent]  # gates: harm only (D-150)
+# ── Answer Length (D-159): the style guide's limit, in code, so a long answer is rewritten ──
+
+REVIEW_WORDS = 200  # answer-style.md rule 8
+OTHER_WORDS = 90  # a lookup or yes/no: one to three sentences
+SENT_WORDS = 120  # a send report: what went, the terms, who approved, what's open
+DRAFT = re.compile(r"^\s*(?:Hi|Hello|Dear)\b|^\s*Subject:", re.M | re.I)
+
+
+@check(
+    "Answer Length",
+    f"A review is at most {REVIEW_WORDS} words, a send report {SENT_WORDS}, any other answer "
+    f"{OTHER_WORDS} (answer-style.md); a draft you asked for may be longer",
+)
+def answer_length(answer: str, record: Record) -> Verdict | None:
+    if DRAFT.search(answer):
+        return skipped("The answer carries a draft: drafts may be longer.")
+    words = len(re.findall(r"\b[\w%.§-]+\b", answer))
+    review = bool(record.outputs("review_contract")) and not _sent(record)
+    limit = REVIEW_WORDS if review else SENT_WORDS if _sent(record) else OTHER_WORDS
+    kind = "a review" if review else "a send report" if _sent(record) else "this answer"
+    if words <= limit:
+        return passed(f"{words} words, within {limit} for {kind}.")
+    return failed(
+        f"{words} words; {kind} may have at most {limit}. Keep the bottom line, one short line "
+        "per item and the next step; drop notes after the list and repeated explanations."
+    )
+
+
+CHECKS = [
+    every_change_covered,
+    right_approver,
+    no_false_sent,
+    answer_length,
+]  # gates: harm only (D-150)
 ACTION_CHECKS = [body_matches_terms]
 # Scored after every answer, never blocking (online evals, D-148): quality, not harm.
 METRICS = [citations]

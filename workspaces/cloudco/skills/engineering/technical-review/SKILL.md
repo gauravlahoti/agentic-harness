@@ -13,7 +13,7 @@ Engineering reviews the technical side of a contract. Prices, payment, term, lia
 
 1. Get the contract ID from the customer's record (`lookup_customer_record`).
 2. Give `clause-reviewer` just that ID. You will get back only the technical clauses: services, service levels, support, data protection, and the service and security appendices.
-3. For each change that matters, say in one short line: the clause ID, what they asked, and one of:
+3. Under 200 words in all. For each change that needs Engineering or is never, one line (at most 15 words): the clause ID, what they asked, and one of (OK changes go together on one line, by ID):
    - **OK**: within our standard (`standard-terms §4`).
    - **Engineering can approve**: uptime above 99.9%, up to our 12-month record of 99.95% (`approval-chart §1`). Check the record with `lookup_customer_record(record="uptime")`.
    - **Never**: more uptime than we have delivered. Counter with 99.95%.

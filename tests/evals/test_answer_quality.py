@@ -113,9 +113,9 @@ def test_d156_bookkeeping_is_not_a_step_for_the_judge() -> None:
         ],
     )
     kids = trace_dict(root, for_judge=True)["children"]
-    assert [k["name"] for k in kids] == ["model step 1", "model step 2", "lookup_customer_record"]
-    assert kids[0]["output"] == "updates its notes"
-    assert kids[1]["output"] == "calls ['lookup_customer_record']"
+    # a step that only did bookkeeping is gone; a mixed one keeps its real call (D-160)
+    assert [k["name"] for k in kids] == ["model step 2", "lookup_customer_record"]
+    assert kids[0]["output"] == "calls ['lookup_customer_record']"
 
 
 def test_d158_three_metrics_are_reported_and_never_fail_a_run() -> None:
@@ -126,3 +126,21 @@ def test_d158_three_metrics_are_reported_and_never_fail_a_run() -> None:
         assert "D-158" in catalog()["metrics"][metric]["note"]
     assert decides("task_completion")
     assert decides("groundedness")
+
+
+def test_d160_the_judge_sees_why_a_draft_was_rewritten(tmp_path: Path) -> None:
+    events = [
+        {"type": "run_started", "run_id": "r", "data": {"task": "q", "model": "m"}},
+        {"type": "model_replied", "data": {"step": 1, "text": "long draft"}},
+        {
+            "type": "verify_finished",
+            "data": {"retrying": True, "results": [{"label": "Answer Length", "status": "failed"}]},
+        },
+        {"type": "model_replied", "data": {"step": 2, "text": "short answer"}},
+        {"type": "run_finished", "data": {"answer": "short answer", "outcome": "completed"}},
+    ]
+    path = tmp_path / "r.jsonl"
+    path.write_text("\n".join(json.dumps(e) for e in events))
+    names = [c.name for c in read_run(path).root.children]
+    assert names == ["model step 1", "harness check", "model step 2"]
+    assert "Answer Length" in str(read_run(path).root.children[1].output)

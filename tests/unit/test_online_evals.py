@@ -384,3 +384,10 @@ def test_d154_a_refused_call_is_context_for_the_judge() -> None:
     rejected = Call("send_to_customer", {}, "Not sent: the CFO rejected it.", True)
     blocks = context_blocks(Record((rejected,)))
     assert blocks == ["[send_to_customer · failed] Not sent: the CFO rejected it."]
+
+
+def test_d159_a_decimal_percent_stored_as_a_number_is_found() -> None:
+    """Found in the eval (uptime-never): 99.98% came from "percent": 99.98."""
+    data = '{"id": "UP-2026-04", "percent": 99.98}'
+    assert hallucination("No month was above 99.98% (`UP-2026-04`).", data).status == "passed"
+    assert hallucination("We give 20% off.", '{"discount": 20}').status == "failed"
