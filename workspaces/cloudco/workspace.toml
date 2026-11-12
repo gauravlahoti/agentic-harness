@@ -20,7 +20,7 @@ notes = true
 plan = true
 
 # Always in the prompt, in this order. {profile} picks the active profile's file.
-memory = ["AGENTS.md", "teams/{profile}.md"]
+memory = ["AGENTS.md", "teams/{profile}.md", "answer-style.md"]  # how to answer: always loaded (D-129)
 
 # One line per skill in the prompt; load_skill reads the rest. Each profile sees its own folder.
 skills = ["skills/{profile}"]  # each team its own (D-107): Sales reviews and replies, Engineering checks technical clauses

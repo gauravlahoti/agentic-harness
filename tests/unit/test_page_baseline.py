@@ -140,3 +140,11 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
         assert gone not in CSS + JS
     assert "confirm(" not in JS
     assert "alert(" not in JS
+
+
+def test_s11_ac15_answers_render_headings_nested_lists_and_source_badges() -> None:
+    assert '"prose-h"' in JS  # # and ### headings
+    assert "lastElementChild ?? container" in JS  # an indented item nests under the last one
+    assert 'SOURCE.test(inner) ? "cite"' in JS  # a source in backticks becomes a badge
+    for rule in (".reply .prose-h", ".reply li > ul", ".reply code.cite"):
+        assert rule in CSS, f"S11 answer style missing from app.css: {rule}"

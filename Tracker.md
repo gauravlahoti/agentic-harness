@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S11 · Plan and Verify built (11/12 🟨), waiting for your check; AC12 is live · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S11 · Plan and Verify built (14/15 🟨), waiting for your check; AC12 is live · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -31,7 +31,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
-| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 11/12 | 0/12 | 1 |
+| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
 
 ## Checks
 
@@ -244,6 +244,9 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 | 🟨 | `tests/architecture/test_generic_harness.py` passes: no domain word in `planning.py` / `verify.py` |
 | AC10 | Pane: Plan & Verify section with check switches; a switched-off check doesn't run | 🧪 👀 | 🟨 | `test_s11_ac1_ac10_wiring_*`: a switched-off check doesn't run; pane data lists 5 checks · Chrome 2026-11-12: Plans row, Harness Tools (4, each switchable), Verification section with switches · `test_s11_ac10_the_pane_lists_the_harness_tools_and_each_can_be_switched_off` |
 | AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 | 🟨 | `test_s11_ac11_a_saved_turn_keeps_its_plan_and_checks` · Chrome 2026-11-12 with sample events (no model): To-Do card, "2 Failed → Retried → Passed" with draft folded, red Not Verified |
+| AC13 | Answer style always in the prompt; AGENTS.md has no own "How to answer" | 🧪 | 🟨 | `test_cloudco_checks.py::test_s11_ac13_the_answer_style_is_always_in_the_prompt` (both profiles; AGENTS.md has none of its own) · `test_s02_ac11_*`, `test_s04_ac11_*` updated |
+| AC14 | Answer Format check: bottom line first; every item line cites a source; skipped when short | 🧪 | 🟨 | `test_cloudco_checks.py::test_s11_ac14_answer_format`: bottom line, item sources, plain lists pass, short answers skipped |
+| AC15 | Page renders headings, nested lists and source badges; no HTML injection | 🧪 👀 | 🟨 | `test_page_baseline.py::test_s11_ac15_*` + `test_s01_ac13_text_is_never_inserted_as_html` · Chrome 2026-11-12: a sample answer with 7 badges, 2 nested lists, brackets dropped |
 | AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 | 🟦 |  |
 
 ## Product goals
@@ -334,3 +337,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your question: why no switch on the harness tools. No good reason: every harness tool now switches off (load_skill off also drops the skill list from the prompt). Checked in Chrome; S11-AC10 stays 🟨. |
 | 2026-11-12 | Your report: "Thinks with" read as a fixed model. It did follow the menu, but now says so: **Model** (picked in the chat box, with Thinking level, per run) and **Small Jobs** (Haiku on a Claude run, else Flash-Lite). Checked in Chrome with all 5 models. |
 | 2026-11-12 | Your live Sonnet run reviewed: Every Change Covered had silently skipped (gate warning before the JSON), Right Approver's message was cut, repeated and partly wrong ("24-month cap"). Fixed both; every check now shows (skipped ones say why); a card per round in run order (draft → sent back → rewrote → passed); the plan tool says a skill's steps are the recipe, the list the progress. 411 offline tests; replayed in Chrome. |
+| 2026-11-12 | You approved the answer-format add-on ("go ahead"): rules always in the prompt, a check, styling on the page. S11-AC13–AC15 → 🟦. D-129–D-131. |
+| 2026-11-12 | S11-AC13–AC15 → 🟨: `answer-style.md` always in the prompt, Answer Format check, headings / nested lists / source badges on the page. 414 offline tests; checked in Chrome. AC12 (live) stays 🟦. |

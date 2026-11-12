@@ -668,6 +668,7 @@
 - **Because:** headings made every answer, even "who are our customers?", read like a form
 - **Cost:** answers are less uniform; the live check now looks for "§" sources and no headings, not a shape
 - **Revisit if:** S08 evals show sources going missing
+- **Revisited 2026-11-12 (D-129–D-131):** you asked for structure again, so answers now lead with a bottom line and list items one per line with a source; still no fixed headings.
 
 ### D-83 · Clearer tool name and activity lines
 ✅ Accepted · S04, S05 · your reports
@@ -1011,3 +1012,24 @@
 - **Instead of:** the pane only; two rows under Agentic Loop
 - **Because:** the pane says what the harness will do; the chat shows what it did
 - **Cost:** one more pane section
+
+### D-129 · Answer format: rules always in the prompt, not a skill or a tool
+✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
+- **Chose:** a workspace file `answer-style.md` listed in `memory = [...]`, so every call sees it (cached); AGENTS.md's "How to answer" moves there
+- **Instead of:** a skill the model loads at the end (it can skip it, as Sonnet skipped `update_plan`; one more call; there is no separate "final output" moment: the answer is written in the same reply that decides to stop); a `submit_answer` tool with a schema (small models fill nested schemas badly; prose is lost)
+- **Because:** always present costs no call and can't be skipped; the workspace owns its style, the harness stays domain-free
+- **Cost:** about 300 prompt tokens per call (cached)
+
+### D-130 · An Answer Format check enforces the shape
+✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
+- **Chose:** CloudCo's `answer_format` check: the first line is a one-sentence bottom line (not a list or heading); every item line cites a source; skipped for a short answer
+- **Instead of:** trusting the prompt alone
+- **Because:** the prompt guides, VERIFY enforces (S11); the same one-retry rule
+- **Cost:** a retry when the format slips
+
+### D-131 · The page does the styling
+✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
+- **Chose:** the page renders `#` headings, nested lists (two-space indent), and sources in backticks (a policy section with §, an ID like `CUS-0042`, a path) as small badges; still built from elements, never parsed HTML
+- **Instead of:** asking the model for HTML or fixed headings
+- **Because:** styling is the page's job; the model writes simple markdown and every answer looks the same
+- **Cost:** a few more rules in `renderProse`

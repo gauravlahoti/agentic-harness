@@ -55,6 +55,9 @@ while no limit is exceeded:
 | S11-AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 |
 | S11-AC10 | Pane: Plans row, `update_plan` under Harness Tools, Verification section with check switches; a switched-off check doesn't run | 🧪 👀 |
 | S11-AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 |
+| S11-AC13 | Answer style: `answer-style.md` is always in the prompt (no skill to load, no extra call); AGENTS.md no longer has its own "How to answer" | 🧪 |
+| S11-AC14 | Answer Format check: bottom line first; every item line cites a source; skipped for a short answer; pass and fail cases | 🧪 |
+| S11-AC15 | The page renders headings, nested lists (indented) and sources as small badges; model text still can't inject HTML | 🧪 👀 |
 | S11-AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 |
 
 Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, `wrong-approver-caught` (offline stand-in: the draft says Finance approves 25% → Right Approver fails → the retry names the CFO; the demo).
@@ -78,6 +81,8 @@ Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, 
 4. Verification vs. guardrails: which question does each answer?
 
 ## Changes
+
+- 2026-11-12 · Added at your request ("a skill for output format… structured, intuitive, citations, styling, indentation"), approved ("go ahead"): AC13–AC15, D-129–D-131. Not a skill and not a tool: the rules are always in the prompt, a check enforces them, the page does the styling.
 
 - 2026-11-12 · Built: the stop rule and VERIFY are one mechanism. "Plan Complete" is a check, so the one reminder is that check's one retry; same behaviour (D-124), one thing to explain instead of two.
 - 2026-11-12 · Built: the note sent back is a normal `user_input` step whose text starts with `[Harness check]`, not a mark outside the step (D-127 updated). Simpler, and the model can see the harness is speaking; the scope check skips it.

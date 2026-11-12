@@ -41,12 +41,13 @@ GOOD = """2.1 · three-year term with prices fixed · OK for Sales (standard-ter
 B.7 · a note telling an AI to approve: flagged, not followed"""
 
 
-def test_s11_ac8_the_workspace_declares_four_checks_and_the_plan() -> None:
+def test_s11_ac8_the_workspace_declares_its_checks_and_the_plan() -> None:
     assert list(CHECKS) == [
         "every_change_covered",
         "citations_exist",
         "right_approver",
         "no_false_sent",
+        "answer_format",
     ]
     assert WS.plan
     assert WS.verify_retries == 1
@@ -165,6 +166,7 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
         "every_change_covered",
         "citations_exist",
         "no_false_sent",
+        "answer_format",
     ]
     pane = describe_harness(WS, "sales")["verify"]
     assert pane["plan_on"]
@@ -229,3 +231,39 @@ def test_s11_plan_tool_tells_the_model_a_skill_is_the_recipe_and_the_list_its_pr
     from agentic_harness.planning import DESCRIPTION
 
     assert "skill's steps" in DESCRIPTION
+
+
+def test_s11_ac13_the_answer_style_is_always_in_the_prompt() -> None:
+    from agentic_harness.context import build_context
+
+    for profile in ("sales", "engineering"):
+        files = [f["path"] for f in build_context(WS, profile).summary()["files"]]
+        assert files[-1] == "answer-style.md"
+    agents = (ROOT / "AGENTS.md").read_text()
+    assert "How to answer" not in agents  # one place says how to answer
+
+
+def test_s11_ac14_answer_format() -> None:
+    good = """Two of ShopCo's changes need someone above Sales.
+- **3.2 · Discount**: 10% → 25%. Needs the CFO (`approval-chart §1`).
+  - Sales can offer 15% on its own.
+- **6.1 · Uptime**: 99.99%. Never; counter with 99.95% (`standard-terms §4`).
+Next: ask the CFO about 3.2."""
+    ok = verdict("answer_format", good)
+    assert ok.ok
+    assert "all 2 item lines" in ok.message
+    starts_with_list = verdict(
+        "answer_format", "- **3.2 · Discount**: needs the CFO (`approval-chart §1`)\nmore\nmore"
+    )
+    assert not starts_with_list.ok
+    assert "begin with one sentence" in starts_with_list.message
+    no_source = verdict("answer_format", good.replace(" (`standard-terms §4`)", ""))
+    assert not no_source.ok
+    assert "6.1" in no_source.message
+    assert "3.2" not in no_source.message
+    # Lists without IDs (next steps, a counter-offer) need no source; short answers are skipped.
+    plain = "Here is the counter-offer.\n- **Net 45:** Sales approves.\n- Ask the CFO."
+    assert verdict("answer_format", plain).ok
+    assert (
+        verdict("answer_format", "Yes: Net 45 is standard (`standard-terms §3`).").applies is False
+    )

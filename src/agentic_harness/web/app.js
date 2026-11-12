@@ -595,10 +595,11 @@ function setActivity(row, { text, state, facts, raw }) {
   if (raw !== undefined) row.pre.textContent = JSON.stringify(raw, shorten, 2);
 }
 
-// Models write a little markdown. Show paragraphs, lists, **bold** and `code`
-// by building elements, never by parsing HTML, so model text can't inject anything.
+// Models write a little markdown. Show headings, paragraphs, lists (nested by indent),
+// **bold**, `code` and sources as badges, by building elements, never by parsing HTML, so
+// model text can't inject anything. The page does the styling, the model only the words (D-131).
 function renderProse(container, text) {
-  let list = null;
+  let lists = []; // open lists, outermost first: { el, indent, kind }
   let para = [];
   const flush = () => {
     if (para.length) {
@@ -609,33 +610,53 @@ function renderProse(container, text) {
     para = [];
   };
   for (const line of text.split("\n")) {
-    const item = line.match(/^\s*(?:[-*•]|(\d+)\.)\s+(.*)$/);
-    if (item) {
+    const heading = line.match(/^\s*(#{1,4})\s+(.*)$/);
+    const item = line.match(/^(\s*)(?:[-*•]|(\d+)[.)])\s+(.*)$/);
+    if (heading) {
       flush();
-      const kind = item[1] ? "ol" : "ul";
-      if (!list || list.tagName.toLowerCase() !== kind) {
-        list = el(kind);
-        container.append(list);
+      lists = [];
+      const h = el(heading[1].length <= 2 ? "h3" : "h4", "prose-h");
+      appendInline(h, heading[2]);
+      container.append(h);
+    } else if (item) {
+      flush();
+      const indent = item[1].replace(/\t/g, "  ").length;
+      const kind = item[2] ? "ol" : "ul";
+      while (lists.length && indent < lists.at(-1).indent) lists.pop();
+      const top = lists.at(-1);
+      if (!top || indent > top.indent || top.kind !== kind) {
+        if (top && indent <= top.indent) lists.pop(); // same level, other kind: a sibling list
+        const parent = lists.at(-1)?.el.lastElementChild ?? container; // nest under the last item
+        const list = el(kind);
+        parent.append(list);
+        lists.push({ el: list, indent, kind });
       }
       const li = el("li");
-      appendInline(li, item[2]);
-      list.append(li);
+      appendInline(li, item[3]);
+      lists.at(-1).el.append(li);
     } else if (!line.trim()) {
       flush();
-      list = null;
+      lists = [];
     } else {
-      list = null;
+      lists = [];
       para.push(line);
     }
   }
   flush();
 }
 
+// A source in backticks: a section (§), an ID like CUS-0042, or a file path. Shown as a badge.
+const SOURCE = /§|^[A-Z]{2,}-\d+|\.md$|\//;
+
 function appendInline(parent, text) {
+  // "(`standard-terms §2`)" → a badge alone: the badge already reads as a source.
+  text = text.replace(/\((`[^`]+`(?:,\s*`[^`]+`)*)\)/g, (whole, inner) => (SOURCE.test(inner.replace(/`/g, "")) ? inner : whole));
   for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)) {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) parent.append(el("strong", null, part.slice(2, -2)));
-    else if (part.startsWith("`") && part.endsWith("`") && part.length > 2) parent.append(el("code", null, part.slice(1, -1)));
-    else if (part) parent.append(part);
+    else if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      const inner = part.slice(1, -1);
+      parent.append(el("code", SOURCE.test(inner) ? "cite" : null, inner));
+    } else if (part) parent.append(part);
   }
 }
 

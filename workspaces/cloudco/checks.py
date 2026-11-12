@@ -9,6 +9,7 @@ agent can act on) or skipped (with why there was nothing to check).
 - Citations Exist       every policy section the answer cites came back from a tool
 - Right Approver        the decider named for a term matches CloudCo's approval tables
 - No False "Sent"       says sent only if a send worked, and says so when one did
+- Answer Format         bottom line first; every item line cites a source (answer-style.md)
 
 All of CloudCo is made up.
 """
@@ -227,4 +228,33 @@ def no_false_sent(answer: str, record: Record) -> Verdict | None:
     return passed("What the answer says about sending matches what happened.")
 
 
-CHECKS = [every_change_covered, citations_exist, right_approver, no_false_sent]
+# ── Answer Format ────────────────────────────────────────────────────────────────────────
+
+LIST_OR_HEADING = re.compile(r"^\s*(?:[-*•]\s|\d+[.)]\s|#)")
+# An item line: a top-level list line that starts with a bold ID ("- **3.2 · Discount**").
+ITEM = re.compile(r"^[-*•]\s+\*\*\s*((?:[A-Z]?\d+|[A-Z])\.\d+|[A-Z]{2,}-\d+)")
+# A source in backticks: a policy section, a record ID or a path (answer-style.md rule 3).
+SOURCE = re.compile(r"`[^`]*(?:§|[A-Z]{2,}-\d+|\.md)[^`]*`")
+
+
+@check("Answer Format", "Bottom line first, and every item line cites a source (answer-style.md)")
+def answer_format(answer: str, record: Record) -> Verdict | None:
+    lines = [x for x in answer.splitlines() if x.strip()]
+    if len(lines) < 3:
+        return skipped("A short answer: one or two lines need no format.")
+    problems = []
+    if LIST_OR_HEADING.match(lines[0]):
+        problems.append("it starts with a list or a heading; begin with one sentence that answers")
+    bare = [m[1] for x in lines if (m := ITEM.match(x)) and not SOURCE.search(x)]
+    if bare:
+        problems.append(f"these item lines have no source in backticks: {', '.join(bare)}")
+    if problems:
+        return failed("The answer doesn't follow the answer style: " + "; ".join(problems) + ".")
+    items = sum(bool(ITEM.match(x)) for x in lines)
+    return passed(
+        "Bottom line first"
+        + (f"; all {items} item lines cite a source." if items else "; no item lines to cite.")
+    )
+
+
+CHECKS = [every_change_covered, citations_exist, right_approver, no_false_sent, answer_format]

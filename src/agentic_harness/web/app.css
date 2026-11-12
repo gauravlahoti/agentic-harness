@@ -460,6 +460,19 @@ details[open] > summary .chev { rotate: 180deg; }
 .reply p { margin: 0 0 10px; }
 .reply ul, .reply ol { margin: 0 0 10px; padding-left: 22px; }
 .reply li { margin: 4px 0; }
+/* Answers (D-131): small headings, nested lists indented, sources as quiet badges. */
+.reply .prose-h { margin: 14px 0 6px; font-size: 1em; font-weight: 650; }
+.reply li > ul, .reply li > ol { margin: 4px 0 2px; padding-left: 18px; color: var(--text-soft); font-size: 0.95em; }
+.reply code.cite {
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--part-context) 30%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--part-context) 7%, var(--surface));
+  color: var(--part-context);
+  font: 600 0.74em/1.6 ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
 .reply code {
   padding: 1px 5px;
   border-radius: 5px;

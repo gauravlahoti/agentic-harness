@@ -9,6 +9,18 @@
 - **A check before every answer.** The harness runs CloudCo's four checks plus its own "Plan Complete" on the draft. A failure goes back to the agent **once**, with the reasons. If it fails again, you still get the answer, marked **Not Verified**.
 - **On the page.** In the Harness pane, planning is a **Plans** row in Agentic Loop and `update_plan` is under **Tools → Harness Tools** with the harness's other own tools, each with a switch. The checks have their own **Verification** section after Guardrails, in run order: verification happens last, on the drafted answer. A run's Activity shows a live **To-Do** card and a **Checks** card, with the first draft folded away when it was sent back. Old conversations show both.
 
+## How answers look (D-129 to D-131)
+
+Not a skill and not a tool. Three parts, each doing one job:
+
+| Part | Where | Job |
+|---|---|---|
+| The rules | `workspaces/cloudco/answer-style.md`, in `memory = [...]` | Always in the prompt: bottom line first, one line per item starting with its ID, a source on every line, indent only for detail, next step last. No call to load it, and it can't be skipped |
+| The check | **Answer Format** in `checks.py` | Bottom line first; every item line cites a source. A miss goes back once, like any check |
+| The styling | `renderProse` in `app.js` | `#` headings, nested lists by indent, sources in backticks shown as small badges (brackets dropped). Built from elements, never parsed HTML |
+
+Why not a skill loaded "at the end"? There is no separate end: the model writes its answer in the same reply in which it decides to stop. A skill it must choose to load can be skipped (Sonnet skipped `update_plan`), and loading costs a call.
+
 ## How one task goes
 
 ```
