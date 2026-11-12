@@ -1391,3 +1391,13 @@
   - **Cost:** the first lines of a fresh run still sit near the top: the page can't scroll above its start.
 - **Step 9:** "Every step you saw was saved as a trace, and that's how this tour plays it back." is gone, from the script and the clip. The clip was cut inside the pause before that sentence (13.8 s → 9.1 s, 0.15 s fade), not re-voiced: no credits.
 - **Changed 2026-11-13, your review** ("the approval screen is not fully visible"; "same for Sales and Engineering"): in the tour every approval card fits on screen. Its email body and header lines are folded (shown in full one step before, as the draft), the subject and terms table stay, and the note field is hidden. A frame that fits is now centred whole; only a taller one shows its end. Chrome, step 8: Sales 704 px, Engineering 656, Finance 738, CFO 757, all fully inside the 821 px above the guide.
+
+## D-188 · Ready for a public repo: no voice, no personal email, no keys (2026-11-13)
+- **Your request:** "perform security to ensure no API keys leak to the public repo"; then "remove them from history and fix all 3".
+- **Audit:** gitleaks over all commits and the folder, a search for every key format the project touches (Gemini, Anthropic, OpenAI, ElevenLabs, GitHub, signed URLs, bearer tokens, private keys, `*_API_KEY=` with a value), `.env` history, the recorded runs, CI and the key-masking tests. No key was ever committed; `.env` was never tracked.
+- **Chose:**
+  - The tour's voice clips and the stage specs stay local (`.gitignore`). The clips were also removed from every past commit (`git filter-repo`), because ~5 minutes of clean audio is enough to clone a voice. The stage specs stay in history (not sensitive).
+  - Commits use the GitHub no-reply address, past ones too. The email is gone from `Security.md` (reports go through GitHub's private reporting) and `pyproject.toml`.
+  - `main` and the stage tags were force-pushed; the old Dependabot branch was deleted (it recreates itself).
+- **Not possible yet:** secret scanning, push protection and private vulnerability reporting are refused on a private repo (HTTP 422/404). Turn them on right after making it public (Settings → Code security). Until then, the local gitleaks hook and the gitleaks step in CI guard every commit.
+- **Cost:** every commit id changed: any other clone must be re-cloned. GitHub keeps a read-only ref for closed PR #1 (old author email, no clips) and may cache old commits for a while; only GitHub Support can purge those.
