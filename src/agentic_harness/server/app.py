@@ -61,6 +61,16 @@ from agentic_harness.server.evals import (
     suite_path,
 )
 from agentic_harness.server.runs import stream_run
+from agentic_harness.tour import (
+    MAX_CLIP_BYTES,
+    MEDIA_TYPES,
+    Tour,
+    TourError,
+    clip_for,
+    load_tour,
+    save_clip,
+    tour_payload,
+)
 from agentic_harness.workspace import LOGO_TYPES, Workspace, WorkspaceError
 
 WEB_DIR = Path(agentic_harness.__file__).parent / "web"
@@ -324,6 +334,43 @@ def create_app(
             raise HTTPException(404, "No logo.")
         file = workspace.path / workspace.logo
         return FileResponse(file, media_type=LOGO_TYPES[file.suffix.lower()])
+
+    # The guided tour (S13): read fresh on each request, so an edited caption or a new take
+    # shows on the next load without a restart.
+    def the_tour() -> Tour:
+        try:
+            found = load_tour(workspace.path) if workspace else None
+        except TourError as error:
+            raise HTTPException(409, str(error)) from None
+        if found is None:
+            raise HTTPException(404, "This workspace has no tour.")
+        return found
+
+    @app.get("/api/tour")
+    async def tour() -> dict[str, object]:
+        return tour_payload(the_tour(), audio_url=lambda step, v: f"/api/tour/audio/{step}?v={v}")
+
+    @app.get("/api/tour/audio/{step_id}")
+    async def tour_audio(step_id: str) -> FileResponse:
+        clip = clip_for(the_tour(), step_id)
+        if clip is None:
+            raise HTTPException(404, "No clip for that step yet.")
+        return FileResponse(clip, media_type=MEDIA_TYPES[clip.suffix])
+
+    @app.put("/api/tour/audio/{step_id}")
+    async def record_clip(request: Request, step_id: str) -> dict[str, bool]:
+        """A new take of your voice for one step, from the page's recorder (D-176)."""
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        if int(request.headers.get("content-length") or 0) > MAX_CLIP_BYTES:
+            raise HTTPException(413, "That clip is too long.")
+        try:
+            save_clip(
+                the_tour(), step_id, await request.body(), request.headers.get("content-type", "")
+            )
+        except TourError as error:
+            raise HTTPException(400, str(error)) from None
+        return {"ok": True}
 
     @app.get("/api/health")
     async def health() -> dict[str, object]:

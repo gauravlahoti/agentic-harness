@@ -1264,3 +1264,43 @@
 - **Your choice:** a switch on the Online Evals page, **Off by default**. Off means no judge call; the free code metrics (Hallucination, Citations) still score every answer, and the judged ones show "judge off". The switch is kept on the server (`online-evals.json` in the memory folder), so the bill doesn't depend on a browser. A missing or broken file means off.
 - **Unchanged:** offline evals and the CLI still judge (they rely on these scores, and you start them yourself).
 - **Cost:** no quality scores on live answers while it's off.
+
+## D-168 · The public demo is a recorded replay (2026-11-12)
+- **Your question:** do we need Cloud Run; visitors won't paste their own API key.
+- **Options:** live on your paid key with caps · live on a free-tier key · the visitor's key · "Sign in with OpenRouter" (OAuth, a capped key the visitor approves) · a recorded replay.
+- **Chose (your pick):** a recorded replay. No key, no backend, $0, nothing to abuse. OpenRouter still bills the visitor and breaks the Gemini-only rule; Gemini's spend caps act with up to ~10 minutes' delay.
+- **Cost:** visitors can't type their own question. A "Try It Live" button can come later.
+
+## D-169 · Your voice, one clip per step (2026-11-12)
+- **Options:** no voice · an AI voice · your recorded voice.
+- **Chose:** your voice, one clip per step; the script is the caption, always shown.
+- **Why:** personal; a fumbled line means re-recording one clip. **Cost:** you record ~10 clips.
+
+## D-170 · The voice leads (2026-11-12)
+- **Options:** the visitor clicks Next · one continuous track · the voice leads.
+- **Chose (your pick):** each clip ends, the next step starts; Pause, Back, Next and Mute always there. A step without a clip waits its reading time (2.5 words a second).
+
+## D-171 · The replay draws with the page's own `onEvent()` (2026-11-12)
+- **Options:** a screen video · a separate tour renderer · the page's own code.
+- **Chose:** the page's code, fed the saved trace events on a timer. Same cards as a live run, nothing to keep in step. **Cost:** a page change changes the tour too (re-check it).
+
+## D-172 · Tour content in the workspace, player in the harness (2026-11-12)
+- `workspaces/<name>/tour/` holds `tour.toml` (steps, captions, cards), `runs/*.jsonl` and `audio/`. `src/agentic_harness/tour.py` and `web/tour.js` know no domain (the one architecture rule).
+
+## D-173 · One fresh live run, two turns (2026-11-12)
+- **Chose:** a fresh run on Flash-Lite (free tier, under 2 cents' worth): Priya asks for a review and counter-offer; the agent raises concerns first (D-165); Priya agrees; it drafts, four people approve, it sends. Old traces predate the S11/S12 cards.
+- **Known flaw:** the final answer says the send was "automatically approved"; four people approved it. Re-record if it bothers you.
+
+## D-174 · Hosting: decided later (2026-11-12)
+- `harness.gauravlahoti.dev` or `gauravlahoti.dev/harness`; the export will use relative paths, so both work.
+
+## D-175 · Local first; the website export comes after (2026-11-12)
+- **Your request:** build the tour on the local version first, with your voice; the website step later, with your guidance. S13-AC2 (export) and AC7 (from a subfolder) stay 📝 until then.
+
+## D-176 · Record your voice in the page (2026-11-12)
+- **Options:** record in Voice Memos and drop files in `tour/audio/` · a recorder in the page.
+- **Chose:** a recorder in the page (`/?tour=record`): the script on screen next to the run, Record → Stop saves the clip, one click to re-record. Dropped files work too (`audio/<step>.m4a|.mp3|.webm|.ogg`).
+- **Cost:** a local-only upload route (page header, 5 MB per clip, 15 MB in all, only into the tour's audio folder). Chrome records WebM/Opus; older Safari may need m4a, so the export may convert later.
+
+## D-177 · A step says where it stops: `until = "event#n"` (2026-11-12)
+- `until = "approval_requested#2"`: play up to and including the main agent's 2nd `approval_requested`, counted across the tour's turns; a helper's events play along but aren't counted. `"end"` plays everything. Readable, and it survives re-recording better than line numbers. Hidden event types (e.g. the online evals) are listed in `skip`.

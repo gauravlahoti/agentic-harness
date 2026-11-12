@@ -1,0 +1,214 @@
+"""The guided tour: recorded runs replayed step by step, with a voice (S13, D-168 to D-177).
+
+No model is called: the tour plays saved trace events. These tests check the tour file,
+the JSON the page plays, the clip rules and the local routes.
+"""
+
+import shutil
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from agentic_harness.config import Settings
+from agentic_harness.server.app import create_app
+from agentic_harness.tour import (
+    MAX_CLIP_BYTES,
+    WORDS_PER_SECOND,
+    TourError,
+    load_tour,
+    save_clip,
+    tour_payload,
+)
+from agentic_harness.workspace import Workspace
+
+CLOUDCO = Path(__file__).parents[2] / "workspaces" / "cloudco"
+PAGE = {"X-Harness-Page": "1"}
+
+
+@pytest.fixture
+def ws_copy(tmp_path: Path) -> Path:
+    """A copy of the workspace, so a test may break its tour or save clips."""
+    copy = shutil.copytree(CLOUDCO, tmp_path / "cloudco", ignore=shutil.ignore_patterns("audio"))
+    (copy / "tour" / "audio").mkdir()
+    return copy
+
+
+def edit_tour(ws: Path, old: str, new: str) -> None:
+    file = ws / "tour" / "tour.toml"
+    text = file.read_text()
+    assert old in text, old
+    file.write_text(text.replace(old, new, 1))
+
+
+def test_s13_ac1_the_workspace_tour_loads_and_every_step_is_complete() -> None:
+    tour = load_tour(CLOUDCO)
+    assert tour is not None
+    assert len(tour.steps) >= 5
+    ids = [s.id for s in tour.steps]
+    assert len(ids) == len(set(ids))
+    for step in tour.steps:
+        assert step.title, step.id
+        assert step.say.strip(), step.id
+    # Each step stops at or after the one before: the replay only moves forward.
+    ends = [s.upto for s in tour.steps]
+    assert ends == sorted(ends)
+    assert ends[-1] == len(tour.sequence)  # the last live step plays the run to its end
+    assert tour.turns
+    assert all(t.task for t in tour.turns)
+
+
+def test_s13_ac1_a_step_must_have_a_caption(ws_copy: Path) -> None:
+    edit_tour(ws_copy, 'say = """', 'said = """')
+    with pytest.raises(TourError, match="say"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac1_until_must_name_an_event_that_happens(ws_copy: Path) -> None:
+    edit_tour(ws_copy, 'until = "tool_finished#2"', 'until = "tool_finished#99"')
+    with pytest.raises(TourError, match="tool_finished#99"):
+        load_tour(ws_copy)
+    edit_tour(ws_copy, 'until = "tool_finished#99"', 'until = "no_such_event#1"')
+    with pytest.raises(TourError, match="no_such_event#1"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac1_steps_may_not_go_backwards(ws_copy: Path) -> None:
+    edit_tour(ws_copy, 'until = "tool_finished#4"', 'until = "run_started#1"')
+    with pytest.raises(TourError, match="before"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac1_a_missing_run_file_is_named(ws_copy: Path) -> None:
+    (ws_copy / "tour" / "runs" / "2-send.jsonl").unlink()
+    with pytest.raises(TourError, match=r"2-send\.jsonl"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac1_a_workspace_without_a_tour_has_none(ws_copy: Path) -> None:
+    shutil.rmtree(ws_copy / "tour")
+    assert load_tour(ws_copy) is None
+
+
+def test_s13_ac1_helper_events_play_but_are_not_counted(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    helpers = [e for e in tour.sequence if e.get("data", {}).get("agent_id")]
+    assert helpers, "the recorded run hands work to a helper"
+    # model_replied#4 is the main agent's 4th reply, after the helper's own replies.
+    main_replies = [
+        i
+        for i, e in enumerate(tour.sequence)
+        if e.get("type") == "model_replied" and not e["data"].get("agent_id")
+    ]
+    helper_at = tour.sequence.index(helpers[0])
+    assert main_replies[2] < helper_at < main_replies[3]
+
+
+def test_s13_ac1_skipped_event_types_never_reach_the_page() -> None:
+    tour = load_tour(CLOUDCO)
+    assert tour is not None
+    assert tour.skip  # the online evals are not part of a harness tour
+    assert not [e for e in tour.sequence if e.get("type") in tour.skip]
+
+
+def test_s13_ac8_a_step_without_a_clip_waits_its_reading_time(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    payload = tour_payload(tour, audio_url=lambda step, version: f"a/{step}?v={version}")
+    first = payload["steps"][0]
+    assert first["audio"] is None
+    words = len(tour.steps[0].say.split())
+    assert first["seconds"] == pytest.approx(words / WORDS_PER_SECOND, abs=0.1)
+
+
+def test_s13_ac8_a_saved_clip_is_used_and_replaces_the_old_one(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    step = tour.steps[0].id
+    save_clip(tour, step, b"x" * 100, "audio/webm;codecs=opus")
+    save_clip(tour, step, b"y" * 50, "audio/mp4")
+    files = sorted(p.name for p in (ws_copy / "tour" / "audio").iterdir())
+    assert files == [f"{step}.m4a"]  # one clip per step, the newest
+    payload = tour_payload(tour, audio_url=lambda s, v: f"a/{s}?v={v}")
+    assert payload["steps"][0]["audio"].startswith(f"a/{step}?v=")
+
+
+def test_s13_ac8_clips_are_checked(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    step = tour.steps[0].id
+    with pytest.raises(TourError, match="step"):
+        save_clip(tour, "../../evil", b"x", "audio/webm")
+    with pytest.raises(TourError, match="type"):
+        save_clip(tour, step, b"x", "text/html")
+    with pytest.raises(TourError, match="MB"):
+        save_clip(tour, step, b"x" * (MAX_CLIP_BYTES + 1), "audio/webm")
+
+
+def test_s13_ac8_all_clips_together_stay_under_the_budget(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    big = b"x" * (MAX_CLIP_BYTES - 10)
+    for step in tour.steps[:3]:  # three near-5 MB clips fit under 15 MB
+        save_clip(tour, step.id, big, "audio/webm")
+    with pytest.raises(TourError, match="15 MB"):
+        save_clip(tour, tour.steps[3].id, big, "audio/webm")
+
+
+def app_for(ws: Path, tmp_path: Path) -> TestClient:
+    settings = Settings()
+    app = create_app(settings, workspace=Workspace.load(ws), memory_dir=tmp_path / "mem")
+    return TestClient(app, base_url="http://127.0.0.1")
+
+
+def test_s13_ac1_the_server_serves_the_tour(ws_copy: Path, tmp_path: Path) -> None:
+    client = app_for(ws_copy, tmp_path)
+    body = client.get("/api/tour").json()
+    for key in ("title", "steps", "turns", "profile", "person"):
+        assert body[key], key
+    assert all("upto" in s for s in body["steps"])
+    # The page plays exactly the saved events: same shape as the live stream.
+    first = body["turns"][0]["events"][0]
+    assert first["type"] == "run_started"
+    assert "data" in first
+
+
+def test_s13_ac1_no_tour_is_a_404(ws_copy: Path, tmp_path: Path) -> None:
+    shutil.rmtree(ws_copy / "tour")
+    assert app_for(ws_copy, tmp_path).get("/api/tour").status_code == 404
+
+
+def test_s13_ac8_recording_a_clip_needs_the_page_and_a_real_step(
+    ws_copy: Path, tmp_path: Path
+) -> None:
+    client = app_for(ws_copy, tmp_path)
+    step = client.get("/api/tour").json()["steps"][0]["id"]
+    clip = {"content": b"voice", "headers": {"Content-Type": "audio/webm"}}
+    assert client.put(f"/api/tour/audio/{step}", **clip).status_code == 403  # type: ignore[arg-type]
+    headers = {**PAGE, "Content-Type": "audio/webm"}
+    assert client.put("/api/tour/audio/nope", content=b"v", headers=headers).status_code == 400
+    saved = client.put(f"/api/tour/audio/{step}", content=b"voice", headers=headers)
+    assert saved.status_code == 200
+    url = client.get("/api/tour").json()["steps"][0]["audio"]
+    got = client.get(url)
+    assert got.status_code == 200
+    assert got.content == b"voice"
+    assert got.headers["content-type"].startswith("audio/webm")
+
+
+def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    html = (web / "index.html").read_text()
+    js = (web / "app.js").read_text()
+    tour_js = (web / "tour.js").read_text()
+    assert 'id="tour-bar"' in html
+    assert "/static/tour.js" in html
+    for label in (">Start Tour<", ">Back<", ">Next<", ">Mute<"):
+        assert label in html, label
+    assert 'const TOUR = new URLSearchParams(location.search).get("tour")' in js
+    assert "if (TOUR) return; // the tour sends nothing" in js  # approvals
+    assert "if (TOUR) return renderWork(); // the tour's own chat only" in js
+    assert "onEvent(" in tour_js  # the page's own drawing code (D-171)
+    assert 'fetch("/api/run"' not in tour_js
+    assert '"/api/tour"' in tour_js

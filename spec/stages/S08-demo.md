@@ -61,3 +61,4 @@ The same CloudCo workspace on **Google ADK**: `SkillToolset` ↔ our skills · `
 
 - 2026-11-10 · Created (v3). Swap test added after the "agent demo vs harness" review.
 - 2026-11-11 · The eval part (task table, AC7, AC8) moved to S10 · Evals at your request (D-108). The eval task table below is kept for history; S10's 16 cases replace it.
+- 2026-11-12 · Replay (AC2) and static export (AC9) moved to [S13 · Guided Tour](S13-guided-tour.md) at your request: a voice-led public tour on gauravlahoti.dev.

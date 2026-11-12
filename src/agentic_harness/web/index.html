@@ -10,6 +10,7 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/app.js" defer></script>
+  <script src="/static/tour.js" defer></script>
   <script src="/static/theme.js" defer></script>
 </head>
 <body>
@@ -106,6 +107,8 @@
       <p id="run-status" class="visually-hidden" role="status"></p>
 
       <div class="thread" id="thread">
+        <!-- The guided tour's card for a step (S13): drawn from the workspace's Markdown. -->
+        <section class="tour-card" id="tour-card" aria-label="Tour card" hidden></section>
         <div class="empty" id="empty-state">
           <p class="empty-title" id="empty-title">What should the agent do?</p>
           <p class="hint" id="empty-hint">Load a workspace to start: <code>agentic-harness serve --workspace workspaces/hello</code></p>
@@ -129,6 +132,24 @@
             </button>
           </div>
         </form>
+        <!-- The guided tour (S13, D-168–D-177): /?tour plays it, /?tour=record records your voice. -->
+        <section class="tour-bar" id="tour-bar" aria-label="Guided Tour" hidden>
+          <div class="tour-progress" aria-hidden="true"><span id="tour-fill"></span></div>
+          <div class="tour-text">
+            <p class="tour-head"><span class="tour-count" id="tour-count"></span> <strong id="tour-title" aria-live="polite"></strong></p>
+            <p class="tour-say" id="tour-say"></p>
+          </div>
+          <div class="tour-controls">
+            <button type="button" class="tour-btn" id="tour-back">Back</button>
+            <button type="button" class="tour-btn tour-main" id="tour-play">Start Tour</button>
+            <button type="button" class="tour-btn" id="tour-next">Next</button>
+            <button type="button" class="tour-btn" id="tour-mute" aria-pressed="false">Mute</button>
+            <span class="tour-rec" id="tour-rec-box" hidden>
+              <button type="button" class="tour-btn tour-record" id="tour-rec">Record</button>
+              <span class="tour-rec-note" id="tour-rec-note" role="status"></span>
+            </span>
+          </div>
+        </section>
       </div>
 
       <!-- Icons the script copies in. Templates keep the strict security policy: no HTML strings. -->

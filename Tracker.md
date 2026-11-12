@@ -33,6 +33,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
 | [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 13/14 | 0/14 | 1 |
+| [S13](spec/stages/S13-guided-tour.md) | Guided Tour | 🟦 | 7/9 | 0/9 | 1 |
 
 ## Checks
 
@@ -269,6 +270,20 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC13 | A task file with mail headers shows as a **Draft** email card under the answer; `>` lines show as a quote | 🧪 👀 | 🟨 | `test_drafts_and_person.py::test_s12_ac13_*` (2) · 👀 waits for your run |
 | AC14 | Sales prompts: concerns vs policy first, then a question; a draft only after agreement, then "send it to <contact>?" | 🧪 🔑 👀 | 🟨 | `test_drafts_and_person.py::test_s12_ac14_*` (2): prompts and golden cases · 🔑 live behaviour waits for your run |
 
+### S13 · Guided Tour
+
+| ID | Check | How | Status | Evidence |
+|---|---|---|---|---|
+| AC1 | `tour.toml` loads; every step has an id, a caption and a valid "play until" event; every run and clip it names exists | 🧪 | 🟨 | `test_tour.py::test_s13_ac1_*` (9): the tour loads; caption, `until`, order, missing run, no tour, helper events, skipped kinds, the server route |
+| AC2 | The export is one folder: relative asset paths, no `/api/` call in tour mode, nothing key-shaped in any file | 🧪 | 🟦 |  |
+| AC3 | `tour.js`, `export.py` and the player know no domain | 🧪 | 🟨 | `test_generic_harness.py` covers `tour.py` and `tour.js` (no domain words) |
+| AC4 | The replay draws the same cards as the live run | 👀 | 🟨 | 👀 Chrome: the replay draws the live cards (context, memory, scope, tools, helper lane, flagged line, checks failed → fixed, hard limits, body check, 4 approvals, sent email, run summary); waits for your look |
+| AC5 | Voice leads; Pause, Back, Next and Mute work; the caption is always shown | 👀 | 🟨 | `test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing` · 👀 Chrome: Pause, Back (replays to the step), Next; a test clip's length read and the step waited for it; waits for your voice |
+| AC6 | Each step opens and highlights its Harness pane section | 👀 | 🟨 | 👀 Chrome: each step opens and lights its part; step 2 and 10 light all six |
+| AC7 | It plays from a subfolder with zero model or API calls | 👀 | 🟦 |  |
+| AC8 | Audio total ≤ 15 MB; a step without a clip advances on reading time | 🧪 | 🟨 | `test_tour.py::test_s13_ac8_*` (4): reading time without a clip, a new take replaces the old, clip checks, 15 MB in all |
+| AC9 | It works at phone width | 👀 | 🟨 | 👀 Chrome at 390 px: no sideways scroll, the pane stays closed, the tour bar fits |
+
 ## Product goals
 
 | ID | Goal | Status |
@@ -388,3 +403,6 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your notes on the approval card: Sales' rule renamed "Sign-Off to Send" (was "Any message to a customer"); the message header shows To, Customer and Contract from the workspace (`{fact, value}` context rows, D-141 extended); every offered term sits in the table ("Within limits" when no one else decides); header values line up; a sign-off on its own lines; after an approval the next card scrolls to its buttons. 531 offline tests. |
 | 2026-11-12 | Your point on cost: the online judge has an On/Off switch on the Online Evals page, Off by default and kept on the server; code metrics still run free (D-167; the sampling plan dropped at your choice). `test_online_judge_switch.py` (5); 536 offline tests. |
 | 2026-11-12 | Your request: every sidebar group starts folded except Chats (Profiles joins Workspace and Observability); remembered folds reset once under a new key (D-153 changed). `test_sidebar_groups_start_folded_except_chats`; 537 offline tests; checked in Chrome. |
+| 2026-11-12 | S13 · Guided Tour drafted at your request: a voice-led replay of a recorded run, exported as static files for gauravlahoti.dev; no Cloud Run, no key (D-168–D-174 proposed). Takes S08-AC2 and AC9. Brief waits for your approval. |
+| 2026-11-12 | S13 brief approved → 🟦 (your go-ahead: "implement the guided tour on the local version first, with my voice"). S12 stays 🟨, waiting for your check. D-168–D-177. Recorded the tour's run live on Flash-Lite (2 turns, 4 approvals). |
+| 2026-11-12 | S13 built locally (7/9 🟨): `/?tour` replays the recorded run in 10 steps through the page's own `onEvent()`; `/?tour=record` records a clip per step. Export (AC2) and subfolder (AC7) wait for the hosting step. `test_tour.py` (16); 553 offline tests. Next: your voice via ElevenLabs ("Gaurav"), step 1 as a sample. |

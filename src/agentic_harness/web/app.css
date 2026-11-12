@@ -2153,3 +2153,85 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 .cost-card .model-pick.evals-pick { margin: 2px 0 0; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); cursor: pointer; }
 .cost-card .model-pick.evals-pick:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
 .cost-card .model-pick.evals-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Guided Tour (S13, D-168–D-177) ──────────────────────────────────────────
+   /?tour: the chat replays a recorded run; the tour bar takes the composer's place and
+   looks like it. Nothing here can send: no composer, no deletes, no Observability. */
+.tour-mode #composer,
+.tour-mode .examples,
+.tour-mode #new-task,
+.tour-mode .work-delete,
+.tour-mode [data-group="observability"] { display: none; }
+.tour-mode .work-open { pointer-events: none; }
+/* The tour bar is taller than the composer: keep the newest line above it when it scrolls in. */
+html:has(body.tour-mode) { scroll-padding-bottom: 340px; }
+
+.tour-bar {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 6px 28px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.35));
+}
+.tour-progress { position: absolute; inset: 0 0 auto; height: 3px; background: var(--line); }
+.tour-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.4s ease; }
+.tour-text { min-height: 74px; }
+.tour-head { margin: 0 0 4px; font-size: 14px; }
+.tour-count { margin-right: 6px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.tour-say { margin: 0; color: var(--text-soft); font-size: 14.5px; line-height: 1.55; max-height: 9.5em; overflow-y: auto; }
+.tour-recording .tour-say { font-size: 18px; line-height: 1.6; max-height: 14em; color: var(--text); } /* read it out: a teleprompter */
+.tour-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.tour-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.tour-btn:hover:not(:disabled) { border-color: var(--accent); }
+.tour-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tour-btn:disabled { opacity: 0.45; cursor: default; }
+.tour-btn.tour-main { min-width: 96px; border-color: var(--accent); background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.tour-rec { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.tour-rec[hidden], .tour-card[hidden] { display: none; } /* display above would beat hidden */
+.tour-record.is-on { border-color: var(--fail); background: var(--fail); color: var(--surface); }
+.tour-rec-note { color: var(--muted); font-size: 12.5px; }
+
+/* A step's card over the empty chat: the use case, seen while you hear it. */
+.tour-card {
+  margin-top: 6vh;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 6px 28px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3));
+}
+.tour-card h3 { margin: 0 0 10px; font-size: 16px; }
+.tour-card-text p { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; }
+.tour-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tour-table th { padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left; }
+.tour-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tour-table tr:last-child td { border-bottom: 0; }
+@media (max-width: 600px) {
+  .tour-card { padding: 14px 12px; overflow-x: auto; }
+  .tour-table { font-size: 12.5px; }
+}
+
+/* The Harness part the voice is talking about: lit in its own color. */
+.pane-part.tour-glow > summary {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--part) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--part);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pane-part.tour-glow > summary { animation: tour-glow 1.6s ease-out 1; }
+  @keyframes tour-glow {
+    from { background: color-mix(in srgb, var(--part) 34%, transparent); }
+  }
+}

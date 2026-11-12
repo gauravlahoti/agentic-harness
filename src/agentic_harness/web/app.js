@@ -5,6 +5,10 @@ const PAGE_HEADER = { "X-Harness-Page": "1" }; // the server refuses actions wit
 const ICONS = { waiting: "○", passed: "✓", failed: "✗", skipped: "–" };
 
 const $ = (id) => document.getElementById(id);
+// The guided tour (S13): /?tour replays recorded runs and sends nothing; /?tour=record also
+// records your voice. tour.js plays it through this file's own onEvent() (D-171).
+const TOUR = new URLSearchParams(location.search).get("tour") !== null;
+const TOUR_RECORD = new URLSearchParams(location.search).get("tour") === "record";
 
 // ── Health: smoke row + what the Agent view can offer ───────────────────────
 let health = null;
@@ -29,6 +33,7 @@ async function loadHealth() {
     server.className = "pill bad";
   }
   setUpAgent();
+  dispatchEvent(new Event("harness-ready")); // the tour starts once the page knows its workspace
 }
 
 // ── Views: Agent, Memory, Evals and Checks, chosen by the URL hash ─────────────────────────
@@ -364,6 +369,7 @@ const ago = (seconds) => {
 const withProfile = () => (currentProfile() ? `?profile=${encodeURIComponent(currentProfile())}` : "");
 
 async function refreshWork() {
+  if (TOUR) return renderWork(); // the tour's own chat only
   try {
     const response = await fetch(`/api/sessions${withProfile()}`);
     if (!response.ok) return;
@@ -1510,6 +1516,7 @@ function approvalCard(turn, d) {
   if (d.timeout_s) countdown.textContent = `${Math.floor(d.timeout_s / 60)}:${String(d.timeout_s % 60).padStart(2, "0")} left`;
 
   async function answer(approved) {
+    if (TOUR) return; // the tour sends nothing: its decisions are in the recorded run
     approve.disabled = reject.disabled = field.disabled = true;
     const said = field.value.trim();
     if (asking && approved && !said) {
