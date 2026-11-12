@@ -1191,6 +1191,7 @@
 
 ## D-153 · The Harness pane is back as it was (2026-11-12)
 - **Your call:** bring back the original Harness pane. D-152's Agent = Model + Harness boxes are removed: title "Harness", the parts as before. Kept from D-152: Threshold columns, the Observability group, Online Evals outside the pane, Checks off the sidebar, the fold fix. Workspace and Observability both start folded; Chats starts open (your call).
+- **Changed 2026-11-12, your request** ("make everything collapsed by default except for chats"): Profiles starts folded too. Folds are remembered under a new key name, so clicks from before this change don't override the new defaults.
 
 ## D-154 · The online judge sees failed and refused tool calls (2026-11-12)
 - **Found in the eval:** `cfo-no-holds` answered correctly ("the CFO rejected it, nothing was sent"), but the rejection was a failed call, which `context_blocks` dropped, so Groundedness called it made up.

@@ -245,6 +245,18 @@ def test_online_and_offline_evals_sit_under_observability_not_the_harness() -> N
     assert 'switchFor("checks", id)' in JS  # each metric's switch is on the Online Evals page
 
 
+def test_sidebar_groups_start_folded_except_chats() -> None:
+    """Your request (2026-11-12): every sidebar group starts folded except Chats."""
+    for name in ("profiles", "views", "observability"):
+        group = HTML[HTML.index(f'data-group="{name}"') :]
+        assert 'data-collapsed="1"' in group[:80], f"{name} should start folded"
+        assert 'aria-expanded="false"' in group[:600], f"{name} toggle says open"
+    work = HTML[HTML.index('data-group="work"') :]
+    assert 'data-collapsed="1"' not in work[:80]  # Chats starts open
+    # New storage key: folds clicked before this change don't override the new defaults.
+    assert "`side-fold-${group.dataset.group}`" in JS
+
+
 def test_new_or_opened_conversation_goes_to_the_agent_page() -> None:
     """Your request: from Memory or the evals, a chat click shows the chat, no detour."""
     assert JS.count("toAgent();") >= 2

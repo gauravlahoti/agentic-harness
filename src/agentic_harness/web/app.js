@@ -3540,17 +3540,18 @@ $("evals-stop").addEventListener("click", async () => {
   await fetch("/api/evals/stop", { method: "POST", headers: PAGE_HEADER });
 });
 
-// ── Sidebar groups fold (Profiles, Chats, Workspace); each one's state is kept per browser ─
+// ── Sidebar groups fold (Profiles, Chats, Workspace, Observability); each one's state is kept per browser ─
 for (const group of document.querySelectorAll(".side-group")) {
   const toggle = group.querySelector(".side-toggle");
   if (!toggle) continue; // Acting As doesn't fold (found: it stopped every group after it folding)
-  const key = `side-collapsed-${group.dataset.group}`;
+  // New key name (2026-11-12): folds clicked before "all folded but Chats" don't override it.
+  const key = `side-fold-${group.dataset.group}`;
   const set = (collapsed) => {
     group.classList.toggle("collapsed", collapsed);
     toggle.setAttribute("aria-expanded", String(!collapsed));
     group.querySelector(".side-body").inert = collapsed; // folded links can't take focus
   };
-  const folded = group.dataset.collapsed === "1"; // Observability starts folded (your request)
+  const folded = group.dataset.collapsed === "1"; // all but Chats start folded (your request)
   try {
     const saved = localStorage.getItem(key);
     set(saved === null ? folded : saved === "1");
