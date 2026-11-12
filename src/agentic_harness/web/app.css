@@ -1995,10 +1995,6 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .chain-step.is-next .chain-name { color: var(--muted); font-weight: 600; }
 .chain-what { max-width: 100%; padding: 0 4px; color: var(--muted); font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
 .chain-step.is-now .chain-what { color: var(--text-soft); }
-.approval-all { margin-top: 14px; font-size: 13px; }
-.approval-all > summary { cursor: pointer; color: var(--text-soft); font-weight: 600; }
-.approval-all .facts { margin-top: 8px; }
-.approval-all .facts dd { white-space: pre-wrap; max-height: 220px; overflow: auto; }
 .approval-v2 .approval-field { display: block; box-sizing: border-box; width: calc(100% - 36px); margin-top: 12px; }
 .approval-v2 .approval-actions { margin-top: 10px; }
 .approval-v2 .approval-demo { margin-top: 8px; margin-bottom: 14px; }
@@ -2014,3 +2010,20 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
   .chain-step + .chain-step::before { display: none; }
   .chain-what { grid-column: 2; }
 }
+/* What the approver approves, always open (your request): the message, then its terms. */
+.approval-message { margin-top: 16px; }
+.approval-section { margin: 14px 0 6px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.approval-mail { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.approval-mail-subject { margin: 0; padding: 10px 14px 0; font-size: 15px; font-weight: 650; }
+.approval-mail-meta { display: grid; gap: 2px; padding: 4px 14px 10px; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: 12.5px; }
+.approval-mail-key { display: inline-block; min-width: 72px; color: var(--muted); text-transform: capitalize; }
+.approval-mail-body { max-height: 320px; overflow: auto; padding: 10px 14px 4px; font-size: 14px; line-height: 1.6; }
+.approval-mail-body p { margin: 0 0 10px; white-space: pre-line; }
+.approval-mail-body ul, .approval-mail-body ol { margin: 0 0 10px; padding-left: 20px; }
+.approval-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.approval-table th { padding: 6px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; text-align: left; }
+.approval-table td { padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-transform: none; }
+.approval-table td:first-child { text-transform: capitalize; }
+.approval-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.approval-table tr.is-mine td { background: color-mix(in srgb, var(--part-guard) 9%, var(--surface)); font-weight: 650; }
+.approval-table tr.is-mine td:first-child { box-shadow: inset 3px 0 0 var(--part-guard); }

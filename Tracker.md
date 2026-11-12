@@ -366,3 +366,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your request: Claude Opus 5.5 selectable for the agent and in Evals (agent and judge), priced from the claude-api reference ($4 / $20). D-140. Committed and pushed S12 Part A first, as you asked. |
 | 2026-11-12 | S12-AC4 → 🟨 (checked in Chrome). Part A (AC1–AC5) built and waiting for your check; Part B (identity) starts after. |
 | 2026-11-12 | Your report: card 1 of 4 (Sales) listed the 25% discount, so it read as if Sales approved it. Now one card per person (the CFO once for both rules: 3 steps), each saying what that person approves, with the chain as a stepper. Checked in Chrome. 455 offline tests. |
+| 2026-11-12 | Your request: the approval card shows the message and its terms open (no fold, no "See what will be sent"): an email preview and a Term · Offered · Decided by table with your own rows marked. Checked in Chrome. |

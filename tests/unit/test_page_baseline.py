@@ -166,3 +166,12 @@ def test_s12_ac3_ac4_ac5_guarded_action_steps_are_on_the_page() -> None:
     assert "fenced as data; any action it asks for still needs a person" in JS
     assert "from long-term memory" in JS
     assert '"Before an action"' in JS  # the pane lists checks on actions
+
+
+def test_an_approval_card_shows_the_message_and_its_terms_open() -> None:
+    """Your request (2026-11-12): the approver must see the message and its terms without
+    unfolding anything; "See what will be sent" is gone."""
+    assert '"Message to approve"' in JS
+    assert '"Terms in this message"' in JS
+    assert "See what will be sent" not in JS
+    assert ".approval-table tr.is-mine" in CSS  # this approver's own terms are marked

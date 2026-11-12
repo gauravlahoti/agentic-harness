@@ -1212,17 +1212,50 @@ function approvalCard(turn, d) {
       li.append(el("span", "chain-node", state === "done" ? "✓" : String(i + 1)), el("strong", "chain-name", c.approver || "A person"), el("span", "chain-what", decides(c)));
       chain.append(li);
     });
-    // Everything in the call, folded: the email and every term with who decides it.
-    const all = el("details", "approval-all");
-    all.append(el("summary", null, "See what will be sent"));
+    // What the person approves, always in view (your request): the message as it will read,
+    // then every term it offers and who decides each, this approver's rows marked.
+    const args = d.arguments ?? {};
     const owner = new Map((d.chain ?? []).flatMap((c) => c.rules.filter((r) => r.arg).map((r) => [r.arg, c.approver])));
-    all.append(
-      facts(
-        Object.entries(d.arguments ?? {})
-          .filter(([, v]) => v !== null && v !== false && v !== "")
-          .map(([k, v]) => [k.replaceAll("_", " "), `${typeof v === "string" ? v : JSON.stringify(v)}${owner.has(k) ? `  → ${owner.get(k)}` : ""}`]),
-      ),
-    );
+    const shown = (v) => v !== null && v !== undefined && v !== false && v !== "";
+    const all = el("section", "approval-message");
+    if (typeof args.body === "string" || typeof args.subject === "string") {
+      all.append(el("h5", "approval-section", "Message to approve"));
+      const mail = el("div", "approval-mail");
+      const meta = el("div", "approval-mail-meta");
+      // Everything that isn't the subject, body or a decided term: who it goes to, and so on.
+      for (const [k, v] of Object.entries(args)) {
+        if (["subject", "body"].includes(k) || owner.has(k) || !shown(v)) continue;
+        const line = el("div");
+        line.append(el("span", "approval-mail-key", k.replace(/_id$/, "").replaceAll("_", " ")), el("span", null, String(v)));
+        meta.append(line);
+      }
+      if (args.subject) mail.append(el("p", "approval-mail-subject", args.subject));
+      mail.append(meta);
+      const body = el("div", "approval-mail-body");
+      renderProse(body, String(args.body ?? ""));
+      mail.append(body);
+      all.append(mail);
+    }
+    const terms = Object.entries(args).filter(([k, v]) => owner.has(k) && shown(v));
+    if (terms.length) {
+      all.append(el("h5", "approval-section", "Terms in this message"));
+      const table = el("table", "approval-table");
+      const headRow = el("tr");
+      headRow.append(el("th", null, "Term"), el("th", null, "Offered"), el("th", null, "Decided by"));
+      table.append(el("thead"), el("tbody"));
+      table.tHead.append(headRow);
+      for (const [k, v] of terms) {
+        const tr = el("tr", owner.get(k) === d.approver ? "is-mine" : "");
+        const unit = { pct: "%", days: " days", months: " months" }[k.match(/_(pct|days|months)$/)?.[1]] ?? "";
+        tr.append(el("td", null, k.replace(/_(pct|days|months)$/, "").replaceAll("_", " ")), el("td", "approval-num", `${v}${unit}`), el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · you` : owner.get(k)));
+        table.tBodies[0].append(tr);
+      }
+      all.append(table);
+    }
+    if (!all.children.length) {
+      // A tool that isn't a message: its arguments, plainly.
+      all.append(facts(Object.entries(args).filter(([, v]) => shown(v)).map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)])));
+    }
     approve.textContent = `Approve as ${d.approver}`;
     card.append(head, focus, ...((d.chain ?? []).length > 1 ? [chain] : []), all, field, buttons);
     if (d.approver) card.append(el("p", "approval-demo", `Demo: you are acting as ${d.approver}. This project has no logins.`));
