@@ -958,21 +958,22 @@
 
 ### D-121 · The model decides when a task needs a plan
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Chose:** the model, from `update_plan`'s description ("for tasks with 3 or more distinct parts"); the harness enforces the stop rule only once a plan exists
+- **Chose:** the model, from `write_plan`'s description ("for tasks with 3 or more distinct parts"); the harness enforces the stop rule only once a plan exists
 - **Instead of:** a classifier call before the loop; a skill that declares `plan: true`
 - **Because:** no extra call on every run; the same rule Claude Code's todo list uses
 - **Cost:** a small model may plan a light question; the eval case `light-question-no-plan` catches it
 
 ### D-122 · One plan tool that rewrites the whole list
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Chose:** `update_plan(items)`: each item has text, status (open · doing · done · skipped) and a note (needed for skipped); the loop intercepts it like `ask_human`
-- **Instead of:** `write_plan` + `update_plan`
+- **Chose:** `write_plan(items)`: each item has text, status (open · doing · done · skipped) and a note (needed for skipped); the loop intercepts it like `ask_human`
+- **Instead of:** `write_plan` + `write_plan`
 - **Because:** one tool to explain; status changes ride along with real tool calls in the same reply
 - **Cost:** the list is resent on every update (a few dozen tokens)
+- **Renamed 2026-11-12, your question** ("why is there no create plan, only update plan?"): `update_plan` → `write_plan`. The first call writes the list, later calls rewrite it; "update" wrongly suggested a list must exist first. Same tool, same behaviour.
 
 ### D-123 · Keep the plan in view by pinning it in trimming
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Chose:** pruning never stubs the newest `update_plan` result
+- **Chose:** pruning never stubs the newest `write_plan` result
 - **Instead of:** rewriting the system prompt each turn; adding a note at the end of every turn
 - **Because:** the prompt stays fixed (prompt caching, S02-AC8) and nothing invented enters the history
 - **Cost:** the plan sits where it was written, not at the end
@@ -1007,7 +1008,7 @@
 
 ### D-128 · Plan and Verify on the pane and in the chat
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Changed 2026-11-12, your review** ("verify will happen at the last"; "update_plan is a tool, it should be under Tools"): planning and verifying happen at different times, so they are no longer one section. Planning is a **Plans** row in Agentic Loop and `update_plan` sits under **Tools → Harness Tools** (with `load_skill`, `save_note`, `ask_human`, which the pane never showed either). The checks have their own **Verification** section after Guardrails, in run order (D-67).
+- **Changed 2026-11-12, your review** ("verify will happen at the last"; "write_plan is a tool, it should be under Tools"): planning and verifying happen at different times, so they are no longer one section. Planning is a **Plans** row in Agentic Loop and `write_plan` sits under **Tools → Harness Tools** (with `load_skill`, `save_note`, `ask_human`, which the pane never showed either). The checks have their own **Verification** section after Guardrails, in run order (D-67).
 - **Chose (first):** a Plan & Verify section after Agentic Loop (rules, check switches, retries) plus live To-Do and Checks cards in the chat
 - **Instead of:** the pane only; two rows under Agentic Loop
 - **Because:** the pane says what the harness will do; the chat shows what it did
@@ -1016,7 +1017,7 @@
 ### D-129 · Answer format: rules always in the prompt, not a skill or a tool
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
 - **Chose:** a workspace file `answer-style.md` listed in `memory = [...]`, so every call sees it (cached); AGENTS.md's "How to answer" moves there
-- **Instead of:** a skill the model loads at the end (it can skip it, as Sonnet skipped `update_plan`; one more call; there is no separate "final output" moment: the answer is written in the same reply that decides to stop); a `submit_answer` tool with a schema (small models fill nested schemas badly; prose is lost)
+- **Instead of:** a skill the model loads at the end (it can skip it, as Sonnet skipped `write_plan`; one more call; there is no separate "final output" moment: the answer is written in the same reply that decides to stop); a `submit_answer` tool with a schema (small models fill nested schemas badly; prose is lost)
 - **Because:** always present costs no call and can't be skipped; the workspace owns its style, the harness stays domain-free
 - **Cost:** about 300 prompt tokens per call (cached)
 

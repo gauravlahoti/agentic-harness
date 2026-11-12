@@ -150,18 +150,18 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
 
     model = Scripted()
     h = create_harness(model, Limits(), WS, profile="sales", trace_dir=None, memory_dir=None)
-    assert "update_plan" in h.tools
+    assert "write_plan" in h.tools
     assert next(c.name for c in h.checks) == "plan_complete"
     # Helpers never plan: the clause-reviewer's tools are its own list (AC1).
     child = h.tools["delegate_task"].function.make_child(WS.subagents[0], Limits())
-    assert "update_plan" not in child.tools
+    assert "write_plan" not in child.tools
     assert child.checks == ()
     # A check switched off doesn't run; the plan tool can be switched off too (AC10).
-    off = Off(tools=("update_plan",), checks=("right_approver", "plan_complete"))
+    off = Off(tools=("write_plan",), checks=("right_approver", "plan_complete"))
     h2 = create_harness(
         model, Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
     )
-    assert "update_plan" not in h2.tools
+    assert "write_plan" not in h2.tools
     assert [c.name for c in h2.checks] == [
         "every_change_covered",
         "citations_exist",
@@ -179,19 +179,19 @@ def test_s11_ac10_the_pane_lists_the_harness_tools_and_each_can_be_switched_off(
     from agentic_harness.api import Off, describe_harness
 
     own = describe_harness(WS, "sales")["harness_tools"]
-    assert [t["name"] for t in own] == ["load_skill", "save_note", "ask_human", "update_plan"]
+    assert [t["name"] for t in own] == ["load_skill", "save_note", "ask_human", "write_plan"]
     assert all(t["when_off"] for t in own)
     assert "3 or more" in own[-1]["description"]  # the same words the model reads
-    off = Off(tools=("load_skill", "save_note", "ask_human", "update_plan"))
+    off = Off(tools=("load_skill", "save_note", "ask_human", "write_plan"))
     h = create_harness(
         Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=tmp_dir(), off=off
     )
-    assert not {"load_skill", "save_note", "ask_human", "update_plan"} & set(h.tools)
+    assert not {"load_skill", "save_note", "ask_human", "write_plan"} & set(h.tools)
     assert "contract-review" not in h.system  # load_skill off: no skills listed either
     on = create_harness(
         Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=tmp_dir()
     )
-    assert {"load_skill", "save_note", "ask_human", "update_plan"} <= set(on.tools)
+    assert {"load_skill", "save_note", "ask_human", "write_plan"} <= set(on.tools)
     assert "contract-review" in on.system
 
 

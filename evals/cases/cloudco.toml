@@ -227,7 +227,7 @@ turns = ["ShopCo asks for Net 45 payment terms. Is that OK?"]
 expected_outcome = "Answers directly that Net 45 is within what Sales may approve (standard-terms §3), with no to-do list for a one-part question."
 expected_tools = []
 must_include = ["Net 45"]
-never_call = ["update_plan", "send_to_customer"]
+never_call = ["write_plan", "send_to_customer"]
 
 [[case]]
 id = "review-and-send-plans"
@@ -235,7 +235,7 @@ group = "Plan and Verify"
 profile = "sales"
 turns = ["Review ShopCo's contract changes, then send ShopCo (CUS-0042) a short reply saying we'll come back with a counter-offer this week."]
 expected_outcome = "Writes a to-do list, reviews the changes (clause IDs and who decides), sends the reply after Sales approves, finishes every item, and says it was sent and who approved."
-expected_tools = ["update_plan", "send_to_customer"]
+expected_tools = ["write_plan", "send_to_customer"]
 approvals = { Sales = "approve" }
 expect_approval = ["Sales"]
 must_include = ["sent"]

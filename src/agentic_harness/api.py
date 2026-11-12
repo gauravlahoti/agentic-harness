@@ -388,7 +388,7 @@ def describe_harness(
         },
         "skills": context.summary()["skills"],
         # The harness's own tools (S11): the model sees them like any other (load_skill,
-        # save_note, ask_human, update_plan). Only update_plan can be switched off.
+        # save_note, ask_human, write_plan). Only write_plan can be switched off.
         "harness_tools": [
             {
                 "name": t.name,

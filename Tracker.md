@@ -233,7 +233,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | `update_plan` stores the list in run state and emits `plan_updated`; helpers don't get it | 🧪 | 🟨 | `test_plan_verify.py::test_s11_ac1_*` (2): list kept, `plan_updated`, whole list sent back; schema without bounds/defaults · `test_cloudco_checks.py::test_s11_ac1_ac10_*`: helpers don't get it |
+| AC1 | `write_plan` stores the list in run state and emits `plan_updated`; helpers don't get it | 🧪 | 🟨 | `test_plan_verify.py::test_s11_ac1_*` (2): list kept, `plan_updated`, whole list sent back; schema without bounds/defaults · `test_cloudco_checks.py::test_s11_ac1_ac10_*`: helpers don't get it |
 | AC2 | The plan is saved as steps; Resume and replay rebuild it | 🧪 | 🟨 | `test_s11_ac2_*` (2): rebuilt from saved steps; a rejected update is not the plan. (Resume itself is S09-AC4, not built: it will use `latest_plan`.) |
 | AC3 | Trimming never stubs the newest plan result | 🧪 | 🟨 | `test_s11_ac3_trimming_never_stubs_the_newest_plan` |
 | AC4 | An answer with open items gets one reminder; the second time it finishes, the plan shown incomplete | 🧪 | 🟨 | `test_s11_ac4_*` (2): one reminder then finish, plan shown open; a light question makes no plan and runs no check |
@@ -339,3 +339,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your live Sonnet run reviewed: Every Change Covered had silently skipped (gate warning before the JSON), Right Approver's message was cut, repeated and partly wrong ("24-month cap"). Fixed both; every check now shows (skipped ones say why); a card per round in run order (draft → sent back → rewrote → passed); the plan tool says a skill's steps are the recipe, the list the progress. 411 offline tests; replayed in Chrome. |
 | 2026-11-12 | You approved the answer-format add-on ("go ahead"): rules always in the prompt, a check, styling on the page. S11-AC13–AC15 → 🟦. D-129–D-131. |
 | 2026-11-12 | S11-AC13–AC15 → 🟨: `answer-style.md` always in the prompt, Answer Format check, headings / nested lists / source badges on the page. 414 offline tests; checked in Chrome. AC12 (live) stays 🟦. |
+| 2026-11-12 | Your question: why no "create plan". One tool writes the whole list each time (D-122); the name misled, so `update_plan` → `write_plan` everywhere (code, tests, eval case, docs). No status change. |

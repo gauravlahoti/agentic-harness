@@ -389,7 +389,7 @@ class Harness:
                     )
                     is_error = True
                 elif name == PLAN_TOOL:
-                    output, is_error = self._update_plan(run, arguments)  # D-122
+                    output, is_error = self._write_plan(run, arguments)  # D-122
                 elif name == "ask_human":
                     # The model asked a person a question: the loop waits for the answer (D-89).
                     output = await self._question(run, call_id or "", arguments, budget)
@@ -437,7 +437,7 @@ class Harness:
             result_step["is_error"] = True
         return result_step
 
-    def _update_plan(self, run: "_Run", arguments: dict[str, Any]) -> tuple[str, bool]:
+    def _write_plan(self, run: "_Run", arguments: dict[str, Any]) -> tuple[str, bool]:
         """Keep the newest plan in run state; send the whole list back (S11-AC1)."""
         try:
             items = read_items(arguments)

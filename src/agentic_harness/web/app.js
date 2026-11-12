@@ -792,7 +792,7 @@ function onEvent(ev, turn) {
     (turn.rounds ??= []).push(d);
     turn.activity.append(row);
     row.scrollIntoView({ block: "nearest" });
-  } else if (ev.type === "tool_started" && d.name === "update_plan") {
+  } else if (ev.type === "tool_started" && d.name === "write_plan") {
     turn.tools.set(d.call_id, { plan: true }); // the To-Do card shows it
   } else if (ev.type === "tool_finished" && turn.tools.get(d.call_id)?.plan) {
     if (d.is_error) addActivity(turn, { text: `Plan not saved · ${d.output}`, part: "plan", state: "error", raw: d });
@@ -1555,7 +1555,7 @@ function renderPane() {
       ["Helpers get", `Up to ${share(l.helper_slice.time)} the time left and ${share(l.helper_slice.money)} of the budget`],
       // Planning (S11): part of the loop, not a step before it.
       ...(info.verify?.plan_on
-        ? [["Plans", off.tools.includes("update_plan") ? "Switched off: no to-do lists this run" : "For a task with 3 or more parts the agent keeps a to-do list (update_plan) and can't finish with items open; a simple question gets a direct answer"]]
+        ? [["Plans", off.tools.includes("write_plan") ? "Switched off: no to-do lists this run" : "For a task with 3 or more parts the agent keeps a to-do list (write_plan) and can't finish with items open; a simple question gets a direct answer"]]
         : []),
       // A fixed prompt keeps every request's start identical, which is what Gemini's
       // caching needs; cached input is billed at a lower price (pricing.toml).

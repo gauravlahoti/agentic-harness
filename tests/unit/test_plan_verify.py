@@ -94,7 +94,7 @@ def of(events: list[Event], kind: str) -> list[dict[str, Any]]:
 # ── AC1 · the plan lives in run state ────────────────────────────────────────────────────
 
 
-async def test_s11_ac1_update_plan_stores_the_list_and_says_so() -> None:
+async def test_s11_ac1_write_plan_stores_the_list_and_says_so() -> None:
     model = Scripted(
         plan(("Look up the owner", "doing"), ("Answer", "open")),
         plan(("Look up the owner", "done"), ("Answer", "done"), id_="p2"),

@@ -1,4 +1,4 @@
-"""``update_plan``: the agent's to-do list for one task (S11-AC1, AC2, AC5; D-121, D-122).
+"""``write_plan``: the agent's to-do list for one task (S11-AC1, AC2, AC5; D-121, D-122).
 
 Harness part: the loop (task decomposition). The model decides *whether* a task needs a
 plan and *what* the steps are; the harness gives it one tool to write them down, keeps
@@ -20,7 +20,7 @@ from typing import Any, Literal, cast
 
 from agentic_harness.tools import Tool
 
-PLAN_TOOL = "update_plan"
+PLAN_TOOL = "write_plan"
 Status = Literal["open", "doing", "done", "skipped"]
 STATUSES: tuple[Status, ...] = ("open", "doing", "done", "skipped")
 BOXES = {"open": "[ ]", "doing": "[>]", "done": "[x]", "skipped": "[-]"}
@@ -80,7 +80,7 @@ def plan_tool() -> Tool:
 
 
 def _outside_a_run(**_: Any) -> str:
-    return "No plan was kept: update_plan only works inside a run."
+    return "No plan was kept: write_plan only works inside a run."
 
 
 def read_items(arguments: Mapping[str, Any]) -> list[Item]:
