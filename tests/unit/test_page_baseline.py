@@ -148,3 +148,12 @@ def test_s11_ac15_answers_render_headings_nested_lists_and_source_badges() -> No
     assert 'SOURCE.test(inner) ? "cite"' in JS  # a source in backticks becomes a badge
     for rule in (".reply .prose-h", ".reply li > ul", ".reply code.cite"):
         assert rule in CSS, f"S11 answer style missing from app.css: {rule}"
+
+
+def test_s06_an_outbox_email_shows_as_the_email_that_went() -> None:
+    """Your request (2026-11-12): an outbox file with mail headers is shown as an email."""
+    assert "function parseEmail" in JS
+    assert "function emailCard" in JS
+    assert "Outbox · not sent" not in JS  # the send tool says "sent" since D-120
+    for rule in (".email-head", ".email-subject", ".email-body", ".email-foot"):
+        assert rule in CSS, f"email style missing from app.css: {rule}"

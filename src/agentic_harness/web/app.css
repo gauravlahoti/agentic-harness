@@ -1935,3 +1935,32 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 @keyframes vspin { to { transform: rotate(360deg); } }
 @keyframes vpulse { 50% { opacity: 0.35; } }
 @keyframes vpop { from { transform: scale(0.4); } }
+/* An outbox file shown as the email that went (your request, 2026-11-12). */
+.email-card { overflow: hidden; }
+.email-card > summary { border-bottom: 1px solid var(--line); }
+.email-badge { flex: none; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--pass) 12%, var(--surface)); color: var(--pass); font-size: 12px; font-weight: 600; }
+.email-card .file-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.email-card .file-where { flex: none; }
+.email-sheet { padding: 14px 18px 4px; background: var(--surface); }
+.email-subject { margin: 0 0 12px; font-size: 17px; font-weight: 650; line-height: 1.35; }
+.email-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.email-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent); font-weight: 700; }
+.email-who { min-width: 0; font-size: 13.5px; line-height: 1.45; }
+.email-from, .email-to { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.email-addr { color: var(--muted); font-size: 12.5px; }
+.email-key { color: var(--muted); font-size: 12.5px; }
+.email-date { align-self: start; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.email-body { padding: 14px 0 6px; font-size: 14.5px; line-height: 1.65; }
+.email-body p { margin: 0 0 12px; white-space: pre-line; } /* keep a sign-off on its own lines */
+.email-body ul, .email-body ol { margin: 0 0 12px; padding-left: 22px; }
+.email-foot { display: grid; gap: 8px; margin: 4px -18px 0; padding: 12px 18px; border-top: 1px dashed var(--line); background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
+.email-record { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }
+.email-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.email-chip { padding: 1px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 12.5px; }
+.email-note { margin: 0; color: var(--muted); font-size: 12px; }
+.email-where { margin: 0; padding: 6px 18px 9px; color: var(--muted); font-size: 11.5px; border-top: 1px solid var(--line); }
+@media (max-width: 600px) {
+  .email-head { grid-template-columns: auto 1fr; }
+  .email-date { grid-column: 2; }
+  .email-record { grid-template-columns: 1fr; }
+}

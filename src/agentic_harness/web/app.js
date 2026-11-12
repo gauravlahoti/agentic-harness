@@ -1210,10 +1210,89 @@ function approvalCard(turn, d) {
 }
 
 // A file a tool saved: name and place on the card, the text when opened (D-53).
+// A saved file that starts with mail headers (From, To, Date, Subject) is shown as the email
+// that went out. Generic: the page knows mail's shape, not any workspace (your request).
+const MAIL_HEADER = /^(from|to|cc|date|subject):\s*(.*)$/i;
+
+function parseEmail(text) {
+  const lines = text.split("\n");
+  const headers = {};
+  let i = 0;
+  for (; i < lines.length; i++) {
+    const m = lines[i].match(MAIL_HEADER);
+    if (!m) break;
+    headers[m[1].toLowerCase()] = m[2].trim();
+  }
+  if (!headers.to || !headers.subject) return null;
+  // Trailing blocks like "Offered terms:" + a list, or a "(note)", are the email's record, not
+  // its body: they go in a footer.
+  const blocks = lines.slice(i).join("\n").trim().split(/\n\s*\n/);
+  const footer = [];
+  while (blocks.length > 1) {
+    const b = blocks.at(-1).trim().split("\n");
+    const section = b.length > 1 && /:\s*$/.test(b[0]) && b.slice(1).every((l) => /^\s*[-*•]\s/.test(l));
+    const note = b.length === 1 && /^\(.*\)$/.test(b[0]);
+    if (!section && !note) break;
+    footer.unshift(section ? { title: b[0].replace(/:\s*$/, ""), items: b.slice(1).map((l) => l.replace(/^\s*[-*•]\s+/, "")) } : { note: b[0].slice(1, -1) });
+    blocks.pop();
+  }
+  return { headers, body: blocks.join("\n\n"), footer };
+}
+
+// "Acme <A-17>" → name "Acme", address "A-17".
+function mailPerson(value) {
+  const m = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1] || m[2], address: m[2] } : { name: value, address: "" };
+}
+
+function emailCard(d, mail) {
+  const card = el("details", "file-card email-card folder-outbox");
+  card.open = true; // the email is the outcome: show it
+  const to = mailPerson(mail.headers.to);
+  const summary = el("summary");
+  summary.append(el("span", "email-badge", "✉ Sent"), el("span", "file-name", mail.headers.subject), el("span", "file-where", `to ${to.name}`), fromTemplate("tpl-chevron"));
+  const head = el("div", "email-head");
+  const from = mailPerson(mail.headers.from ?? "");
+  const avatar = el("span", "email-avatar", (from.name || "?").trim().charAt(0).toUpperCase());
+  const who = el("div", "email-who");
+  const fromLine = el("div", "email-from");
+  fromLine.append(el("strong", null, from.name || "Unknown sender"), ...(from.address ? [el("span", "email-addr", `<${from.address}>`)] : []));
+  const toLine = el("div", "email-to");
+  toLine.append(el("span", "email-key", "To"), el("span", null, to.name), ...(to.address ? [el("span", "email-addr", `<${to.address}>`)] : []));
+  who.append(fromLine, toLine);
+  head.append(avatar, who, el("time", "email-date", mail.headers.date ?? ""));
+  const subject = el("h4", "email-subject", mail.headers.subject);
+  const body = el("div", "email-body");
+  renderProse(body, mail.body);
+  const parts = [subject, head, body];
+  if (mail.footer.length) {
+    const foot = el("div", "email-foot");
+    for (const f of mail.footer) {
+      if (f.note) {
+        foot.append(el("p", "email-note", f.note));
+        continue;
+      }
+      const row = el("div", "email-record");
+      const chips = el("div", "email-chips");
+      chips.append(...f.items.map((x) => el("span", "email-chip", x)));
+      row.append(el("span", "email-key", f.title), chips);
+      foot.append(row);
+    }
+    parts.push(foot);
+  }
+  const sheet = el("div", "email-sheet");
+  sheet.append(...parts);
+  const where = el("p", "email-where", `Saved as ${d.path}`);
+  card.append(summary, sheet, where);
+  return card;
+}
+
 function fileCard(d) {
+  const mail = d.folder === "outbox" ? parseEmail(d.text) : null;
+  if (mail) return emailCard(d, mail);
   const card = el("details", `file-card folder-${d.folder}`);
   const summary = el("summary");
-  const where = d.folder === "outbox" ? "Outbox · not sent" : "Draft";
+  const where = d.folder === "outbox" ? "Sent · outbox" : "Draft";
   const name = el("span", "file-name", d.path.split("/").pop());
   summary.append(fromTemplate("tpl-file"), name, el("span", "file-where", `${where} · ${d.path}`), fromTemplate("tpl-chevron"));
   const body = el("div", "file-body");

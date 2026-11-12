@@ -16,6 +16,7 @@ In S03/S04 the action runs without asking; S05 and S06 add the gates.
 import difflib
 import json
 import re
+import time
 from functools import cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -265,7 +266,10 @@ def send_to_customer(
         or "- none recorded"
     )
     text = (
-        f"To: {row['id']}\nSubject: {subject}\n\n{body}\n\nOffered terms:\n{terms}\n\n"
+        # Email headers first, so the page shows it as the email that went (your request).
+        f"From: CloudCo Sales <sales@cloudco.example>\nTo: {row['name']} <{row['id']}>\n"
+        f"Date: {time.strftime('%Y-%m-%d %H:%M')}\nSubject: {subject}\n\n"
+        f"{body}\n\nOffered terms:\n{terms}\n\n"
         f"Approved by:\n{signed}\n\n{footer}\n"
     )
     saved = ctx.save_outbox_file(f"{ctx.run_id}-to-{row['id']}.md", text)

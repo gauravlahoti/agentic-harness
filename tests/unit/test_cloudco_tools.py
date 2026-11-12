@@ -261,6 +261,11 @@ async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: 
     )
     text = next((tmp_path / "outbox").glob("*.md")).read_text()
     assert "Approved by:" in text
+    # An email's headers first, so the page can show it as the email that went.
+    assert text.startswith(
+        "From: CloudCo Sales <sales@cloudco.example>\nTo: ShopCo <CUS-0042>\nDate: "
+    )
+    assert "\nSubject: Renewal\n\nHi\n" in text
     assert "CFO" in text
     assert "2026-11-10 14:02:11" in text
     assert "Discount over 15%" in text
