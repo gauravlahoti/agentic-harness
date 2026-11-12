@@ -1107,3 +1107,10 @@
 - **Instead of:** Haiku and Sonnet only (D-102)
 - **Because:** your call; the strongest current Claude model for comparing the agent and judging
 - **Cost:** twice Sonnet's price; still a paid, person-chosen option (D-104: never in tests or `make live`); the $3 eval cap (D-113) still stops a costly eval. Small jobs on a Claude run still use Haiku (D-103)
+
+### D-141 · An approval card shows where each term started
+✅ Accepted · S12 · your request ("it should tell the original as well: what was in the contract, are we raising it or putting it down"), 2026-11-12
+- **Chose:** a generic hook, `@approval_context(tool, current=…, asked=…)`, in the workspace's tools file; the harness carries its rows to the card and never reads them. CloudCo's `contract_terms` reads the customer's contract (our standard and their markup) for each offered term: today's value, the customer's ask, our offer, and whether it moves up or down from today, with the clause (CT-2207 §3.2). The card's terms table: Term · Contract today · Customer asked · We offer (↑ ↓ =) · Decided by; the titles are the workspace's words
+- **Instead of:** offered values alone
+- **Because:** an approver can't judge 25% without knowing it was 10% and the customer asked 25%; the harness must not know "contract" or "customer", so the workspace supplies both the facts and the words
+- **Cost:** one file read per approval; a broken hook is left out, never blocking a decision

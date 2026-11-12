@@ -187,6 +187,7 @@ def create_harness(
         checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # VERIFY (S11)
         retries=workspace.verify_retries,
         action_checks=[c for c in workspace.action_checks if c.name not in off.checks],  # S12
+        approval_context=workspace.approval_context,  # where each term started (D-141)
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))

@@ -175,3 +175,10 @@ def test_an_approval_card_shows_the_message_and_its_terms_open() -> None:
     assert '"Terms in this message"' in JS
     assert "See what will be sent" not in JS
     assert ".approval-table tr.is-mine" in CSS  # this approver's own terms are marked
+
+
+def test_d141_an_approval_card_shows_where_each_term_started() -> None:
+    """Your request: the approver sees today's contract, the customer's ask and the move."""
+    assert "d.context_labels?.current" in JS  # column titles come from the workspace
+    assert '"We offer"' in JS
+    assert ".approval-change.is-up" in CSS

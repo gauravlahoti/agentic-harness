@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agentic_harness.approvals import ApprovalContext
 from agentic_harness.gate import Approval, Gate, Rule
 from agentic_harness.scope import Scope
 from agentic_harness.skills import Skill, find_skills
@@ -80,6 +81,7 @@ class Workspace:
     plan: bool = False  # the agent may keep a to-do list for a task (S11, D-121)
     checks: tuple[Check, ...] = ()  # answer checks from [verify] checks (S11, D-125)
     action_checks: tuple[ActionCheck, ...] = ()  # checks on a tool's call, before it runs (S12)
+    approval_context: tuple[ApprovalContext, ...] = ()  # where each term started (D-141)
     verify_retries: int = 1  # how often a failed answer goes back (D-127)
 
     @classmethod
@@ -97,7 +99,7 @@ class Workspace:
             raise WorkspaceError(
                 f"workspace.toml: unknown built-in {unknown[0]!r} (there are: {known})."
             )
-        tools = _load_tools(path / (_text(config, "tools") or "tools.py"))
+        tools, contexts = _load_tools(path / (_text(config, "tools") or "tools.py"))
         known_tools = {t.name for t in tools} | set(builtins)
         subagents = _subagents(path, config.get("subagents", {}), tools, builtins)
         delegate_only = _texts(config, "delegate_only")
@@ -133,6 +135,7 @@ class Workspace:
             plan=_flag(config, "plan"),
             checks=answer_checks,
             action_checks=action_checks,
+            approval_context=contexts,
             verify_retries=_retries(config.get("verify", {})),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
@@ -233,9 +236,10 @@ def _texts(config: dict[str, Any], key: str) -> tuple[str, ...]:
     return tuple(value)
 
 
-def _load_tools(file: Path) -> tuple[Tool, ...]:
+def _load_tools(file: Path) -> tuple[tuple[Tool, ...], tuple[ApprovalContext, ...]]:
+    """``TOOLS``, and the optional ``APPROVAL_CONTEXT`` for approval cards (D-141)."""
     if not file.exists():
-        return ()
+        return (), ()
     # Import the workspace's own file by path: workspaces are not installed packages.
     spec = importlib.util.spec_from_file_location(f"workspace_tools_{file.parent.name}", file)
     if spec is None or spec.loader is None:
@@ -245,7 +249,14 @@ def _load_tools(file: Path) -> tuple[Tool, ...]:
     tools = getattr(module, "TOOLS", None)
     if not isinstance(tools, list | tuple) or not all(isinstance(t, Tool) for t in tools):
         raise WorkspaceError(f"{file} must define TOOLS as a list of Tool objects.")
-    return tuple(tools)
+    contexts = getattr(module, "APPROVAL_CONTEXT", [])
+    if not isinstance(contexts, list | tuple) or not all(
+        isinstance(c, ApprovalContext) for c in contexts
+    ):
+        raise WorkspaceError(
+            f"{file}: APPROVAL_CONTEXT must be a list of @approval_context functions."
+        )
+    return tuple(tools), tuple(contexts)
 
 
 def _subagents(

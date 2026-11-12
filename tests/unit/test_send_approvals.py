@@ -130,3 +130,19 @@ async def test_each_person_is_asked_once_and_every_card_shows_the_chain(tmp_path
         ("liability_cap_months", 24),
     ]
     assert cards[0]["rule"] == "Any message to a customer"  # what Sales approves: the send
+    # Where each term started (D-141): today's contract, the customer's ask, the move.
+    started = {r["arg"]: r for r in cards[2]["context"]}
+    assert cards[2]["context_labels"] == {"current": "Contract today", "asked": "Customer asked"}
+    assert started["discount_pct"] == {
+        "arg": "discount_pct",
+        "ref": "CT-2207 §3.2",
+        "current": "10%",
+        "asked": "25%",
+        "offered": "25%",
+        "change": "up",
+    }
+    assert (started["uptime_pct"]["current"], started["uptime_pct"]["asked"]) == ("99.9%", "99.99%")
+    assert (
+        started["liability_cap_months"]["current"],
+        started["liability_cap_months"]["asked"],
+    ) == ("12 months", "unlimited")

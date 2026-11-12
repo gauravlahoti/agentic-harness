@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from agentic_harness.approvals import ApprovalContext, context_labels, context_rows
 from agentic_harness.events import Event, EventBus, Listener
 from agentic_harness.gate import ApprovalRequest, Gate
 from agentic_harness.limits import Budget, Limits
@@ -134,6 +135,7 @@ class Harness:
         checks: Sequence[Check] = (),
         retries: int = 1,
         action_checks: Sequence[ActionCheck] = (),
+        approval_context: Sequence[ApprovalContext] = (),
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -145,6 +147,7 @@ class Harness:
         self.profile = profile  # who is asking; tools may filter by it (D-106)
         self.checks, self.retries = tuple(checks), retries  # VERIFY (S11, D-127)
         self.action_checks = tuple(action_checks)  # checks on a call, before it runs (S12)
+        self.approval_context = tuple(approval_context)  # where each term started (D-141)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -413,6 +416,9 @@ class Harness:
                         }
                         for who_, rules in steps.items()
                     ]
+                    # Where each term started (the agreement now, the other side's ask):
+                    # the workspace knows; the harness only carries it to the card (D-141).
+                    started = context_rows(self.approval_context, name, arguments)
                     for number, (approver, rules) in enumerate(steps.items(), 1):
                         labels = "; ".join(r.label or r.tool for r in rules)
                         request = ApprovalRequest(
@@ -426,7 +432,13 @@ class Harness:
                             of=len(steps),
                         )
                         approved, note = await self._pause(
-                            run, request, budget, rule=labels, chain=chain
+                            run,
+                            request,
+                            budget,
+                            rule=labels,
+                            chain=chain,
+                            context=started,
+                            context_labels=context_labels(self.approval_context, name),
                         )
                         who = approver
                         given.append(

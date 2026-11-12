@@ -367,3 +367,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | S12-AC4 → 🟨 (checked in Chrome). Part A (AC1–AC5) built and waiting for your check; Part B (identity) starts after. |
 | 2026-11-12 | Your report: card 1 of 4 (Sales) listed the 25% discount, so it read as if Sales approved it. Now one card per person (the CFO once for both rules: 3 steps), each saying what that person approves, with the chain as a stepper. Checked in Chrome. 455 offline tests. |
 | 2026-11-12 | Your request: the approval card shows the message and its terms open (no fold, no "See what will be sent"): an email preview and a Term · Offered · Decided by table with your own rows marked. Checked in Chrome. |
+| 2026-11-12 | Your request (D-141): the approval card shows where each term started (contract today, customer asked, our offer with ↑/↓, the clause), from a generic workspace hook; CloudCo reads it from the contract files. 457 offline tests; checked in Chrome. |

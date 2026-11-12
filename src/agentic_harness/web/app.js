@@ -1238,16 +1238,44 @@ function approvalCard(turn, d) {
     }
     const terms = Object.entries(args).filter(([k, v]) => owner.has(k) && shown(v));
     if (terms.length) {
+      // Where each term started, when the workspace knows (D-141): today's agreement, the
+      // other side's ask, and which way this offer moves from today.
+      const started = new Map((d.context ?? []).map((r) => [r.arg, r]));
+      const withStart = started.size > 0;
       all.append(el("h5", "approval-section", "Terms in this message"));
       const table = el("table", "approval-table");
       const headRow = el("tr");
-      headRow.append(el("th", null, "Term"), el("th", null, "Offered"), el("th", null, "Decided by"));
+      headRow.append(
+        el("th", null, "Term"),
+        // Column titles in the workspace's own words; "Today" and "Asked" if it gives none.
+        ...(withStart ? [el("th", null, d.context_labels?.current ?? "Today"), el("th", null, d.context_labels?.asked ?? "Asked")] : []),
+        el("th", null, "We offer"),
+        el("th", null, "Decided by"),
+      );
       table.append(el("thead"), el("tbody"));
       table.tHead.append(headRow);
+      const arrow = { up: ["↑", "Up from today"], down: ["↓", "Down from today"], same: ["=", "Same as today"] };
       for (const [k, v] of terms) {
+        const s0 = started.get(k);
         const tr = el("tr", owner.get(k) === d.approver ? "is-mine" : "");
         const unit = { pct: "%", days: " days", months: " months" }[k.match(/_(pct|days|months)$/)?.[1]] ?? "";
-        tr.append(el("td", null, k.replace(/_(pct|days|months)$/, "").replaceAll("_", " ")), el("td", "approval-num", `${v}${unit}`), el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · you` : owner.get(k)));
+        const termCell = el("td");
+        termCell.append(el("span", "approval-term-name", k.replace(/_(pct|days|months)$/, "").replaceAll("_", " ")), ...(s0?.ref ? [el("span", "approval-ref", s0.ref)] : []));
+        const offerCell = el("td", "approval-num");
+        offerCell.append(s0?.offered ?? `${v}${unit}`);
+        if (s0?.change && arrow[s0.change]) {
+          const [mark, words] = arrow[s0.change];
+          const tag = el("span", `approval-change is-${s0.change}`, mark);
+          tag.title = words;
+          tag.setAttribute("aria-label", words);
+          offerCell.append(tag);
+        }
+        tr.append(
+          termCell,
+          ...(withStart ? [el("td", "approval-was", s0?.current ?? "—"), el("td", "approval-was", s0?.asked ?? "—")] : []),
+          offerCell,
+          el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · you` : owner.get(k)),
+        );
         table.tBodies[0].append(tr);
       }
       all.append(table);

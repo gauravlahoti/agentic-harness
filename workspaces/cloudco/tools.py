@@ -21,6 +21,7 @@ from functools import cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+from agentic_harness.approvals import approval_context
 from agentic_harness.tools import ToolContext
 from agentic_harness.tools.registry import tool
 
@@ -283,4 +284,62 @@ def send_to_customer(
     }
 
 
+# ── Where each offered term started, for the approval card (D-141) ───────────────────────
+# Which clause holds each send_to_customer term, how to read its number, and how to show it.
+TERM_CLAUSES = {
+    "discount_pct": ("3.2", r"(\d+(?:\.\d+)?)\s*%", "{}%"),
+    "payment_days": ("4.1", r"\bNet\s*(\d+)", "Net {}"),
+    "uptime_pct": ("6.1", r"(\d+(?:\.\d+)?)\s*%", "{}%"),
+    "liability_cap_months": ("9.2", r"\((\d+)\)\s*months|(\d+)\s*months", "{} months"),
+}
+
+
+def _clause_value(text: str, pattern: str) -> float | None:
+    found = re.search(pattern, text or "")
+    if not found:
+        return None
+    return float(next(g for g in found.groups() if g))
+
+
+@approval_context("send_to_customer", current="Contract today", asked="Customer asked")
+def contract_terms(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """For each term the send offers: what the contract says today, what the customer asked
+    in their markup, and whether our offer goes up or down from today. Read from the
+    customer's contract files, not from the model."""
+    row = _customer(str(arguments.get("customer_id", "")))
+    contract = next((c for c in _records("contracts") if c["customer_id"] == row["id"]), None)
+    if contract is None:
+        return []
+    ours, theirs = _clauses(contract["standard_file"]), _clauses(contract["customer_file"])
+    rows = []
+    for arg, (clause, pattern, shown) in TERM_CLAUSES.items():
+        offered = arguments.get(arg)
+        if offered is None:
+            continue
+        current = _clause_value(ours.get(clause, ("", ""))[1], pattern)
+        asked_text = theirs.get(clause, ("", ""))[1]
+        asked = _clause_value(asked_text, pattern)
+        change = ""
+        if current is not None:
+            change = (
+                "up" if float(offered) > current else "down" if float(offered) < current else "same"
+            )
+        rows.append(
+            {
+                "arg": arg,
+                "ref": f"{contract['id']} §{clause}",
+                "current": shown.format(f"{current:g}") if current is not None else "—",
+                "asked": "unlimited"
+                if "unlimited" in asked_text.lower() and asked is None
+                else shown.format(f"{asked:g}")
+                if asked is not None
+                else "—",
+                "offered": shown.format(f"{float(offered):g}"),
+                "change": change,
+            }
+        )
+    return rows
+
+
+APPROVAL_CONTEXT = [contract_terms]
 TOOLS = [lookup_customer_record, review_contract, search_policy, send_to_customer]

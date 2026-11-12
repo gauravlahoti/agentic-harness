@@ -2023,7 +2023,15 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .approval-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .approval-table th { padding: 6px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; text-align: left; }
 .approval-table td { padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-transform: none; }
-.approval-table td:first-child { text-transform: capitalize; }
 .approval-num { font-variant-numeric: tabular-nums; font-weight: 600; }
 .approval-table tr.is-mine td { background: color-mix(in srgb, var(--part-guard) 9%, var(--surface)); font-weight: 650; }
 .approval-table tr.is-mine td:first-child { box-shadow: inset 3px 0 0 var(--part-guard); }
+/* Where each term started (D-141): its reference, today's value, the ask, and the move. */
+.approval-term-name { display: block; text-transform: capitalize; }
+.approval-ref { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+.approval-was { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.approval-change { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; border-radius: 50%; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.approval-change.is-up { background: color-mix(in srgb, var(--part-guard) 18%, var(--surface)); color: var(--part-guard); }
+.approval-change.is-down { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent); }
+.approval-change.is-same { background: color-mix(in srgb, var(--text) 8%, var(--surface)); color: var(--muted); }
+@media (max-width: 600px) { .approval-table { font-size: 12.5px; } .approval-table th, .approval-table td { padding: 6px; } }
