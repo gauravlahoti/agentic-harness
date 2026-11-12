@@ -1160,11 +1160,12 @@ const gradeChip = (by) => el("span", `grade-chip grade-${by}`, GRADED[by] ?? by)
 const scoreText = (r) => (r.score == null ? "–" : r.score.toFixed(2));
 
 function qualityCard(n, judge) {
-  const card = el("div", "todo-card check-card quality-card is-checking");
-  const head = el("div", "card-head");
+  // Folded by default (your request): the header's "3 of 6 passed" is the summary; open for why.
+  const card = el("details", "todo-card check-card quality-card is-checking");
+  const head = el("summary", "card-head");
   const title = el("span", "card-title", "Online Evals");
   const count = el("span", "card-count", n ? `scoring ${plural(n, "metric")}…` : "");
-  head.append(el("span", "check-spin", ""), title, count);
+  head.append(el("span", "check-spin", ""), title, count, fromTemplate("tpl-chevron"));
   head.title = `After you see the answer, the harness scores its quality: code metrics, and one LLM as Judge call${judge ? ` (${modelLabel(judge)})` : ""}. Never blocking, never sent back to the agent.`;
   const list = el("ul", "todo-list");
   card.append(head, list);

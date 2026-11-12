@@ -248,3 +248,11 @@ def test_online_and_offline_evals_sit_under_observability_not_the_harness() -> N
 def test_new_or_opened_conversation_goes_to_the_agent_page() -> None:
     """Your request: from Memory or the evals, a chat click shows the chat, no detour."""
     assert JS.count("toAgent();") >= 2
+
+
+def test_online_evals_card_is_folded_by_default() -> None:
+    """Your request (2026-11-12): the scores show folded; the header says "3 of 6 passed"."""
+    card = JS.split("function qualityCard")[1].split("\n}\n")[0]
+    assert 'el("details", "todo-card check-card quality-card' in card
+    assert 'el("summary", "card-head")' in card
+    assert ".open = true" not in card
