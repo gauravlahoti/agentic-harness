@@ -1178,3 +1178,13 @@
 - **Chose:** sidebar Workspace: Agent · Memory · Online Evals · Offline Evals (was "Evals") · Golden Dataset · Checks. Each answer gets an Online Evals card under it; the Harness pane gets an Online Evals section with switches. The metrics tables say **Graded By: Code** or **LLM as Judge**.
 - **Also:** the composer frees as soon as the answer is in; the scores arrive a few seconds later on the same stream.
 - **Left as is:** the "Checks" view (the offline test suite) shares a word with verification's checks; rename it "Test Suite" only if you want.
+
+## D-152 · The pane is the Agent: Model + Harness; evals move to Observability (2026-11-12)
+- **Your requests:** show each metric's threshold; make "Agent = Model + Harness" clear from the start; evals are not part of the harness; the sidebar's Checks link goes.
+- **Chose:**
+  - The right pane is titled **Agent** and drawn as boxes inside a box: the Agent box holds a **Model** box (its own model menu, the same choice as under the message box), a "+", and a **Harness** box that holds every existing part (Agentic Loop … Memory).
+  - The Online Evals section leaves the pane; each metric's on/off switch moves to the Online Evals page.
+  - The sidebar gets an **Observability** group (folded by default): Online Evals · Offline Evals · Golden Dataset. Workspace keeps Agent · Memory. The test suite view stays at `#checks`, off the sidebar.
+  - Both metrics tables get a **Threshold** column ("≥ 0.70", or "1.00 · all" for code metrics that must be perfect).
+- **Found while building:** the Acting As group has no fold button, and the fold code stopped there, so no group after it could fold. Fixed.
+- **Cost:** none.

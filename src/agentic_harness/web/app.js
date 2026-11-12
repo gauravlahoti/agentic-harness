@@ -1755,7 +1755,8 @@ function switchFor(kind, name) {
     const off = readOff();
     off[kind] = input.checked ? off[kind].filter((n) => n !== name) : [...new Set([...off[kind], name])];
     saveOff(off);
-    renderPane();
+    if (paneInfo) renderPane();
+    if (!$("view-online").hidden) loadOnline(); // its switches live on the Online Evals page
   });
   label.append(input, el("span", "visually-hidden", `Use ${name}`));
   return label;
@@ -2052,41 +2053,36 @@ function renderPane() {
   // what it works with; guardrails gate the tools; memory is kept at the end (D-67).
   // Run order (D-67): the loop, what it works with, what gates the tools, the check on the
   // answer at the end (S11), then what is kept.
-  // Online Evals (D-148): quality scores after the answer, never blocking. Switched like checks.
-  const o = info.online_evals;
-  let onlineSection = null;
-  if (o) {
-    const claude = ($("model").value || "").startsWith("claude-") && health.claude_small_model;
-    const judge = claude ? modelLabel(health.claude_small_model) : o.judge ? modelLabel(o.judge) : "the run's model";
-    const list = el("ul", "pane-list check-names");
-    list.append(
-      ...o.metrics.map((m) =>
-        paneItem({
-          kind: "checks",
-          name: m.label,
-          id: m.name,
-          tags: [gradeChip(m.graded_by)],
-          off: off.checks.includes(m.name),
-          detail: facts([
-            ["Passes when", m.graded_by === "judge" ? `${m.description} (a score of ${o.pass_at} or more)` : m.description],
-            ["Graded By", m.graded_by === "code" ? "Code: exact, free, the same every time" : `LLM as Judge: ${judge}, in one call for every judged metric`],
-          ]),
-        }),
-      ),
-    );
-    onlineSection = paneSection("online", "Online Evals", `${plural(o.metrics.length, "metric")} · after the answer`, [
-      subhead("Metrics", "after you see the answer; never blocking"),
-      list,
-      facts([
-        ["On a failure", "Shown on the answer and on the Online Evals page; never sent back to the agent"],
-        ["Judge", `${judge}: one call per answer`],
-        ...(o.style ? [["Style guide", o.style]] : []),
-      ]),
-    ]);
-  }
-  const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), ...(onlineSection ? [onlineSection] : []), memory];
+  const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), memory];
   for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
-  $("pane-body").replaceChildren(...sections);
+  $("pane-body").replaceChildren(agentBox(sections));
+}
+
+// Agent = Model + Harness (your request), drawn as boxes inside a box: the Agent holds the
+// model you picked (here or under the message box: one choice, kept in sync) and the
+// harness, which holds every part below. Swap the model; the harness stays the same.
+function agentBox(sections) {
+  const agent = el("section", "nest nest-agent");
+  agent.setAttribute("aria-label", "Agent: Model plus Harness");
+  const head = (cls, label, name, note) => {
+    const h = el("div", `nest-head ${cls}`);
+    h.append(el("span", "nest-label", label), ...(name ? [el("span", "nest-name", name)] : []), ...(note ? [el("span", "nest-note", note)] : []));
+    return h;
+  };
+  const model = el("div", "nest nest-model");
+  const pick = el("select", "eq-pick");
+  pick.setAttribute("aria-label", "Model");
+  for (const o of $("model").options) pick.append(new Option(modelLabel(o.value), o.value, false, o.selected));
+  pick.value = $("model").value;
+  pick.addEventListener("change", () => {
+    $("model").value = pick.value; // the same choice as under the message box
+    $("model").dispatchEvent(new Event("change")); // remembered, and the pane redraws
+  });
+  model.append(head("", "Model", "", "thinks and writes the answer"), pick);
+  const harness = el("div", "nest nest-harness");
+  harness.append(head("", "Harness", "", `${plural(sections.length, "part")}: the code around the model; what it sees, may do and must prove`), ...sections);
+  agent.append(head("", "Agent", agentName, ""), model, el("span", "nest-op", "+"), harness);
+  return agent;
 }
 
 // Who does the small jobs (helpers, the off-topic check, titles, summaries) for the model
@@ -2224,13 +2220,15 @@ async function loadOnline() {
     return;
   }
   const rows = body.answers;
-  if (!rows.length) {
+  if (!paneInfo) await loadPane(); // the metrics list and their switches come from the harness info
+  if (!rows.length && !paneInfo?.online_evals) {
     summary.replaceChildren(el("p", "memory-empty", "No scored answers yet for this profile. Ask the agent something: each answer is scored after you see it."));
     answers.replaceChildren();
     return;
   }
   // Per metric: the mean score and how often it passed, over the answers it applied to.
   const metrics = new Map();
+  for (const m of paneInfo?.online_evals?.metrics ?? []) metrics.set(m.name, { label: m.label, graded_by: m.graded_by, sum: 0, n: 0, passed: 0, scored: 0 });
   for (const a of rows) {
     for (const r of a.results ?? []) {
       const m = metrics.get(r.name) ?? { label: r.label, graded_by: r.graded_by, sum: 0, n: 0, passed: 0, scored: 0 };
@@ -2244,7 +2242,7 @@ async function loadOnline() {
   }
   const table = el("table", "evals-metrics online-metrics");
   const head = el("tr");
-  for (const name of ["Metric", "Graded By", "Average", "Passed"]) {
+  for (const name of ["On", "Metric", "Graded By", "Threshold", "Average", "Passed"]) {
     const th = el("th", null, name);
     th.scope = "col";
     head.append(th);
@@ -2252,18 +2250,25 @@ async function loadOnline() {
   const thead = el("thead");
   thead.append(head);
   const tbody = el("tbody");
-  for (const m of metrics.values()) {
+  for (const [id, m] of metrics) {
     const tr = el("tr");
+    const on = el("td", "metric-on");
+    on.append(switchFor("checks", id)); // off: not scored on the next answers of this profile
+    tr.append(on);
     const name = el("th", "metric-name", m.label);
     name.scope = "row";
     const by = el("td", "metric-by");
     by.append(gradeChip(m.graded_by));
     const ok = m.scored && m.passed === m.scored;
-    tr.append(name, by, el("td", "q-score", m.n ? (m.sum / m.n).toFixed(2) : "–"), el("td", `q-rate ${m.scored ? (ok ? "pass" : "fail") : ""}`, m.scored ? `${m.passed} of ${m.scored}` : "didn't apply"));
+    tr.append(name, by, thresholdCell(m.graded_by === "code" ? 1 : (paneInfo?.online_evals?.pass_at ?? 0.7)), el("td", "q-score", m.n ? (m.sum / m.n).toFixed(2) : "–"), el("td", `q-rate ${m.scored ? (ok ? "pass" : "fail") : ""}`, m.scored ? `${m.passed} of ${m.scored}` : "didn't apply"));
     tbody.append(tr);
   }
   table.append(thead, tbody);
   summary.replaceChildren(table);
+  if (!rows.length) {
+    answers.replaceChildren(el("p", "memory-empty", "No scored answers yet for this profile. Ask the agent something: each answer is scored after you see it."));
+    return;
+  }
 
   // One row per answer: the question, then each metric's score, coloured by its verdict.
   const names = [...metrics.keys()];
@@ -2721,6 +2726,14 @@ function scoreCell(info, total) {
   return cell;
 }
 
+// Where a metric starts to pass (catalog.json): "≥ 0.70"; 1.0 means every check must hold.
+function thresholdCell(at) {
+  const n = Number(at);
+  const cell = el("td", "metric-at", n >= 1 ? "1.00 · all" : `≥ ${n.toFixed(2)}`);
+  cell.title = n >= 1 ? "Passes only with a perfect score: every check holds" : `Passes at a score of ${n.toFixed(2)} or more`;
+  return cell;
+}
+
 function renderMetrics() {
   const table = $("evals-metrics");
   const catalog = evals.index?.catalog;
@@ -2728,7 +2741,7 @@ function renderMetrics() {
   const totals = metricTotals();
   const head = el("thead");
   const names = el("tr");
-  for (const name of ["Metric", "What It Checks", "Graded By", "Score"]) {
+  for (const name of ["Metric", "What It Checks", "Graded By", "Threshold", "Score"]) {
     const th = el("th", null, name);
     th.scope = "col";
     names.append(th);
@@ -2739,7 +2752,7 @@ function renderMetrics() {
     const title = el("tr", "metric-group");
     const th = el("th", null, `${group.title} · ${group.subtitle}`);
     th.scope = "colgroup";
-    th.colSpan = 4;
+    th.colSpan = 5;
     title.append(th);
     body.append(title);
     for (const row of group.rows) {
@@ -2751,7 +2764,7 @@ function renderMetrics() {
         name.append(el("span", "metric-cat", row.name));
         const by = el("td", "metric-by");
         by.append(gradeChip(info.kind));
-        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, scoreCell(info, totals[id]));
+        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, thresholdCell(info.threshold), scoreCell(info, totals[id]));
         body.append(tr);
       }
     }
@@ -3468,16 +3481,19 @@ $("evals-stop").addEventListener("click", async () => {
 // ── Sidebar groups fold (Profiles, Chats, Workspace); each one's state is kept per browser ─
 for (const group of document.querySelectorAll(".side-group")) {
   const toggle = group.querySelector(".side-toggle");
+  if (!toggle) continue; // Acting As doesn't fold (found: it stopped every group after it folding)
   const key = `side-collapsed-${group.dataset.group}`;
   const set = (collapsed) => {
     group.classList.toggle("collapsed", collapsed);
     toggle.setAttribute("aria-expanded", String(!collapsed));
     group.querySelector(".side-body").inert = collapsed; // folded links can't take focus
   };
+  const folded = group.dataset.collapsed === "1"; // Observability starts folded (your request)
   try {
-    set(localStorage.getItem(key) === "1");
+    const saved = localStorage.getItem(key);
+    set(saved === null ? folded : saved === "1");
   } catch {
-    set(false); // storage blocked: start open
+    set(folded); // storage blocked: its default
   }
   toggle.addEventListener("click", () => {
     const collapsed = !group.classList.contains("collapsed");

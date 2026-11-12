@@ -1215,7 +1215,7 @@ body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane
 .side-group.collapsed .side-body { grid-template-rows: 0fr; opacity: 0; }
 .views { margin: 4px 0 10px; }
 .profiles .profile-box { margin: 8px 0 14px; }
-.views nav[aria-label="Sections"] { margin-top: 8px; }
+.views nav.sections { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .side-body, .side-chev { transition: none; } }
 .work-new {
   padding: 2px 10px;
@@ -1384,7 +1384,7 @@ body.resizing iframe { pointer-events: none; }
 /* Sections nav: one row per page and a thumb that glides to the current one, like the
    profile switcher above it. Each page keeps its harness colour as a small dot (no icons).
    The current page is chosen in CSS (:has), so no script moves the thumb. */
-nav[aria-label="Sections"] {
+nav.sections {
   --h: 38px;
   --gap: 2px;
   --i: 0;
@@ -1399,10 +1399,11 @@ nav[aria-label="Sections"] {
   background: color-mix(in srgb, var(--text) 3%, var(--surface));
   isolation: isolate;
 }
-nav[aria-label="Sections"]:has([data-view="memory"][aria-current]) { --i: 1; --c: var(--part-memory); }
-nav[aria-label="Sections"]:has([data-view="evals"][aria-current]) { --i: 2; --c: var(--part-guard); }
-nav[aria-label="Sections"]:has([data-view="golden"][aria-current]) { --i: 3; --c: var(--skip); }
-nav[aria-label="Sections"]:has([data-view="checks"][aria-current]) { --i: 4; --c: var(--pass); }
+nav.sections:has([data-view="memory"][aria-current]) { --i: 1; --c: var(--part-memory); }
+nav.sections:has([data-view="online"][aria-current]) { --i: 0; --c: var(--part-online); }
+nav.sections:has([data-view="evals"][aria-current]) { --i: 1; --c: var(--part-guard); }
+nav.sections:has([data-view="golden"][aria-current]) { --i: 2; --c: var(--skip); }
+nav.sections:not(:has([aria-current])) .nav-thumb { opacity: 0; } /* the open page is in another group */
 .nav-thumb {
   position: absolute;
   inset: 4px 4px auto 4px;
@@ -1414,7 +1415,7 @@ nav[aria-label="Sections"]:has([data-view="checks"][aria-current]) { --i: 4; --c
   transform: translateY(calc(var(--i) * (var(--h) + var(--gap))));
   z-index: -1;
 }
-nav[aria-label="Sections"] .nav-item {
+nav.sections .nav-item {
   --dot: var(--part-context);
   display: flex;
   align-items: center;
@@ -1427,11 +1428,11 @@ nav[aria-label="Sections"] .nav-item {
   font-weight: 550;
   white-space: nowrap;
 }
-nav[aria-label="Sections"] .nav-item[data-view="memory"] { --dot: var(--part-memory); }
-nav[aria-label="Sections"] .nav-item[data-view="evals"] { --dot: var(--part-guard); }
-nav[aria-label="Sections"] .nav-item[data-view="golden"] { --dot: var(--skip); }
-nav[aria-label="Sections"] .nav-item[data-view="checks"] { --dot: var(--pass); }
-nav[aria-label="Sections"] .nav-item::before {
+nav.sections .nav-item[data-view="memory"] { --dot: var(--part-memory); }
+nav.sections .nav-item[data-view="evals"] { --dot: var(--part-guard); }
+nav.sections .nav-item[data-view="golden"] { --dot: var(--skip); }
+nav.sections .nav-item[data-view="checks"] { --dot: var(--pass); }
+nav.sections .nav-item::before {
   content: "";
   flex: none;
   width: 8px;
@@ -1440,19 +1441,19 @@ nav[aria-label="Sections"] .nav-item::before {
   background: var(--dot);
   opacity: 0.45;
 }
-nav[aria-label="Sections"] .nav-item[aria-current="page"] { background: none; color: var(--text); font-weight: 650; }
-nav[aria-label="Sections"] .nav-item[aria-current="page"]::before {
+nav.sections .nav-item[aria-current="page"] { background: none; color: var(--text); font-weight: 650; }
+nav.sections .nav-item[aria-current="page"]::before {
   opacity: 1;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 20%, transparent);
 }
-nav[aria-label="Sections"] .nav-item:not([aria-current]):hover { color: var(--text); background: color-mix(in srgb, var(--text) 4%, transparent); }
-nav[aria-label="Sections"] .nav-item:not([aria-current]):hover::before { opacity: 0.8; }
-nav[aria-label="Sections"] .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav.sections .nav-item:not([aria-current]):hover { color: var(--text); background: color-mix(in srgb, var(--text) 4%, transparent); }
+nav.sections .nav-item:not([aria-current]):hover::before { opacity: 0.8; }
+nav.sections .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 @media (prefers-reduced-motion: no-preference) {
   .nav-thumb { transition: transform 0.5s cubic-bezier(0.34, 1.45, 0.5, 1), outline-color 0.3s, box-shadow 0.3s; }
-  nav[aria-label="Sections"] .nav-item { transition: color 0.25s, background 0.2s; }
-  nav[aria-label="Sections"] .nav-item::before { transition: opacity 0.25s, box-shadow 0.35s; }
-  nav[aria-label="Sections"] .nav-item[aria-current="page"]::before { animation: nav-pop 0.45s cubic-bezier(0.34, 1.6, 0.5, 1); }
+  nav.sections .nav-item { transition: color 0.25s, background 0.2s; }
+  nav.sections .nav-item::before { transition: opacity 0.25s, box-shadow 0.35s; }
+  nav.sections .nav-item[aria-current="page"]::before { animation: nav-pop 0.45s cubic-bezier(0.34, 1.6, 0.5, 1); }
 }
 @keyframes nav-pop {
   from { transform: scale(0.4); }
@@ -2096,3 +2097,21 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .q-pill { display: inline-block; min-width: 38px; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; font-size: 12px; text-align: center; background: color-mix(in srgb, var(--text) 6%, var(--surface)); color: var(--muted); }
 .q-pill.is-passed { background: color-mix(in srgb, var(--pass) 14%, var(--surface)); color: var(--pass); }
 .q-pill.is-failed { background: color-mix(in srgb, var(--skip) 16%, var(--surface)); color: var(--skip); }
+
+/* Agent = Model + Harness: boxes inside a box, the whole pane. */
+.metric-at { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-soft); }
+.nest { display: grid; gap: 6px; padding: 10px; border: 1.5px solid var(--line); border-radius: 14px; }
+.nest-agent { border-color: var(--text); background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
+.nest-model { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.nest-harness { border-color: color-mix(in srgb, var(--part-verify) 55%, var(--line)); background: var(--surface); padding: 10px 6px 6px; }
+.nest-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 0 4px; }
+.nest-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.nest-agent > .nest-head .nest-label { color: var(--text); }
+.nest-model .nest-label { color: var(--accent); }
+.nest-harness .nest-label { color: var(--part-verify); }
+.nest-name { font-size: 14px; font-weight: 650; }
+.nest-note { flex-basis: 100%; font-size: 11.5px; color: var(--text-soft); }
+.nest-op { justify-self: center; font-size: 18px; font-weight: 700; line-height: 1; color: var(--muted); }
+.eq-pick { font: inherit; font-size: 14px; font-weight: 650; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
+.eq-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.metric-on { width: 1%; }

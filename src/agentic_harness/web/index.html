@@ -58,14 +58,25 @@
       </div>
       <div class="side-body" id="views-body">
         <div class="side-inner">
-          <nav aria-label="Sections">
+          <nav class="sections" aria-label="Sections">
             <span class="nav-thumb" aria-hidden="true"></span>
             <a class="nav-item" href="#agent" data-view="agent">Agent</a>
             <a class="nav-item" href="#memory" data-view="memory">Memory</a>
+          </nav>
+        </div>
+      </div>
+    </section>
+    <section class="views side-group" data-group="observability" data-collapsed="1" aria-labelledby="observability-title">
+      <div class="work-head">
+        <h2 id="observability-title"><button type="button" class="side-toggle" aria-expanded="false" aria-controls="observability-body">Observability <svg class="side-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
+      </div>
+      <div class="side-body" id="observability-body">
+        <div class="side-inner">
+          <nav class="sections" aria-label="Observability">
+            <span class="nav-thumb" aria-hidden="true"></span>
             <a class="nav-item" href="#online" data-view="online">Online Evals</a>
             <a class="nav-item" href="#evals" data-view="evals">Offline Evals</a>
             <a class="nav-item" href="#golden" data-view="golden">Golden Dataset</a>
-            <a class="nav-item" href="#checks" data-view="checks">Checks</a>
           </nav>
         </div>
       </div>
@@ -324,7 +335,7 @@
   <div class="lane-handle lane-right" id="lane-right" role="separator" aria-orientation="vertical" aria-label="Harness pane width (drag, or use the arrow keys)" aria-controls="harness-pane" tabindex="0" hidden></div>
   <aside class="harness-pane" id="harness-pane" aria-labelledby="pane-title" hidden>
     <header class="pane-head">
-      <h2 id="pane-title">Harness</h2>
+      <h2 id="pane-title">Agent</h2>
       <div class="pane-actions">
         <button type="button" class="pane-reset" id="pane-reset" hidden>Reset</button>
         <button type="button" class="pane-close" id="pane-close">
