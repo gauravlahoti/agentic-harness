@@ -82,6 +82,7 @@ def create_harness(
     memory_dir: Path | None = DEFAULT_MEMORY_DIR,
     small_model: str | None = None,
     person: Person | None = None,
+    online_judge: bool = True,
 ) -> Harness:
     """A harness for this model, workspace and profile.
 
@@ -180,6 +181,7 @@ def create_harness(
             style=workspace.online.style,
             workspace_metrics=workspace.metrics,
             off=off.checks,  # a metric is switched off like a check (D-132)
+            use_judge=online_judge,  # the page's switch; offline evals and the CLI judge (D-167)
         )
         if not online.metrics():
             online = None

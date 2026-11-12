@@ -361,6 +361,8 @@ def test_d148_the_page_stream_saves_the_scores_and_lists_them(tmp_path: Path) ->
         model_factory=Model,
     )
     web = TestClient(app, base_url="http://127.0.0.1")
+    # The judge is off by default (D-167): switch it on, as the page would.
+    web.post("/api/online-evals/judge", headers=PAGE_HEADER, json={"on": True})
     response = web.post("/api/run", headers=PAGE_HEADER, json={"task": "Time in Tokyo?"})
     events = [json.loads(line) for line in response.text.splitlines()]
     types = [e["type"] for e in events]

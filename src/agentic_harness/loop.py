@@ -210,6 +210,7 @@ class Harness:
             "online_evals_started",
             metrics=[m.to_dict() for m in self.online.metrics()],
             judge=self.online.judge.name,
+            judge_off=not self.online.use_judge,  # the page says "judge off" (D-167)
         )
         try:
             scored = await self.online.score(
@@ -220,6 +221,7 @@ class Harness:
                 "usd": scored.usd,
                 "judge": scored.judge,
                 "error": scored.error,
+                "judge_off": not self.online.use_judge,
             }
         except Exception as error:  # a bug in a metric must not break the finished run
             data = {"results": [], "usd": 0.0, "judge": "", "error": f"{error}"[:300]}

@@ -1178,7 +1178,8 @@ function fillQuality(q, d) {
   const passed = scored.filter((r) => r.status === "passed").length;
   const state = !scored.length ? "skipped" : passed === scored.length ? "passed" : "mixed";
   q.card.className = `todo-card check-card quality-card is-${state}`;
-  q.count.textContent = scored.length ? `${passed} of ${scored.length} passed` : d.error ? "not scored" : "nothing to score";
+  const off = d.judge_off ? " · judge off" : ""; // only the free code metrics ran (D-167)
+  q.count.textContent = (scored.length ? `${passed} of ${scored.length} passed` : d.error ? "not scored" : "nothing to score") + off;
   const rows = [];
   for (const r of results) {
     if (r.status === "skipped") continue;
@@ -2221,6 +2222,33 @@ const factText = (line) => line.replace(/^- \d{4}-\d{2}-\d{2} · /, "").replace(
 const factDate = (line) => line.match(/^- (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
 
 // ── Online Evals page (D-148): every scored answer of this profile, newest first ──
+// The judge's On/Off switch (D-167): the server keeps it; the page only shows and changes it.
+function showJudge(on) {
+  const input = $("online-judge");
+  input.disabled = false;
+  input.checked = on === true;
+  $("online-judge-state").textContent = input.checked ? "On" : "Off";
+}
+
+$("online-judge").addEventListener("change", async (event) => {
+  const input = event.target;
+  input.disabled = true;
+  try {
+    const response = await fetch("/api/online-evals/judge", {
+      method: "POST",
+      headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
+      body: JSON.stringify({ on: input.checked }),
+    });
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    showJudge((await response.json()).judge_on);
+    announce(`LLM as Judge ${input.checked ? "on" : "off"}`);
+  } catch (error) {
+    input.checked = !input.checked; // not saved: show what the server still has
+    input.disabled = false;
+    announce(`Couldn't change the judge: ${error.message}`);
+  }
+});
+
 async function loadOnline() {
   const summary = $("online-summary");
   const answers = $("online-answers");
@@ -2235,6 +2263,7 @@ async function loadOnline() {
     return;
   }
   const rows = body.answers;
+  showJudge(body.judge_on);
   if (!paneInfo) await loadPane(); // the metrics list and their switches come from the harness info
   if (!rows.length && !paneInfo?.online_evals) {
     summary.replaceChildren(el("p", "memory-empty", "No scored answers yet for this profile. Ask the agent something: each answer is scored after you see it."));

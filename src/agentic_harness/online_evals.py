@@ -4,6 +4,7 @@ Harness part: evaluation. Three layers look at an answer, each with its own job:
 
     verification (verify.py)   before the answer · blocks · code only · mistakes that harm
     online evals (this file)   after every live answer · never blocks · code + one judge call
+                               (the judge call only while its switch is on, D-167)
     offline evals (evals/)     the golden set, before a change ships · a report
 
 The metrics, the same everywhere a workspace runs:
@@ -149,6 +150,9 @@ class OnlineEvals:
     style: str = ""  # the style guide's text; "" means no Style & Format metric
     workspace_metrics: Sequence[Check] = ()  # code metrics from the workspace's checks file
     off: Collection[str] = field(default_factory=tuple)  # metric names switched off
+    # Off: no judge call at all, only the free code metrics (D-167). The page's switch, kept
+    # on the server; offline evals and the CLI leave it on.
+    use_judge: bool = True
 
     def metrics(self) -> list[Metric]:
         return listed(self.workspace_metrics, bool(self.style), self.off)
@@ -175,6 +179,10 @@ class OnlineEvals:
                     found[m.name] = _skip(m, "No tool was called, so there is no context.")
             needs = (GROUNDEDNESS.name, CONTEXT_RELEVANCY.name)
             judged = [m for m in judged if m.name not in needs]
+        if not self.use_judge:
+            for m in judged:
+                found[m.name] = _skip(m, "The judge is off (Online Evals page): no call, no cost.")
+            judged = []
         usd, judge, error = 0.0, "", ""
         if judged:
             prompt = judge_prompt(judged, question, answer, context, self.style, before)

@@ -1256,3 +1256,10 @@
 - **Found live:** "Hi [contact first name]" and a generic sign-off. The "You Are" picker (D-137) only checked approvals; the model was never told the person. ShopCo's record had no contact.
 - **Chose:** the page sends the picked person with each run. The server checks them against `[[people]]`, and the harness adds one line to the context: "You are helping Priya Raman (Sales)…". It's generic: the names live in `workspace.toml`. Each made-up customer record gets a `contact` (name, email), and drafts are addressed to it.
 - **Cost:** a few prompt tokens; a run with no person picked works as before.
+
+## D-167 · The judge has an On/Off switch, Off by default (2026-11-12)
+- **Your point:** a judge call on every live answer will hurt the budget.
+- **Options:** stratified sampling (rates per kind of run, daily cap); a plain switch.
+- **Your choice:** a switch on the Online Evals page, **Off by default**. Off means no judge call; the free code metrics (Hallucination, Citations) still score every answer, and the judged ones show "judge off". The switch is kept on the server (`online-evals.json` in the memory folder), so the bill doesn't depend on a browser. A missing or broken file means off.
+- **Unchanged:** offline evals and the CLI still judge (they rely on these scores, and you start them yourself).
+- **Cost:** no quality scores on live answers while it's off.

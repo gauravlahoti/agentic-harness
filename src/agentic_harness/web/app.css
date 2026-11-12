@@ -2096,6 +2096,11 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .metric-by { white-space: nowrap; }
 .view-online .page-header { display: block; }
 .online-summary { margin-bottom: 8px; }
+/* The judge's switch (D-167): a clear yes before any paid call. */
+.judge-switch { margin: 14px 0 4px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); max-width: 62ch; }
+.judge-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.judge-state { margin-left: auto; color: var(--muted); font-size: 13px; }
+.judge-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .q-rate.pass { color: var(--pass); }
 .q-rate.fail { color: var(--skip); }
 .online-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }

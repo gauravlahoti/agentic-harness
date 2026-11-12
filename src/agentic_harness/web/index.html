@@ -162,8 +162,17 @@
     <section class="view view-online" id="view-online" aria-labelledby="online-heading" hidden>
       <header class="page-header">
         <h1 id="online-heading">Online Evals</h1>
-        <p class="memory-intro">Every live answer is scored after you see it: never blocking, never sent back to the agent. Code metrics are exact and free; LLM as Judge metrics come from one small judge call per answer. This profile's conversations, newest first.</p>
+        <p class="memory-intro">Live answers are scored after you see them: never blocking, never sent back to the agent. Code metrics are exact and free, on every answer. LLM as Judge metrics need one small paid judge call per answer, so they run only while the judge is on. This profile's conversations, newest first.</p>
       </header>
+      <!-- The judge's switch (D-167): off by default, kept on the server. -->
+      <div class="judge-switch">
+        <label class="judge-label" for="online-judge">
+          <span class="switch-wrap"><input type="checkbox" class="switch" id="online-judge" switch role="switch" disabled></span>
+          <strong>LLM as Judge</strong>
+          <span class="judge-state" id="online-judge-state">Off</span>
+        </label>
+        <p class="judge-note">Off: only the free code metrics run. On: one judge call per answer (about $0.002 with Flash-Lite).</p>
+      </div>
       <h2 class="evals-sub" id="online-metrics-title">Metrics</h2>
       <div class="online-summary" id="online-summary"></div>
       <h2 class="evals-sub" id="online-answers-title">Answers</h2>

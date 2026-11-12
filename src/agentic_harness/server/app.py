@@ -121,6 +121,12 @@ class EvalRequest(BaseModel):
     judge: str | None = Field(default=None, max_length=100)
 
 
+class JudgeSwitch(BaseModel):
+    """The Online Evals page's switch: judge live answers or not (D-167)."""
+
+    on: bool
+
+
 class RunRequest(BaseModel):
     """What the page may send: a task, and optionally a model, profile and switches."""
 
@@ -184,6 +190,15 @@ def create_app(
 
     memory_root = memory_dir or project_root / ".agentic-harness"
     sessions = SessionStore(memory_root, workspace.name if workspace else "_")
+    # The judge's On/Off switch (D-167): on the server, so the bill doesn't depend on one
+    # browser. No file, or a broken one, means off: a paid call needs a clear yes.
+    judge_file = memory_root / (workspace.name if workspace else "_") / "online-evals.json"
+
+    def judge_on() -> bool:
+        try:
+            return json.loads(judge_file.read_text()).get("judge") is True
+        except (OSError, ValueError, AttributeError):
+            return False
 
     def need_workspace() -> Workspace:
         if workspace is None:
@@ -251,7 +266,17 @@ def create_app(
                         }
                     )
         rows.sort(key=lambda r: float(str(r["at"])), reverse=True)
-        return {"answers": rows[:ONLINE_ROWS]}
+        return {"answers": rows[:ONLINE_ROWS], "judge_on": judge_on()}
+
+    @app.post("/api/online-evals/judge")
+    async def switch_judge(request: Request, body: JudgeSwitch) -> dict[str, bool]:
+        """The page's switch: judge live answers or not (D-167)."""
+        if request.headers.get("x-harness-page") != "1":
+            raise HTTPException(403, "Page actions must come from the harness page.")
+        need_workspace()
+        judge_file.parent.mkdir(parents=True, exist_ok=True)
+        judge_file.write_text(json.dumps({"judge": body.on}))
+        return {"judge_on": judge_on()}
 
     @app.delete("/api/sessions/{session_id}")
     async def delete_session(
@@ -545,6 +570,7 @@ def create_app(
                 memory_dir=memory_root,
                 small_model=small,
                 person=person,  # the model knows who it's talking to (D-166)
+                online_judge=judge_on(),  # the page's switch, off by default (D-167)
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None
