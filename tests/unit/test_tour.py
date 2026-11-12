@@ -207,7 +207,7 @@ def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
     assert "/static/tour.js" in html
     for label in (">Start Tour<", ">Previous<", ">Next<", ">Mute<"):
         assert label in html, label
-    assert 'const TOUR = new URLSearchParams(location.search).get("tour")' in js
+    assert 'let TOUR = new URLSearchParams(location.search).get("tour")' in js
     assert "if (TOUR) return; // the tour sends nothing" in js  # approvals
     assert "if (TOUR) return renderWork(); // the tour's own chat only" in js
     assert "onEvent(" in tour_js  # the page's own drawing code (D-171)
@@ -273,3 +273,15 @@ def test_s13_ac5_the_tour_can_be_left_for_the_normal_page() -> None:
     tour_js = (web / "tour.js").read_text()
     assert "function exitTour(" in tour_js
     assert '"Escape"' in tour_js
+
+
+def test_s13_ac5_a_button_in_the_sidebar_starts_the_tour() -> None:
+    """Your request: the tour starts from a highlighted "Want a Guided Tour?" in the left pane."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    html = (web / "index.html").read_text()
+    sidebar = html[html.index('<aside class="sidebar"') : html.index("</aside>")]
+    assert 'id="tour-invite"' in sidebar
+    assert "Want a Guided Tour?" in sidebar
+    tour_js = (web / "tour.js").read_text()
+    assert "async function startTour(" in tour_js
+    assert 'history.pushState(null, "", ' in tour_js  # same page: the click lets the voice play

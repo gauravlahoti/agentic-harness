@@ -7,7 +7,7 @@ const ICONS = { waiting: "○", passed: "✓", failed: "✗", skipped: "–" };
 const $ = (id) => document.getElementById(id);
 // The guided tour (S13): /?tour replays recorded runs and sends nothing; /?tour=record also
 // records your voice. tour.js plays it through this file's own onEvent() (D-171).
-const TOUR = new URLSearchParams(location.search).get("tour") !== null;
+let TOUR = new URLSearchParams(location.search).get("tour") !== null; // the sidebar button turns it on
 const TOUR_RECORD = new URLSearchParams(location.search).get("tour") === "record";
 
 // ── Health: smoke row + what the Agent view can offer ───────────────────────

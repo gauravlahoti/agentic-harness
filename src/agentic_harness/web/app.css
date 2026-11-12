@@ -2166,6 +2166,36 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 /* The guide is taller than the composer: keep the newest line above it when it scrolls in. */
 html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 
+/* The way in: a glowing invitation in the sidebar, a pointer tapping at it. */
+.tour-invite {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0 18px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface) 70%);
+  color: var(--text);
+  font: 600 13.5px ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.tour-invite[hidden], .tour-mode .tour-invite { display: none; }
+.tour-invite:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tour-invite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tour-invite-pointer { flex: none; width: 22px; height: 22px; color: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
+@media (prefers-reduced-motion: no-preference) {
+  .tour-invite { animation: invite-glow 2.6s ease-out infinite; }
+  .tour-invite-pointer { animation: invite-tap 1.3s ease-in-out infinite; }
+  @keyframes invite-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent, 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); } }
+  @keyframes invite-tap { 0%, 100% { transform: translate(0, 0) rotate(-12deg); } 45% { transform: translate(3px, -3px) rotate(-12deg) scale(0.92); } }
+}
+
 /* ── The guide (D-178, D-179): a voice orb and film-style subtitles, no box ─────────── */
 .tour-guide { position: relative; z-index: 60; display: flex; align-items: center; gap: 24px; padding: 0 4px; }
 .tour-guide[hidden] { display: none; }

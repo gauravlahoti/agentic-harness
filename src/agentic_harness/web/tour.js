@@ -600,7 +600,36 @@ function go(n) {
   } else playStep(n);
 }
 
-if (TOUR) {
+// The sidebar's "Want a Guided Tour?": start here, on this page. A reload would lose the
+// click, and browsers play sound only after one; so the URL changes without one.
+async function startTour() {
+  history.pushState(null, "", `?tour${location.hash}`);
+  TOUR = true;
+  $("tour-invite").hidden = true;
+  currentSession = null; // your own chat steps aside; Exit Tour brings it back
+  clearThread();
+  workItems = [];
+  renderWork();
+  await setUpTour();
+  if (tour.data) playStep(0);
+}
+
+// Offer the tour only when the workspace has one.
+async function offerTour() {
+  try {
+    const response = await fetch("/api/tour");
+    $("tour-invite").hidden = !response.ok;
+  } catch {
+    // No tour to offer.
+  }
+}
+
+$("tour-invite").addEventListener("click", startTour);
+// The browser's Back from a tour started here: leave it, like Exit Tour.
+addEventListener("popstate", () => {
+  if (TOUR && new URLSearchParams(location.search).get("tour") === null) exitTour();
+});
+{
   $("tour-play").addEventListener("click", () => {
     const label = $("tour-play").textContent;
     if (label === "Start Tour" || label === "Start Again") return playStep(0);
@@ -623,8 +652,9 @@ if (TOUR) {
   $("tour-rec").addEventListener("click", toggleRecord);
   $("tour-exit").addEventListener("click", exitTour);
   addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !event.defaultPrevented) exitTour();
+    if (TOUR && event.key === "Escape" && !event.defaultPrevented) exitTour();
   });
-  if (health) setUpTour();
-  else addEventListener("harness-ready", setUpTour, { once: true });
+  const begin = TOUR ? setUpTour : offerTour;
+  if (health) begin();
+  else addEventListener("harness-ready", begin, { once: true });
 }
