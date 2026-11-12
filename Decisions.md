@@ -1325,6 +1325,7 @@
 - **Changed 2026-11-12, your review** ("subtitles are very large"; "the heading overlays the text"): the guide strip is compact (16 px subtitles, smaller orb and controls, ~75 px tall); the big chapter title is gone: a new step's name flashes in the label line instead, so nothing covers the content.
 - **Added 2026-11-12, your request:** an **Exit Tour** button (and Esc) stops the voice and opens the normal page (the same URL without `?tour`): your chats, the composer and live runs come back; nothing from the replay stays.
 - **Added 2026-11-12, your request:** the way in is a glowing **Want a Guided Tour?** button in the left sidebar (a pointer taps at it), shown when the workspace has a tour. It starts the tour on the same page (the address becomes `?tour` without a reload), so the click also lets the voice play. Back or Exit Tour returns to the normal page.
+- **Changed 2026-11-12, your review** ("this grey line looks odd"): the jar's glass shine (a white streak inside the jar) is gone; on the dark theme it read as a stray grey bar. The cyan outline and lid still say "jar".
 
 ## D-180 · The run follows the voice: cue marks in the script (2026-11-12)
 - **Your report:** the live run and the subtitles were out of step; the spotlight skipped the question and the helper's lines; the 10-second wait felt long.

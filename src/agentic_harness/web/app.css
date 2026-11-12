@@ -2343,7 +2343,6 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .stage-core { transform-origin: 200px 200px; animation: core-breathe 3.2s ease-in-out infinite; }
 @keyframes core-breathe { 50% { transform: scale(1.05); } }
 .stage-jar rect, .stage-jar path { fill: color-mix(in srgb, var(--accent) 6%, transparent); stroke: color-mix(in srgb, var(--accent) 55%, var(--muted)); stroke-width: 2; }
-.stage-jar .jar-shine { fill: none; stroke: color-mix(in srgb, white 60%, transparent); stroke-width: 4; stroke-linecap: round; }
 .stage-jar { transition: opacity 0.8s ease, transform 1s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 200px 200px; }
 .stage-orbit { fill: none; stroke: color-mix(in srgb, var(--accent) 40%, transparent); stroke-width: 1.5; stroke-dasharray: 4 7; transform-origin: 200px 200px; animation: orbit 40s linear infinite; }
 @keyframes orbit { to { transform: rotate(360deg); } }
