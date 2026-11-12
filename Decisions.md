@@ -1401,3 +1401,4 @@
   - `main` and the stage tags were force-pushed; the old Dependabot branch was deleted (it recreates itself).
 - **Not possible yet:** secret scanning, push protection and private vulnerability reporting are refused on a private repo (HTTP 422/404). Turn them on right after making it public (Settings → Code security). Until then, the local gitleaks hook and the gitleaks step in CI guard every commit.
 - **Cost:** every commit id changed: any other clone must be re-cloned. GitHub keeps a read-only ref for closed PR #1 (old author email, no clips) and may cache old commits for a while; only GitHub Support can purge those.
+- **Done 2026-11-13, your request ("make it public"):** the repo is public after one more clean gitleaks scan; secret scanning, push protection and private vulnerability reporting are on.
