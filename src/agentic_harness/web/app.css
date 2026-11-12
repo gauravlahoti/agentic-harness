@@ -2311,6 +2311,8 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 }
 /* Both side panels stay bright (your review): the spotlight dims the chat column only. */
 .tour-mode #harness-pane, .tour-mode #sidebar { z-index: 50; }
+/* With the pane hidden, its show button must stay above the dim too, or it can't be found. */
+.tour-mode .pane-toggle { z-index: 50; }
 .tour-mode .lane-handle { z-index: 50; }
 
 /* A new step: its name flashes in the label line, never over the content (your review). */
