@@ -132,6 +132,54 @@ def plan_complete(answer: str, record: Record) -> Verdict | None:
 PLAN_CHECK = plan_complete
 
 
+# ── Checks on an action, before it runs (S12, D-134) ─────────────────────────────────────
+
+ActionFn = Callable[[dict[str, Any], Record], Verdict | None]
+
+
+@dataclass(frozen=True, slots=True)
+class ActionCheck:
+    """A check on one tool's call, before anyone is asked to approve it and before it runs.
+    It reads the call's arguments (an email's body and its terms, say). A failure stops the
+    call and tells the model why; a person never sees an action that failed one."""
+
+    name: str
+    label: str
+    description: str
+    tool: str  # the tool it guards
+    fn: ActionFn
+
+
+def action_check(tool: str, label: str, description: str) -> Callable[[ActionFn], ActionCheck]:
+    """``@action_check("send_message", "Body Matches Terms", "…")``."""
+
+    def wrap(fn: ActionFn) -> ActionCheck:
+        return ActionCheck(fn.__name__, label, description, tool, fn)
+
+    return wrap
+
+
+def run_action_checks(
+    checks: Sequence[ActionCheck], tool: str, arguments: dict[str, Any], record: Record
+) -> list[Result]:
+    """The checks that guard this tool, in order. Same statuses as answer checks."""
+    results = []
+    for c in (c for c in checks if c.tool == tool):
+        try:
+            verdict = c.fn(arguments, record)
+        except Exception as error:  # a broken check must not block a good action
+            results.append(Result(c.name, c.label, "error", f"{type(error).__name__}: {error}"))
+            continue
+        if verdict is None or not verdict.applies:
+            why = verdict.message if verdict else "Nothing to check for this call."
+            results.append(Result(c.name, c.label, "skipped", why))
+        else:
+            results.append(
+                Result(c.name, c.label, "passed" if verdict.ok else "failed", verdict.message)
+            )
+    return results
+
+
 def run_checks(checks: Sequence[Check], answer: str, record: Record) -> list[Result]:
     """Every switched-on check, in order, so the page can account for each one. A check that
     doesn't apply is "skipped" with its reason. A check that raises is an error, not a
@@ -162,8 +210,9 @@ def feedback(failures: Sequence[Result]) -> str:
     )
 
 
-def load_checks(file: Path) -> tuple[Check, ...]:
-    """A workspace's ``CHECKS`` list, imported by path (workspaces are not packages)."""
+def load_checks(file: Path) -> tuple[tuple[Check, ...], tuple[ActionCheck, ...]]:
+    """A workspace's ``CHECKS`` (on answers) and ``ACTION_CHECKS`` (on a tool's call, S12),
+    imported by path (workspaces are not packages)."""
     from agentic_harness.workspace import WorkspaceError  # here: workspace imports this file
 
     if not file.is_file():
@@ -176,7 +225,12 @@ def load_checks(file: Path) -> tuple[Check, ...]:
     checks = getattr(module, "CHECKS", None)
     if not isinstance(checks, list | tuple) or not all(isinstance(c, Check) for c in checks):
         raise WorkspaceError(f"{file} must define CHECKS as a list of @check functions.")
-    names = [c.name for c in checks]
+    actions = getattr(module, "ACTION_CHECKS", [])
+    if not isinstance(actions, list | tuple) or not all(
+        isinstance(c, ActionCheck) for c in actions
+    ):
+        raise WorkspaceError(f"{file}: ACTION_CHECKS must be a list of @action_check functions.")
+    names = [c.name for c in [*checks, *actions]]
     if PLAN_CHECK.name in names or len(set(names)) != len(names):
         raise WorkspaceError(f"{file}: check names must be unique (and not {PLAN_CHECK.name}).")
-    return tuple(checks)
+    return tuple(checks), tuple(actions)

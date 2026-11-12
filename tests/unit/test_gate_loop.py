@@ -123,8 +123,25 @@ async def test_s05_ac12_approved_actions_run() -> None:
     assert not result.get("is_error")
     assert ran == ["send"]
     kinds = [e.type for e in events]
-    assert kinds == ["tool_started", "approval_requested", "approval_decided", "tool_finished"]
-    assert events[2].data["approved"] is True
+    # The hard limits are shown before anyone is asked (S12-AC3).
+    assert kinds == [
+        "tool_started",
+        "limits_checked",
+        "approval_requested",
+        "approval_decided",
+        "tool_finished",
+    ]
+    assert events[3].data["approved"] is True
+    (limit,) = events[1].data["limits"]
+    assert limit == {
+        "rule": "price-never",
+        "label": "Price above 50",
+        "arg": "price",
+        "value": 20,
+        "line": "≤ 50",
+        "held": True,
+        "because": "terms §2",
+    }
 
 
 async def test_s05_ac12_rejected_actions_do_not_run_and_the_model_hears_why() -> None:

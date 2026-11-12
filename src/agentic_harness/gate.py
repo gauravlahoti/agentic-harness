@@ -165,6 +165,26 @@ class Gate:
             return Decision("ask", "approval", f"{name} needs a person", asks[0].because, asks)
         return ALLOW
 
+    def limits(self, name: str, arguments: dict[str, Any]) -> list[dict[str, Any]]:
+        """Every never rule on this tool, with the call's value and whether it held (S12,
+        D-135). A reviewer sees the limits held, not only when one blocks."""
+        out = []
+        for rule in (r for r in self.rules if r.tool == name):
+            value = arguments.get(rule.arg)
+            line = f"≤ {rule.above:g}" if rule.above is not None else f"not {rule.equals}"
+            out.append(
+                {
+                    "rule": rule.id,
+                    "label": rule.label,
+                    "arg": rule.arg,
+                    "value": value,
+                    "line": line,
+                    "held": not rule.matches(arguments),
+                    "because": rule.because,
+                }
+            )
+        return out
+
     def inspect(self, output: str) -> Seen:
         """After a call: ④ hide named fields, ⑤ flag instruction-like text."""
         hidden: set[str] = set()

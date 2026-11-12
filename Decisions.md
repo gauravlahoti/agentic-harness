@@ -1057,3 +1057,45 @@
 - **Instead of:** "Nothing is sent to a customer without a person approving it first"
 - **Because:** found live: that sentence read as "get approval, then send", so the agent never called the send tool and no approval card ever appeared. The harness gate was fine; the words weren't
 - **Cost:** none in the harness; a test locks the path (send → Sales → Engineering → CFO → outbox)
+
+### D-134 · Action checks: workspace code attached to a tool, run before people are asked
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** `@action_check(tool, label, description)` in the workspace's `checks.py`; the harness runs them after the hard limits and before approvals; a failure returns "Not sent: …" to the model and no one is asked
+- **Instead of:** checking only the final answer (S11)
+- **Because:** the send is the run's one irreversible action, and people approve the terms on the card, not the body. What the body says is the workspace's business; the hook is generic
+- **Cost:** a failed check costs a model call
+
+### D-135 · Hard limits are shown when they hold, not only when they block
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** one GUARD step per action: each never-rule with its value and line ("discount 15 ≤ 25")
+- **Instead of:** silence on a pass
+- **Because:** a reviewer must see the limits held, not infer it
+- **Cost:** one more line per action
+
+### D-136 · A sent email shows at its send step
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** the email card sits in the run's activity, after its limits, checks and approvals
+- **Instead of:** a card below the answer, as soon as the file is saved
+- **Because:** your note: it looked as if the email came before verification. The order of events must read true
+- **Cost:** none
+
+### D-137 · Identity: personas on the page, enforced on the server
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** `[[people]]` in `workspace.toml`; a "You are" picker; the server refuses an approval whose persona's role doesn't match the card
+- **Instead of:** role-play by one person (D-87), real logins
+- **Because:** separation of duties you can demo; the page can't fake it
+- **Cost:** not real authentication (the pane says so)
+
+### D-138 · Self-approval only for the sender's own sign-off
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** an approval rule may allow the requester (CloudCo: "Any message to a customer", Sales); every other rule needs that role's person
+- **Instead of:** anyone may approve anything
+- **Because:** the feedback: fine for the sender's sign-off, not for the CFO's
+- **Cost:** one flag per approval rule
+
+### D-139 · Approval timeout: 30 minutes
+✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
+- **Chose:** 30 minutes, up from 10
+- **Instead of:** 10 minutes
+- **Because:** time to switch persona and decide
+- **Cost:** a stuck run waits longer (Stop still works)

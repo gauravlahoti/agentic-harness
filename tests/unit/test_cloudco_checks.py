@@ -363,3 +363,28 @@ def test_s11_the_plan_reply_reminds_the_agent_to_close_items() -> None:
     assert "before your final answer" not in show(
         [Item("Look up", "done"), Item("Answer", "skipped", "n/a")]
     )
+
+
+def test_s12_ac5_the_context_says_which_facts_it_read(tmp_path: Path) -> None:
+    from agentic_harness.context import build_context
+
+    summary = build_context(
+        WS, "sales", notes="- 2026-11-12 · The CFO capped ShopCo at 20%\n"
+    ).summary()
+    assert summary["notes"] == ["- 2026-11-12 · The CFO capped ShopCo at 20%"]
+    assert build_context(WS, "sales").summary()["notes"] == []
+
+
+def test_s12_the_pane_and_prompt_name_the_check_before_the_send() -> None:
+    from agentic_harness.api import describe_harness
+
+    (action,) = describe_harness(WS, "sales")["verify"]["action_checks"]
+    assert action == {
+        "name": "body_matches_terms",
+        "label": "Body Matches Terms",
+        "description": action["description"],
+        "tool": "send_to_customer",
+    }
+    h = create_harness(Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None)
+    assert "- Body Matches Terms (before send_to_customer runs): " in h.system
+    assert [c.name for c in h.action_checks] == ["body_matches_terms"]

@@ -71,7 +71,7 @@ class Agent:
                 arguments = {
                     "customer_id": "CUS-0042",
                     "subject": "Your contract",
-                    "body": "We can offer 20%.",
+                    "body": "We can offer a 20% discount.",  # names its term (S12)
                     "discount_pct": 20,
                 }
                 return call_reply("send_to_customer", arguments, f"c{len(steps)}")

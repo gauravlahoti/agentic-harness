@@ -725,6 +725,16 @@ function onEvent(ev, turn) {
         raw: c,
       });
     }
+    if (c.notes?.length) {
+      // Long-term memory read into the prompt (S07), shown as its own step (S12-AC5).
+      addActivity(turn, {
+        text: `Read ${plural(c.notes.length, "fact")} from long-term memory${c.profile ? ` (${labelFor(c.profile)})` : ""}`,
+        part: "memory",
+        state: "done",
+        facts: c.notes.map((n, i) => [`Fact ${i + 1}`, factText(n)]),
+        raw: { notes: c.notes },
+      });
+    }
   } else if (ev.type === "context_trimmed") {
     const saved = Math.max(0, d.before - d.after);
     const pct = d.window ? Math.round(((d.fill ?? d.before) / d.window) * 100) : null;
@@ -822,6 +832,7 @@ function onEvent(ev, turn) {
     // load_skill is the harness's own context tool: name it for what it does.
     let label = `Tool call · ${callBrief(d.name, d.arguments)}`;
     if (d.name === "load_skill") label = `Read skill ${d.arguments?.name ?? ""}`;
+    if (d.name === "save_note") label = "Saved a fact to long-term memory";
     if (d.name === "delegate_task") label = `Handed the job to the ${d.arguments?.agent ?? "helper"} sub-agent`;
     const risk = part === "tool" ? d.risk : undefined;
     const row = addActivity(turn, { text: label, part, risk, raw: d });
@@ -834,7 +845,7 @@ function onEvent(ev, turn) {
       setActivity(started.row, {
         text: blocked
           ? `⛔ Blocked · ${started.label} · ${blocked.label} (${blocked.because})`
-          : started.name === "load_skill" || started.name === "delegate_task"
+          : ["load_skill", "delegate_task", "save_note"].includes(started.name)
             ? started.label
             : `${started.label} → ${resultBrief(d.output ?? "", d.is_error)}`,
         state: d.is_error ? "error" : "done",
@@ -856,12 +867,13 @@ function onEvent(ev, turn) {
       // ⚠ A result that tries to instruct the AI gets its own Guardrail line (D-78).
       if (d.flags?.length) {
         addActivity(turn, {
-          text: `⚠ Flagged · ${d.name} returned text that tries to instruct the AI`,
+          text: `⚠ Flagged · ${d.name} returned text that tries to instruct the AI → fenced as data; any action it asks for still needs a person`,
           part: "guard",
           state: "done",
           facts: [
             ["Text", d.flags[0]],
-            ["What happened", "The model was told it is data, not an instruction. Actions still need a person."],
+            ["What the harness did", "Put a warning in front of the result: it is data from a document, not an instruction."],
+            ["What still protects you", "Every action waits for its hard limits, its checks and a person. The harness can't promise the model ignored the text, so it doesn't claim to."],
           ],
           raw: { flags: d.flags },
         });
@@ -882,12 +894,43 @@ function onEvent(ev, turn) {
       ],
       raw: d,
     });
+  } else if (ev.type === "limits_checked") {
+    // Every hard limit on this action, passes included (S12-AC3, D-135).
+    const crossed = d.limits.filter((l) => !l.held);
+    const offered = d.limits.filter((l) => l.value !== null && l.value !== undefined && l.value !== false);
+    const short = (l) => `${l.arg.replace(/_(pct|days|months)$/, "").replace(/_/g, " ")} ${l.value} ${l.line}`;
+    addActivity(turn, {
+      text: crossed.length
+        ? `⛔ Hard limit crossed · ${crossed.map((l) => `${l.label} (${l.because})`).join(", ")}`
+        : `Hard limits held · ${offered.length ? offered.map(short).join(" · ") : `${plural(d.limits.length, "rule")}, none touched`}`,
+      part: "guard",
+      state: crossed.length ? "error" : "done",
+      facts: d.limits.map((l) => [`${l.held ? "✓" : "✗"} ${l.label}`, `${l.value === null || l.value === undefined ? "not offered" : l.value} · limit ${l.line} · ${l.because}`]),
+      raw: d,
+    });
+  } else if (ev.type === "action_checked") {
+    // The workspace's checks on this call, before anyone is asked (S12-AC1, D-134).
+    const failed = d.results.filter((r) => r.status === "failed");
+    const mark = { passed: "✓", failed: "✗", error: "!", skipped: "–" };
+    addActivity(turn, {
+      text: failed.length
+        ? `Stopped before ${d.name} · ${failed.map((r) => r.label).join(", ")} failed → back to the agent, no one asked`
+        : `Checked before ${d.name} · ${d.results.filter((r) => r.status === "passed").map((r) => r.label).join(", ") || "nothing to check"} ✓`,
+      part: "verify",
+      state: failed.length ? "error" : "done",
+      facts: d.results.map((r) => [`${mark[r.status]} ${r.label}`, r.message]),
+      raw: d,
+    });
   } else if (ev.type === "approval_requested") {
     turn.approvals.set(d.call_id, approvalCard(turn, d));
   } else if (ev.type === "approval_decided") {
     turn.approvals.get(d.call_id)?.decided(d);
   } else if (ev.type === "file_saved") {
-    turn.files.append(fileCard(d));
+    // In the run's steps, where it happened: after its limits, checks and approvals (D-136).
+    const row = el("li", "act file-row");
+    row.append(fileCard(d));
+    turn.activity.append(row);
+    row.scrollIntoView({ block: "nearest" });
   } else if (ev.type === "run_finished") {
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
     if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
@@ -1365,7 +1408,7 @@ function currentOff() {
   const off = readOff();
   const has = {
     tools: [...paneInfo.tools.map((t) => t.name), ...(paneInfo.harness_tools ?? []).map((t) => t.name)],
-    checks: (paneInfo.verify?.checks ?? []).map((c) => c.name),
+    checks: [...(paneInfo.verify?.checks ?? []), ...(paneInfo.verify?.action_checks ?? [])].map((c) => c.name),
     skills: paneInfo.skills.map((s) => s.name),
     subagents: paneInfo.subagents.map((a) => a.name),
   };
@@ -1691,7 +1734,22 @@ function renderPane() {
       }),
     ),
   );
-  const verifySection = paneSection("verify", "Verification", `${plural(v.checks.length, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+  const actionList = el("ul", "pane-list check-names");
+  actionList.append(
+    ...(v.action_checks ?? []).map((c) =>
+      paneItem({
+        kind: "checks",
+        name: c.label,
+        id: c.name,
+        tags: [el("span", "pane-tag", `before ${c.tool}`)],
+        off: off.checks.includes(c.name),
+        detail: facts([["Passes when", c.description], ["On a failure", "The call is stopped and goes back to the agent; no one is asked to approve it"]]),
+      }),
+    ),
+  );
+  const nAll = v.checks.length + (v.action_checks ?? []).length;
+  const verifySection = paneSection("verify", "Verification", `${plural(nAll, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+    ...(actionList.children.length ? [subhead("Before an action", "after the hard limits, before anyone is asked"), actionList] : []),
     subhead("Checks", "after the draft, before you see it"),
     checkList,
     facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`]]),

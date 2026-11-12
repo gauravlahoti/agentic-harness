@@ -157,3 +157,12 @@ def test_s06_an_outbox_email_shows_as_the_email_that_went() -> None:
     assert "Outbox · not sent" not in JS  # the send tool says "sent" since D-120
     for rule in (".email-head", ".email-subject", ".email-body", ".email-foot"):
         assert rule in CSS, f"email style missing from app.css: {rule}"
+
+
+def test_s12_ac3_ac4_ac5_guarded_action_steps_are_on_the_page() -> None:
+    assert 'ev.type === "limits_checked"' in JS  # "Hard limits held · discount 15 ≤ 25 …"
+    assert 'ev.type === "action_checked"' in JS  # "Checked before send_to_customer …"
+    assert '"act file-row"' in JS  # the email sits under its send step (D-136)
+    assert "fenced as data; any action it asks for still needs a person" in JS
+    assert "from long-term memory" in JS
+    assert '"Before an action"' in JS  # the pane lists checks on actions

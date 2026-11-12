@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S11 · Plan and Verify built (14/15 🟨), waiting for your check; AC12 is live · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S12 · Guarded actions and identity: Part A building · S11 · Plan and Verify built (14/15 🟨), waiting for your check; AC12 is live · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -32,6 +32,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
+| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 Part A | 4/10 | 0/10 | 1 |
 
 ## Checks
 
@@ -249,6 +250,21 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC15 | Page renders headings, nested lists and source badges; no HTML injection | 🧪 👀 | 🟨 | `test_page_baseline.py::test_s11_ac15_*` + `test_s01_ac13_text_is_never_inserted_as_html` · Chrome 2026-11-12: a sample answer with 7 badges, 2 nested lists, brackets dropped |
 | AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 | 🟦 |  |
 
+### S12 · Guarded actions and identity
+
+| ID | Check | How | Status | Evidence |
+|---|---|---|---|---|
+| AC1 | An action check runs after the hard limits and before anyone is asked; a failure returns "Not sent: …" and no one is asked | 🧪 | 🟨 | `test_action_checks.py::test_s12_ac1_*` (3): a failed check stops the call before anyone is asked; a pass is shown, then people; a blocked call never reaches it |
+| AC2 | Body Matches Terms passes the real outbox emails and fails a body saying 20% when the argument says 15%; a refusal in the body isn't an offer | 🧪 | 🟨 | `test_body_matches_terms.py::test_s12_ac2_*` (8): six real outbox emails labelled by hand (one real catch: a 24-month cap the CFO never saw), a 20%/15% mismatch, a refusal isn't an offer |
+| AC3 | A hard-limits step shows each rule with its value and line, before the approval card | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s05_ac12_approved_actions_run` (limits_checked before the approval, each rule's value and line) · `test_action_checks.py::test_s12_ac1_a_blocked_call_*` · page: `test_s12_ac3_ac4_ac5_*` |
+| AC4 | The email card appears under its send step, in run order | 👀 | 🟦 |  |
+| AC5 | The injection step names the response; the memory step lists the facts read | 🧪 👀 | 🟨 | `test_cloudco_checks.py::test_s12_ac5_the_context_says_which_facts_it_read` · page: `test_s12_ac3_ac4_ac5_*` (injection wording, memory step) |
+| AC6 | Personas from `workspace.toml`; the server refuses an approval from the wrong role | 🧪 | 🟦 |  |
+| AC7 | The card offers "Switch to <persona>"; the run keeps waiting; the thread stays | 👀 | 🟦 |  |
+| AC8 | The sender can give the "any message" sign-off; the CFO card needs the CFO | 🧪 | 🟦 |  |
+| AC9 | The outbox and trace record the person and the role | 🧪 | 🟦 |  |
+| AC10 | Live: a 25% discount send waits for Dana (CFO); Priya can't approve it | 🔑 👀 | 🟦 |  |
+
 ## Product goals
 
 | ID | Goal | Status |
@@ -345,3 +361,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your request: the check round is a card like the To-Do card (title, count, one row per check ticking ○ → ✓/✗, reasons under failures). Checked in Chrome. |
 | 2026-11-12 | Your report: no approvals, and every first draft sent back. Cause 1: the agent never called the send tool (Sales file: "approve first, then send"); fixed in CloudCo's words (D-133), and trimming no longer clears a skill's text. Cause 2: most failures were the checks' (follow-ups, emails, "Nothing has been sent", "wrong person named"); fixed and tested on 14 real answers (D-130). The prompt names the checks (D-132). 439 offline tests. |
 | 2026-11-12 | Your request: the sent email shows as an email (headers, body, terms and approvers as chips), not a .md file; "Outbox · not sent" label removed. Your run confirmed the send now happens (Sales approved). 440 offline tests; checked in Chrome with the run's real email. |
+| 2026-11-12 | External feedback reviewed against the code (4 of 5 points true, self-approval partly by design) plus your note that the email appears before verification. You approved S12 · Guarded actions and identity (personas on the page; two parts). S12-AC1–AC10 → 🟦. D-134–D-139. Part A building. |
+| 2026-11-12 | S12 Part A built: action checks run after the hard limits and before anyone is asked (CloudCo's Body Matches Terms, tested on six real emails), hard limits shown when they hold, the email under its send step, injection response and memory read stated. AC1, AC2, AC3, AC5 → 🟨 (454 offline tests); AC4 waits for the Chrome check. |

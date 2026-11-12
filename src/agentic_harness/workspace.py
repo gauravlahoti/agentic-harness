@@ -23,7 +23,7 @@ from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import BUILTINS
 from agentic_harness.trimming import Window
-from agentic_harness.verify import Check, load_checks
+from agentic_harness.verify import ActionCheck, Check, load_checks
 
 PROFILE = "{profile}"
 NAME = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # sub-agent names, like skill names
@@ -79,6 +79,7 @@ class Workspace:
     scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
     plan: bool = False  # the agent may keep a to-do list for a task (S11, D-121)
     checks: tuple[Check, ...] = ()  # answer checks from [verify] checks (S11, D-125)
+    action_checks: tuple[ActionCheck, ...] = ()  # checks on a tool's call, before it runs (S12)
     verify_retries: int = 1  # how often a failed answer goes back (D-127)
 
     @classmethod
@@ -105,6 +106,7 @@ class Workspace:
             raise WorkspaceError(
                 f"workspace.toml: delegate_only lists {stray[0]!r}, no helper's tool."
             )
+        answer_checks, action_checks = _checks(path, config.get("verify", {}))
         return cls(
             path=path,
             name=path.name,
@@ -129,7 +131,8 @@ class Workspace:
             flag_patterns=_texts(config, "flag_patterns"),
             scope=_scope(config.get("scope")),
             plan=_flag(config, "plan"),
-            checks=_checks(path, config.get("verify", {})),
+            checks=answer_checks,
+            action_checks=action_checks,
             verify_retries=_retries(config.get("verify", {})),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
@@ -393,12 +396,13 @@ def _flag(config: dict[str, Any], key: str) -> bool:
     return value
 
 
-def _checks(root: Path, table: Any) -> tuple[Check, ...]:
-    """``[verify] checks = "checks.py"``: the workspace's own answer checks (S11)."""
+def _checks(root: Path, table: Any) -> tuple[tuple[Check, ...], tuple[ActionCheck, ...]]:
+    """``[verify] checks = "checks.py"``: the workspace's own checks, on answers (S11) and on
+    actions (S12)."""
     if not isinstance(table, dict):
         raise WorkspaceError("workspace.toml: [verify] must be a table.")
     file = _text(table, "checks")
-    return load_checks(root / file) if file else ()
+    return load_checks(root / file) if file else ((), ())
 
 
 def _retries(table: Any) -> int:

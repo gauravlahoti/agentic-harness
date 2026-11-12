@@ -20,7 +20,15 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from agentic_harness.verify import Record, Verdict, check, failed, passed, skipped
+from agentic_harness.verify import (
+    Record,
+    Verdict,
+    action_check,
+    check,
+    failed,
+    passed,
+    skipped,
+)
 
 HERE = Path(__file__).resolve().parent
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
@@ -366,4 +374,64 @@ def answer_format(answer: str, record: Record) -> Verdict | None:
     )
 
 
+# ── Body Matches Terms: on the email, before anyone is asked (S12, D-134) ─────────────────
+
+TERM_ARGS = ("discount_pct", "payment_days", "uptime_pct", "liability_cap_months")
+# What follows these in a clause isn't offered: "Net 45 instead of (or in place of) Net 60",
+# "a 24-month cap, rather than unlimited liability", "we cannot accept 99.99%".
+NOT_OFFERED = re.compile(
+    r"\b(?:not|never|no|cannot|can't|won't|unable|refuse|decline|reject|rather than|instead of"
+    r"|in place of)\b|n't\b",
+    re.I,
+)
+
+
+def _offered(body: str) -> dict[str, set[float | bool]]:
+    """The terms the email offers: each clause (a sentence, or part of one after ";"), up
+    to its first word that holds back."""
+    found: dict[str, set[float | bool]] = {}
+    for line in body.splitlines():
+        for sentence in re.split(r"(?<=[.!?;])\s+", line.strip()):
+            cut = NOT_OFFERED.search(sentence)
+            for arg, value in _terms(sentence[: cut.start()] if cut else sentence):
+                found.setdefault(arg, set()).add(value)
+    return found
+
+
+@action_check(
+    "send_to_customer",
+    "Body Matches Terms",
+    "The email's body offers exactly the terms filled in on the call (people approve those)",
+)
+def body_matches_terms(arguments: dict[str, Any], record: Record) -> Verdict | None:
+    """People approve the terms on the card; the customer reads the body. They must agree,
+    or an offer could skip its approver (a 20% discount in the body, none in the call)."""
+    body = str(arguments.get("body", ""))
+    offered = _offered(body)
+    problems = []
+    for arg in TERM_ARGS:
+        value = arguments.get(arg)
+        said = {v for v in offered.get(arg, set()) if not isinstance(v, bool)}
+        if value is not None and float(value) not in said:
+            problems.append(
+                f"the call offers {_said(arg, float(value))}, but the body doesn't say it"
+            )
+        for other in sorted(v for v in said if value is None or v != float(value)):
+            problems.append(
+                f"the body offers {_said(arg, other)}, but the call's terms don't: "
+                f"fill in {arg} so the right people approve it"
+            )
+    if True in offered.get("unlimited_liability", set()) and not arguments.get(
+        "unlimited_liability"
+    ):
+        problems.append("the body offers unlimited liability, but the call doesn't say so")
+    if not problems:
+        named = sum(arguments.get(a) is not None for a in TERM_ARGS)
+        if not named and not offered:
+            return skipped("The email offers no terms.")
+        return passed(f"The body and the call agree on {named} term{'s' if named != 1 else ''}.")
+    return failed("Not sent: " + "; ".join(problems) + ".")
+
+
 CHECKS = [every_change_covered, citations_exist, right_approver, no_false_sent, answer_format]
+ACTION_CHECKS = [body_matches_terms]

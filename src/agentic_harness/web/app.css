@@ -1964,3 +1964,7 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
   .email-date { grid-column: 2; }
   .email-record { grid-template-columns: 1fr; }
 }
+/* S12: a long-term memory step, and a sent email inside the run's steps. */
+.part-memory .act-text { color: var(--part-memory); }
+.file-row { list-style: none; margin: 4px 0 10px 31px; }
+@media (max-width: 600px) { .file-row { margin-left: 0; } }

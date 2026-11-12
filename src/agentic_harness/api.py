@@ -107,6 +107,7 @@ def create_harness(
         notes=notes,
         not_allowed=not_allowed_prompt(workspace, gate),
         checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # D-132
+        action_checks=[c for c in workspace.action_checks if c.name not in off.checks],
     )
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.
@@ -185,6 +186,7 @@ def create_harness(
         profile=profile,
         checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # VERIFY (S11)
         retries=workspace.verify_retries,
+        action_checks=[c for c in workspace.action_checks if c.name not in off.checks],  # S12
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
@@ -215,7 +217,8 @@ def _check_off(workspace: Workspace, profile: str | None, off: Off) -> Off:
         | {t.name for t in harness_tools(workspace, workspace.skills(profile))},
         "skill": {s.name for s in workspace.skills(profile)},
         "sub-agent": {a.name for a in workspace.subagents},
-        "check": {c.name for c in all_checks(workspace)},
+        "check": {c.name for c in all_checks(workspace)}
+        | {c.name for c in workspace.action_checks},
     }
     for kind, names in (
         ("tool", off.tools),
@@ -383,6 +386,11 @@ def describe_harness(
                     "source": "built-in" if c is PLAN_CHECK else "workspace",
                 }
                 for c in all_checks(workspace)
+            ],
+            # Checks on an action, before anyone is asked (S12, D-134).
+            "action_checks": [
+                {"name": c.name, "label": c.label, "description": c.description, "tool": c.tool}
+                for c in workspace.action_checks
             ],
         },
         "context": {

@@ -21,7 +21,7 @@ from typing import Any
 from agentic_harness.loop import SYSTEM_PROMPT
 from agentic_harness.scope import scope_prompt
 from agentic_harness.skills import Skill
-from agentic_harness.verify import Check
+from agentic_harness.verify import ActionCheck, Check
 from agentic_harness.workspace import MemoryFile, Workspace
 
 CHECKS_HEADER = (
@@ -50,6 +50,7 @@ class Context:
     files: tuple[MemoryFile, ...]
     skills: tuple[Skill, ...]
     warnings: tuple[str, ...]
+    notes: tuple[str, ...] = ()  # long-term facts read into the prompt (S07; shown in S12)
 
     def summary(self) -> dict[str, Any]:
         """What the page and the trace show about the context (never the full text)."""
@@ -60,6 +61,8 @@ class Context:
                 {"name": s.name, "description": s.description, "source": s.source}
                 for s in self.skills
             ],
+            # The page shows a "read from long-term memory" step from these (S12-AC5).
+            "notes": list(self.notes),
             "prompt_tokens": estimate_tokens(self.system),
             "prompt_id": self.prompt_id,
             "warnings": list(self.warnings),
@@ -74,6 +77,7 @@ def build_context(
     notes: str = "",
     not_allowed: str = "",
     checks: Collection[Check] = (),
+    action_checks: Collection[ActionCheck] = (),
 ) -> Context:
     files = workspace.memory_files(profile)
     # A switched-off skill is not even listed: the model can't ask for it (D-70).
@@ -88,10 +92,12 @@ def build_context(
     if skills:
         lines = [f"- {s.name}: {s.description} ({s.source})" for s in skills]
         parts.append(SKILLS_HEADER + "\n" + "\n".join(lines))
-    if checks:
+    if checks or action_checks:
         # The bar, before the agent writes (D-132): found live, it learned it only from a
-        # failed check, so the first draft nearly always went back.
+        # failed check, so the first draft nearly always went back. Checks on an action
+        # (S12) are named with the tool they guard.
         lines = [f"- {c.label}: {c.description}" for c in checks]
+        lines += [f"- {c.label} (before {c.tool} runs): {c.description}" for c in action_checks]
         parts.append(CHECKS_HEADER + "\n" + "\n".join(lines))
     if notes.strip():
         # Last, so the start of the prompt is the same with or without notes (caching, D-92).
@@ -106,4 +112,5 @@ def build_context(
         if estimate_tokens(f.text) > budget
     )
     prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
-    return Context(profile, system, prompt_id, tuple(files), tuple(skills), warnings)
+    facts = tuple(line.strip() for line in notes.splitlines() if line.strip())
+    return Context(profile, system, prompt_id, tuple(files), tuple(skills), warnings, facts)

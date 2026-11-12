@@ -37,7 +37,16 @@ from agentic_harness.scope import Scope, ScopeCheck
 from agentic_harness.tools import Tool, ToolContext
 from agentic_harness.tools.registry import call_tool
 from agentic_harness.trimming import Summarize, Window, estimate_tokens, fit
-from agentic_harness.verify import NOTE_PREFIX, Call, Check, Record, feedback, run_checks
+from agentic_harness.verify import (
+    NOTE_PREFIX,
+    ActionCheck,
+    Call,
+    Check,
+    Record,
+    feedback,
+    run_action_checks,
+    run_checks,
+)
 
 # Domain-free on purpose: the workspace adds who the agent is (S02).
 # Measured live (D-30): "use the tools when they help" made a small model call tools it
@@ -124,6 +133,7 @@ class Harness:
         profile: str | None = None,
         checks: Sequence[Check] = (),
         retries: int = 1,
+        action_checks: Sequence[ActionCheck] = (),
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -134,6 +144,7 @@ class Harness:
         self.window, self.summarizer = window, summarizer  # forget on purpose (S07, D-93)
         self.profile = profile  # who is asking; tools may filter by it (D-106)
         self.checks, self.retries = tuple(checks), retries  # VERIFY (S11, D-127)
+        self.action_checks = tuple(action_checks)  # checks on a call, before it runs (S12)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -355,6 +366,14 @@ class Harness:
         else:
             # The gate decides before anything runs (S05): ① profile, ② never rules, ③ a person.
             decision = self.gate.check(name, arguments) if self.gate else None
+            # The hard limits, shown when they hold too (S12, D-135).
+            limits = self.gate.limits(name, arguments) if self.gate else []
+            if limits:
+                run.emit("limits_checked", call_id=call_id, name=name, limits=limits)
+            # The workspace's checks on this call, before anyone is asked (S12, D-134).
+            stopped = ""
+            if not decision or decision.kind != "block":
+                stopped = self._check_action(run, call_id or "", name, arguments, guard)
             if decision and decision.kind == "block":
                 guard["blocked"] = {
                     "rule": decision.rule,
@@ -366,6 +385,8 @@ class Harness:
                     "This can't be done or approved; tell the person instead of retrying."
                 )
                 is_error = True
+            elif stopped:
+                output, is_error = stopped, True  # no one is asked about a call that failed
             else:
                 approved, note, who = True, "", ""
                 given: list[dict[str, str]] = []  # who approved, in order: the tool may record it
@@ -450,6 +471,30 @@ class Harness:
         if is_error:
             result_step["is_error"] = True
         return result_step
+
+    def _check_action(
+        self, run: "_Run", call_id: str, name: str, arguments: dict[str, Any], guard: dict[str, Any]
+    ) -> str:
+        """Run the action checks for this call. Returns why it was stopped, or "" (S12)."""
+        results = run_action_checks(self.action_checks, name, arguments, run.record(self.profile))
+        if not results:
+            return ""
+        failures = [r for r in results if r.status == "failed"]
+        guard["action_checks"] = [r.to_dict() for r in results]
+        run.emit(
+            "action_checked",
+            call_id=call_id,
+            name=name,
+            passed=not failures,
+            results=guard["action_checks"],
+        )
+        if not failures:
+            return ""
+        reasons = " ".join(f"{r.label}: {r.message}" for r in failures)
+        return (
+            "Not done: the harness checked this call before anyone was asked. "
+            f"{reasons} Fix it and call {name} again."
+        )
 
     def _write_plan(self, run: "_Run", arguments: dict[str, Any]) -> tuple[str, bool]:
         """Keep the newest plan in run state; send the whole list back (S11-AC1)."""
