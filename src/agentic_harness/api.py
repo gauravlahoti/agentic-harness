@@ -22,6 +22,7 @@ from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
 from agentic_harness.memory import SessionStore, load_notes, note_path, save_note_tool
 from agentic_harness.model import ModelClient
+from agentic_harness.planning import PLAN_TOOL, plan_tool
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.scope import scope_check
 from agentic_harness.skills import load_skill_tool
@@ -37,6 +38,7 @@ from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
 from agentic_harness.trimming import ModelSummarizer
+from agentic_harness.verify import PLAN_CHECK, Check
 from agentic_harness.workspace import Workspace, WorkspaceError
 
 DEFAULT_MEMORY_DIR = Path(".agentic-harness")  # sessions and notes live under it (S07)
@@ -52,12 +54,14 @@ class Off:
     tools: tuple[str, ...] = ()
     skills: tuple[str, ...] = ()
     subagents: tuple[str, ...] = ()
+    checks: tuple[str, ...] = ()  # answer checks switched off (S11)
 
     def summary(self) -> dict[str, list[str]]:
         return {
             "tools": list(self.tools),
             "skills": list(self.skills),
             "subagents": list(self.subagents),
+            "checks": list(self.checks),
         }
 
 
@@ -114,6 +118,8 @@ def create_harness(
         tools.append(save_note_tool(notes_file))  # the agent keeps notes for next time (D-92)
     if workspace.ask_human:
         tools.append(ask_human_tool())  # the model may pause to ask a person (D-89)
+    if workspace.plan and PLAN_TOOL not in off.tools:
+        tools.append(plan_tool())  # the main agent may keep a to-do list; helpers don't (S11)
     if helpers:
         models = {
             a.name: _helper_model(a, model, model_factory, prices, small_model) for a in helpers
@@ -171,10 +177,17 @@ def create_harness(
         window=workspace.window,
         summarizer=summarizer,
         profile=profile,
+        checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # VERIFY (S11)
+        retries=workspace.verify_retries,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
     return harness
+
+
+def all_checks(workspace: Workspace) -> list[Check]:
+    """The harness's own Plan Complete (only with a plan tool), then the workspace's."""
+    return [*([PLAN_CHECK] if workspace.plan else []), *workspace.checks]
 
 
 def _tools(workspace: Workspace, off: Off) -> dict[str, Tool]:
@@ -192,11 +205,18 @@ def _check_unique(tools: list[Tool]) -> None:
 def _check_off(workspace: Workspace, profile: str | None, off: Off) -> Off:
     """Every name must exist for this profile: a switch can't invent anything (D-70)."""
     known = {
-        "tool": {t.name for t in [*workspace.tools, *builtin_tools(workspace.builtins)]},
+        "tool": {t.name for t in [*workspace.tools, *builtin_tools(workspace.builtins)]}
+        | ({PLAN_TOOL} if workspace.plan else set()),
         "skill": {s.name for s in workspace.skills(profile)},
         "sub-agent": {a.name for a in workspace.subagents},
+        "check": {c.name for c in all_checks(workspace)},
     }
-    for kind, names in (("tool", off.tools), ("skill", off.skills), ("sub-agent", off.subagents)):
+    for kind, names in (
+        ("tool", off.tools),
+        ("skill", off.skills),
+        ("sub-agent", off.subagents),
+        ("check", off.checks),
+    ):
         if unknown := [n for n in names if n not in known[kind]]:
             raise WorkspaceError(
                 f"Can't switch off {kind} {unknown[0]!r}: this workspace has none."
@@ -305,6 +325,20 @@ def describe_harness(
                 "summarize_at": workspace.window.summarize_at,
                 "keep_recent": workspace.window.keep_recent,
             },
+        },
+        # Plan and Verify (S11): what the harness does before an answer reaches the person.
+        "verify": {
+            "plan_on": workspace.plan,
+            "retries": workspace.verify_retries,
+            "checks": [
+                {
+                    "name": c.name,
+                    "label": c.label,
+                    "description": c.description,
+                    "source": "built-in" if c is PLAN_CHECK else "workspace",
+                }
+                for c in all_checks(workspace)
+            ],
         },
         "context": {
             "files": context.summary()["files"],

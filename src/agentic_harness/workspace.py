@@ -23,6 +23,7 @@ from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import BUILTINS
 from agentic_harness.trimming import Window
+from agentic_harness.verify import Check, load_checks
 
 PROFILE = "{profile}"
 NAME = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # sub-agent names, like skill names
@@ -76,6 +77,9 @@ class Workspace:
     title_model: str = ""  # the small model that titles a conversation (D-91); "" = the scope's
     flag_patterns: tuple[str, ...] = ()  # extra instruction-like phrases to flag (D-78)
     scope: Scope | None = None  # what the agent covers; off-topic tasks are refused (D-81)
+    plan: bool = False  # the agent may keep a to-do list for a task (S11, D-121)
+    checks: tuple[Check, ...] = ()  # answer checks from [verify] checks (S11, D-125)
+    verify_retries: int = 1  # how often a failed answer goes back (D-127)
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -124,6 +128,9 @@ class Workspace:
             title_model=_conversations(config.get("conversations", {})),
             flag_patterns=_texts(config, "flag_patterns"),
             scope=_scope(config.get("scope")),
+            plan=_flag(config, "plan"),
+            checks=_checks(path, config.get("verify", {})),
+            verify_retries=_retries(config.get("verify", {})),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
             examples=_texts(config, "examples"),
@@ -383,6 +390,21 @@ def _flag(config: dict[str, Any], key: str) -> bool:
     value = config.get(key, False)
     if not isinstance(value, bool):
         raise WorkspaceError(f"workspace.toml: {key} must be true or false.")
+    return value
+
+
+def _checks(root: Path, table: Any) -> tuple[Check, ...]:
+    """``[verify] checks = "checks.py"``: the workspace's own answer checks (S11)."""
+    if not isinstance(table, dict):
+        raise WorkspaceError("workspace.toml: [verify] must be a table.")
+    file = _text(table, "checks")
+    return load_checks(root / file) if file else ()
+
+
+def _retries(table: Any) -> int:
+    value = table.get("retries", 1) if isinstance(table, dict) else 1
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 3:
+        raise WorkspaceError("workspace.toml: [verify] retries must be 0 to 3.")
     return value
 
 

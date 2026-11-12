@@ -228,7 +228,7 @@ def test_s04_ac12_switches_remove_tools_skills_and_helpers(tmp_path: Path) -> No
     h, _ = harness(ws, off=Off(subagents=("helper",)))
     assert "delegate_task" not in h.tools
     assert "scan" in h.tools  # the delegate-only tool comes back
-    assert h.off == {"tools": [], "skills": [], "subagents": ["helper"]}
+    assert h.off == {"tools": [], "skills": [], "subagents": ["helper"], "checks": []}
 
 
 def test_s04_ac12_unknown_names_are_refused(tmp_path: Path) -> None:

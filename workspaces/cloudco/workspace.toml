@@ -16,6 +16,9 @@ ask_human = true
 # The agent may keep short notes between tasks, per profile (D-92).
 notes = true
 
+# The agent may keep a to-do list for a task with 3+ parts; it can't finish with items open (S11).
+plan = true
+
 # Always in the prompt, in this order. {profile} picks the active profile's file.
 memory = ["AGENTS.md", "teams/{profile}.md"]
 
@@ -151,3 +154,8 @@ label = "Liability cap over 12 months"
 arg = "liability_cap_months"
 above = 12
 because = "approval-chart §1: a liability cap up to 24 months needs the CFO"
+
+# Before you see an answer, the harness runs these checks; a failure goes back once (S11).
+[verify]
+checks = "checks.py"
+retries = 1

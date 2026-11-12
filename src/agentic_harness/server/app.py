@@ -89,6 +89,7 @@ class OffRequest(BaseModel):
     tools: list[Name] = Field(default_factory=list, max_length=100)
     skills: list[Name] = Field(default_factory=list, max_length=100)
     subagents: list[Name] = Field(default_factory=list, max_length=100)
+    checks: list[Name] = Field(default_factory=list, max_length=100)
 
 
 TITLE_WAIT_SECONDS = 3.0  # how long the end of a first turn waits for its topic title (D-91)
@@ -472,7 +473,12 @@ def create_app(
         # Every key the run could touch is scrubbed from its trace.
         secrets = [k.reveal() for k in (settings.api_key, settings.anthropic_key) if k]
         small = CLAUDE_SMALL_MODEL if claude else None  # a Claude run's small calls (D-103)
-        off = Off(tuple(body.off.tools), tuple(body.off.skills), tuple(body.off.subagents))
+        off = Off(
+            tuple(body.off.tools),
+            tuple(body.off.skills),
+            tuple(body.off.subagents),
+            tuple(body.off.checks),
+        )
         try:
             harness = create_harness(
                 model,
