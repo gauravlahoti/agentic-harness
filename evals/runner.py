@@ -54,6 +54,7 @@ from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver
 from agentic_harness.model import ModelClient
 from agentic_harness.workspace import Workspace
+from evals import reference
 from evals.cases import Case, Suite
 from evals.checks import Score
 from evals.judge import BUSY, Judge, JudgeUnavailableError
@@ -332,6 +333,7 @@ async def run_eval(
                 tally.stop = out_of_quota(tally.agent, failed.reason, options.fallback)
             else:
                 try:
+                    scores += await unless_stopped(reference.judged(case, views, judge), stop)
                     scores += await unless_stopped(
                         judged_scores(
                             case,

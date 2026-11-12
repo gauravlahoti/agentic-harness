@@ -113,7 +113,7 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
     # one metrics table (Metric · What it checks · Graded By · Score, D-151), case rows, past evals
     for piece in ('id="evals-metrics"', 'id="evals-cases"', 'id="evals-history"'):
         assert piece in HTML, f"S10 piece missing from index.html: {piece}"
-    assert '"Metric", "What It Checks", "Graded By", "Threshold", "Score"' in JS
+    assert '"Metric", "What It Checks", "Graded By", "Reference", "Threshold", "Score"' in JS
     assert "agent_switched" in JS  # the live view says when Claude Haiku takes over (D-116)
     assert 'id="evals-core"' in HTML  # the dialog starts on the core set
     assert 'id="evals-judge"' in HTML  # the judge is picked too, in the same animated menu

@@ -27,13 +27,9 @@ RUNS = (1, 3)  # 1 while building; 3 for pass^3 (D-112)
 AGENT_TURN_TOKENS = (15_000, 1_500)
 JUDGE_CALL_TOKENS = (3_000, 400)
 
-PER_TURN = ("plan_adherence", "argument_correctness", "task_completion", "step_efficiency")
-CONVERSATION = (
-    "knowledge_retention",
-    "conversation_completeness",
-    "role_adherence",
-    "topic_adherence",
-)
+# Step Efficiency and Conversation Completeness are reference-based now (evals/reference.py).
+PER_TURN = ("plan_adherence", "argument_correctness", "task_completion")
+CONVERSATION = ("knowledge_retention", "role_adherence", "topic_adherence")
 
 
 def judge_calls(case: Case) -> int:

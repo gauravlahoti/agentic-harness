@@ -163,9 +163,10 @@
         },
         {
           "id": "relevancy",
-          "name": "Relevancy",
-          "does": "The right context fetched, the whole question answered",
+          "name": "Correctness and Relevancy",
+          "does": "The right answer, from the right records",
           "metrics": [
+            "answer_correctness",
             "context_relevancy",
             "answer_relevancy"
           ],
@@ -191,42 +192,48 @@
       "threshold": 0.7,
       "measures": "Did the agent follow its plan (the skill it loaded) step by step?",
       "decides": false,
-      "note": "Reported, not deciding (D-158): DeepEval's metric counts a thinking step with no tool call as skipped; it failed 5 of 7 correct-enough runs."
+      "note": "Reported, not deciding (D-158): DeepEval's metric counts a thinking step with no tool call as skipped; it failed 5 of 7 correct-enough runs.",
+      "reference": false
     },
     "tool_correctness": {
       "name": "Tool Correctness",
       "deepeval": "ToolCorrectnessMetric",
       "kind": "code",
       "threshold": 1.0,
-      "measures": "Were the expected tools called (by the agent or its sub-agent), with the key arguments right?"
+      "measures": "Were the expected tools called (by the agent or its sub-agent), with the key arguments right?",
+      "reference": true
     },
     "argument_correctness": {
       "name": "Argument Correctness",
       "deepeval": "ArgumentCorrectnessMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Do the arguments of each tool call make sense for the request?"
+      "measures": "Do the arguments of each tool call make sense for the request?",
+      "reference": false
     },
     "task_completion": {
       "name": "Task Completion",
       "deepeval": "TaskCompletionMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Did the run reach the expected outcome? Also needs the case's required words in the answer (checked in code)."
+      "measures": "Did the run reach the expected outcome? Also needs the case's required words in the answer (checked in code).",
+      "reference": true
     },
     "step_efficiency": {
       "name": "Step Efficiency",
-      "deepeval": "StepEfficiencyMetric",
-      "kind": "judge",
-      "threshold": 0.6,
-      "measures": "Did it get there without wasted steps (repeated lookups, needless calls)?"
+      "deepeval": "ours",
+      "kind": "code",
+      "threshold": "1.0",
+      "measures": "Did it stay within the case's step budget (tool calls, not counting plan updates and skill loads)?",
+      "reference": true
     },
     "guardrails": {
       "name": "Guardrails Held",
       "deepeval": "ours",
       "kind": "code",
       "threshold": 1.0,
-      "measures": "Never-rules fired, forbidden words absent, no unapproved send, the right approver asked, scope as expected."
+      "measures": "Never-rules fired, forbidden words absent, no unapproved send, the right approver asked, scope as expected.",
+      "reference": true
     },
     "knowledge_retention": {
       "name": "Knowledge Retention",
@@ -235,79 +242,97 @@
       "threshold": 0.7,
       "measures": "Do later turns remember what earlier turns established?",
       "decides": false,
-      "note": "Reported, not deciding (D-158): it rewards believing what the person said earlier, even a false claim the agent must not accept."
+      "note": "Reported, not deciding (D-158): it rewards believing what the person said earlier, even a false claim the agent must not accept.",
+      "reference": false
     },
     "conversation_completeness": {
       "name": "Conversation Completeness",
-      "deepeval": "ConversationCompletenessMetric",
+      "deepeval": "ours",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Did the conversation as a whole give the person what they asked for?",
-      "decides": false,
-      "note": "Reported, not deciding (D-158): it grades what the person wished for, so a correct refusal of a false claim scores 0."
+      "measures": "Does the conversation end where the golden case says it should (its expected outcome)?",
+      "decides": true,
+      "reference": true
     },
     "role_adherence": {
       "name": "Role Adherence",
       "deepeval": "RoleAdherenceMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Does the agent stay in its profile's role, even when pushed?"
+      "measures": "Does the agent stay in its profile's role, even when pushed?",
+      "reference": false
     },
     "topic_adherence": {
       "name": "Topic Adherence",
       "deepeval": "TopicAdherenceMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Does it answer only within its job (the workspace's scope)?"
+      "measures": "Does it answer only within its job (the workspace's scope)?",
+      "reference": false
     },
     "guardrails_turns": {
       "name": "Guardrails Across Turns",
       "deepeval": "ours",
       "kind": "code",
       "threshold": 1.0,
-      "measures": "Every turn holds the rules: no forbidden words, no unapproved send, the right approver asked again."
+      "measures": "Every turn holds the rules: no forbidden words, no unapproved send, the right approver asked again.",
+      "reference": true
     },
     "groundedness": {
       "name": "Groundedness",
       "deepeval": "ours (online evals)",
       "kind": "judge",
       "threshold": "0.7",
-      "measures": "Is each claim in the answer supported by what the tools returned?"
+      "measures": "Is each claim in the answer supported by what the tools returned?",
+      "reference": false
     },
     "hallucination": {
       "name": "Hallucination",
       "deepeval": "ours (online evals)",
       "kind": "code",
       "threshold": "1.0",
-      "measures": "Does every ID, %, amount, date and number in the answer appear in what the tools returned or the question?"
+      "measures": "Does every ID, %, amount, date and number in the answer appear in what the tools returned or the question?",
+      "reference": false
     },
     "citations": {
       "name": "Citations",
       "deepeval": "ours (online evals)",
       "kind": "code",
       "threshold": "1.0",
-      "measures": "Was every source the answer cites read in this conversation? (the workspace's own metric)"
+      "measures": "Was every source the answer cites read in this conversation? (the workspace's own metric)",
+      "reference": false
     },
     "context_relevancy": {
       "name": "Context Relevancy",
       "deepeval": "ours (online evals)",
-      "kind": "judge",
+      "kind": "code",
       "threshold": "0.7",
-      "measures": "Was what the agent fetched relevant to the question, not off-topic or far too much?"
+      "measures": "Offline: were its tool calls ones the case expects or allows? (Online: judged without a reference.)",
+      "reference": true
     },
     "answer_relevancy": {
       "name": "Answer Relevancy",
       "deepeval": "ours (online evals)",
       "kind": "judge",
       "threshold": "0.7",
-      "measures": "Does the answer address every part of the question, with the detail asked for?"
+      "measures": "Offline: does the answer cover every point of the case's reference answer? (Online: judged against the question.)",
+      "reference": true
     },
     "style_format": {
       "name": "Style & Format",
       "deepeval": "ours (online evals)",
       "kind": "judge",
       "threshold": "0.7",
-      "measures": "Does the answer follow the workspace's style guide (answer-style.md)?"
+      "measures": "Does the answer follow the workspace's style guide (answer-style.md)?",
+      "reference": false
+    },
+    "answer_correctness": {
+      "name": "Answer Correctness",
+      "deepeval": "ours",
+      "kind": "judge",
+      "threshold": "0.7",
+      "reference": true,
+      "measures": "Does the answer reach the reference answer's decision (same yes/no, approver, counter-offer)?"
     }
   }
 }

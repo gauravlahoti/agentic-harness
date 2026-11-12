@@ -2222,7 +2222,7 @@ async function loadOnline() {
   }
   const table = el("table", "evals-metrics online-metrics");
   const head = el("tr");
-  for (const name of ["On", "Metric", "Graded By", "Threshold", "Average", "Passed"]) {
+  for (const name of ["On", "Metric", "Graded By", "Reference", "Threshold", "Average", "Passed"]) {
     const th = el("th", null, name);
     th.scope = "col";
     head.append(th);
@@ -2240,7 +2240,7 @@ async function loadOnline() {
     const by = el("td", "metric-by");
     by.append(gradeChip(m.graded_by));
     const ok = m.scored && m.passed === m.scored;
-    tr.append(name, by, thresholdCell(m.graded_by === "code" ? 1 : (paneInfo?.online_evals?.pass_at ?? 0.7)), el("td", "q-score", m.n ? (m.sum / m.n).toFixed(2) : "–"), el("td", `q-rate ${m.scored ? (ok ? "pass" : "fail") : ""}`, m.scored ? `${m.passed} of ${m.scored}` : "didn't apply"));
+    tr.append(name, by, referenceCell(false), thresholdCell(m.graded_by === "code" ? 1 : (paneInfo?.online_evals?.pass_at ?? 0.7)), el("td", "q-score", m.n ? (m.sum / m.n).toFixed(2) : "–"), el("td", `q-rate ${m.scored ? (ok ? "pass" : "fail") : ""}`, m.scored ? `${m.passed} of ${m.scored}` : "didn't apply"));
     tbody.append(tr);
   }
   table.append(thead, tbody);
@@ -2707,6 +2707,16 @@ function scoreCell(info, total) {
 }
 
 // Where a metric starts to pass (catalog.json): "≥ 0.70"; 1.0 means every check must hold.
+// Reference-based: compared with the golden case's known answer. Reference-free: judged by
+// rules or criteria alone, so it also works live, where no right answer is known.
+function referenceCell(based) {
+  const cell = el("td", "metric-by");
+  cell.append(el("span", `ref-chip ${based ? "ref-based" : "ref-free"}`, based ? "Reference-based" : "Reference-free"));
+  // Reference-based vs reference-free (D-161; DeepEval also says "referenceless").
+  cell.title = based ? "Reference-based: compared with the test's known right answer (expected tools, outcome, reference answer)" : "Reference-free: judged by rules or criteria alone, no known answer needed";
+  return cell;
+}
+
 function thresholdCell(at) {
   const n = Number(at);
   const cell = el("td", "metric-at", n >= 1 ? "1.00 · all" : `≥ ${n.toFixed(2)}`);
@@ -2721,7 +2731,7 @@ function renderMetrics() {
   const totals = metricTotals();
   const head = el("thead");
   const names = el("tr");
-  for (const name of ["Metric", "What It Checks", "Graded By", "Threshold", "Score"]) {
+  for (const name of ["Metric", "What It Checks", "Graded By", "Reference", "Threshold", "Score"]) {
     const th = el("th", null, name);
     th.scope = "col";
     names.append(th);
@@ -2732,7 +2742,7 @@ function renderMetrics() {
     const title = el("tr", "metric-group");
     const th = el("th", null, `${group.title} · ${group.subtitle}`);
     th.scope = "colgroup";
-    th.colSpan = 5;
+    th.colSpan = 6;
     title.append(th);
     body.append(title);
     for (const row of group.rows) {
@@ -2749,7 +2759,7 @@ function renderMetrics() {
           at.append(el("span", "metric-reported", "Reported"));
           at.title = info.note ?? "Shown, but never fails a test";
         }
-        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, at, scoreCell(info, totals[id]));
+        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, referenceCell(info.reference), at, scoreCell(info, totals[id]));
         body.append(tr);
       }
     }

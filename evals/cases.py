@@ -13,7 +13,7 @@ Does not: run anything, or know any workspace (the file names its own).
 
 import re
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -26,6 +26,7 @@ TEXT_LISTS = (
     "never_call",
     "expect_approval",
     "expect_blocked",
+    "allowed_tools",
 )
 KNOWN = {
     "id",
@@ -38,6 +39,8 @@ KNOWN = {
     "approvals",
     "expect_flagged",
     "core",
+    "reference_answer",
+    "max_steps",
     *TEXT_LISTS,
 }
 
@@ -64,6 +67,11 @@ class Case:
     expect_blocked: tuple[str, ...] = ()
     expect_flagged: bool = False
     core: bool = False  # in the Run dialog's default set: a few cases that score every metric
+    # Reference-based metrics (D-161): a right final answer, a step budget, and tools that are
+    # fine to call beyond expected_tools (the file's own allowed_tools are added to each case).
+    reference_answer: str = ""
+    max_steps: int | None = None
+    allowed_tools: tuple[str, ...] = ()
 
     @property
     def multi_turn(self) -> bool:
@@ -95,7 +103,13 @@ def load_suite(path: Path) -> Suite:
     workspace = (path.parent / str(data.get("workspace", ""))).resolve()
     if not data.get("workspace") or not (workspace / "workspace.toml").is_file():
         raise CaseError(f"{path.name}: 'workspace' must point to a folder with workspace.toml.")
-    cases = tuple(_case(raw, n) for n, raw in enumerate(data.get("case", []), 1))
+    shared = data.get("allowed_tools", [])
+    if not isinstance(shared, list) or not all(isinstance(t, str) for t in shared):
+        raise CaseError(f"{path.name}: allowed_tools must be a list of tool names.")
+    cases = tuple(
+        replace(c, allowed_tools=(*c.allowed_tools, *shared))
+        for c in (_case(raw, n) for n, raw in enumerate(data.get("case", []), 1))
+    )
     seen: set[str] = set()
     for case in cases:
         if case.id in seen:
@@ -135,6 +149,12 @@ def _case(raw: dict[str, Any], number: int) -> Case:
     key_args = raw.get("key_args", {})
     if not isinstance(key_args, dict) or not all(isinstance(v, dict) for v in key_args.values()):
         raise fail("key_args", "must map a tool name to its expected arguments.")
+    reference = raw.get("reference_answer", "")
+    if not isinstance(reference, str):
+        raise fail("reference_answer", "must be a string.")
+    steps = raw.get("max_steps")
+    if steps is not None and (not isinstance(steps, int) or isinstance(steps, bool) or steps < 0):
+        raise fail("max_steps", "must be a whole number, 0 or more.")
     flagged = raw.get("expect_flagged", False)
     core = raw.get("core", False)
     for key, value in (("expect_flagged", flagged), ("core", core)):
@@ -151,5 +171,7 @@ def _case(raw: dict[str, Any], number: int) -> Case:
         approvals=dict(approvals),
         expect_flagged=flagged,
         core=core,
+        reference_answer=reference,
+        max_steps=steps,
         **lists,
     )

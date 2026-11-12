@@ -31,6 +31,7 @@ from evals.cases import Case
 from evals.checks import Score, guardrails, missing_words, tool_correctness
 from evals.judge import Judge, JudgeUnavailableError
 from evals.plan import CONVERSATION, PER_TURN
+from evals.reference import context_relevancy, step_efficiency
 from evals.replay import conversation, llm_test_case
 from evals.traces import RunView
 
@@ -144,6 +145,8 @@ ANSWER_QUALITY = (
     "style_format",
 )
 STATUS = {"passed": "scored", "failed": "scored", "skipped": "not_applicable"}
+# Answer Quality metrics whose offline version compares with the golden case (D-161).
+OFFLINE_REFERENCE = ("context_relevancy", "answer_relevancy")
 
 
 def quality_scores(views: Sequence[RunView]) -> list[Score]:
@@ -188,7 +191,15 @@ def code_scores(case: Case, views: Sequence[RunView]) -> list[Score]:
     rules = (
         guardrails(case, views, "guardrails_turns") if case.multi_turn else guardrails(case, views)
     )
-    return [tool_correctness(case, views), rules, *quality_scores(views)]
+    # Offline, Context Relevancy is reference-based (D-161): the online judge's version is left out.
+    online = [s for s in quality_scores(views) if s.metric not in OFFLINE_REFERENCE]
+    return [
+        tool_correctness(case, views),
+        rules,
+        step_efficiency(case, views),
+        context_relevancy(case, views, ()),
+        *online,
+    ]
 
 
 Progress = Callable[[str, str, int, int], None]  # (started | finished, metric, index, of)

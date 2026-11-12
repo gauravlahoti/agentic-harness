@@ -133,7 +133,9 @@ async def test_s10_ac2_off_topic_is_refused_and_needs_no_judge(suite: Any, tmp_p
     result, _ = await go(suite, tmp_path, cases=["off-topic"])
     run = result["cases"][0]["runs"][0]
     assert run["turns"][0]["scope"] == "out"
-    assert set(run["metrics"]) == {"tool_correctness", "guardrails"}
+    # The scope guard stopped it: nothing ran, so the step and context metrics don't apply.
+    assert {"tool_correctness", "guardrails"} <= set(run["metrics"])
+    assert run["metrics"]["step_efficiency"]["status"] == "not_applicable"
     assert run["passed"]
 
 

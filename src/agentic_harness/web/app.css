@@ -2102,3 +2102,17 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .metric-at { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-soft); }
 .metric-on { width: 1%; }
 .metric-reported { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+/* Online Evals: use the width, and show every metric without a sideways scroll. */
+main:has(> #view-online:not([hidden])) { max-width: 1400px; }
+.online-scroll { overflow-x: visible; }
+.online-table { table-layout: fixed; }
+.online-table th, .online-table td { white-space: normal; vertical-align: middle; }
+.online-table thead th { line-height: 1.3; }
+.online-table thead th:first-child { width: 34%; }
+.online-table thead th:last-child { width: 12%; }
+.online-ask, .online-open { max-width: none; }
+.online-open { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.35; }
+@media (max-width: 900px) { .online-scroll { overflow-x: auto; } .online-table { table-layout: auto; min-width: 760px; } }
+.ref-chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); }
+.ref-chip.ref-based { color: var(--part-guard); border-color: color-mix(in srgb, var(--part-guard) 45%, var(--line)); background: color-mix(in srgb, var(--part-guard) 8%, var(--surface)); }
+.ref-chip.ref-free { color: var(--muted); }
