@@ -232,12 +232,13 @@ def test_s13_ac5_the_tour_pauses_between_steps(ws_copy: Path) -> None:
 
 
 def test_s13_ac6_steps_name_their_scene(ws_copy: Path) -> None:
-    """D-179: the brain in a jar, the harness assembling, the finale; else the live diagram."""
+    """D-179, D-185: the brain in a jar, the harness built part by part, the finale; else the
+    live diagram."""
     tour = load_tour(ws_copy)
     assert tour is not None
     scenes = [s["scene"] for s in tour_payload(tour, audio_url=lambda s, v: "")["steps"]]
     assert scenes[0] == "jar"
-    assert scenes[1] == "harness"
+    assert scenes[1] == "build"
     assert scenes[-1] == "finale"
     assert "hud" in scenes  # the replay steps show the small live diagram
     edit_tour(ws_copy, 'scene = "jar"', 'scene = "fireworks"')
@@ -328,6 +329,28 @@ def test_s13_ac6_pop_marks_pop_each_part_as_the_voice_names_it(ws_copy: Path) ->
     for pop, name in zip(harness["pops"], names, strict=True):
         assert words[pop["word"]] == name  # each pop sits on the word that names its part
     assert all(s["pops"] == [] for s in steps if s["id"] != "02-harness")
+
+
+def test_s13_ac6_the_harness_is_built_part_by_part_then_shown_whole(ws_copy: Path) -> None:
+    """D-185: step 1 is the model alone (the jar). Step 2 starts bare; each part pops in as
+    the voice names it; then a scene mark shows the whole harness and its equation."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    intro, harness = tour_payload(tour, audio_url=lambda s, v: "")["steps"][:2]
+    assert intro["scene"] == "jar"
+    assert intro["pops"] == []
+    assert intro["scenes"] == []
+    assert intro["say"].startswith("Welcome.")
+    assert harness["scene"] == "build"
+    words = harness["say"].split()
+    assert [(s["scene"], words[s["word"]]) for s in harness["scenes"]] == [("harness", "You")]
+    assert harness["scenes"][0]["word"] > harness["pops"][-1]["word"]  # the parts, then the whole
+
+
+def test_s13_ac6_a_scene_mark_must_name_a_scene(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{scene:harness}", "{scene:moon}")
+    with pytest.raises(TourError, match="moon"):
+        load_tour(ws_copy)
 
 
 def test_s13_ac6_a_pop_must_name_a_diagram_part(ws_copy: Path) -> None:

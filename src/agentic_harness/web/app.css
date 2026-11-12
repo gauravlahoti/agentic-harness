@@ -2360,7 +2360,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 /* Named by the voice: the part swells and settles (D-184). */
 .stage-node.pop { animation: node-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes node-pop { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .stage-node.pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .stage-node.pop, .tour-stage[data-scene="build"] .stage-node.pop { animation: none; } }
 .stage-pulse { fill: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
 .pulse-loop { fill: var(--part-loop); }
 .pulse-context { fill: var(--part-context); }
@@ -2381,6 +2381,13 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-stage:not([data-scene="jar"]) .node-tools { transition-delay: 0.45s; }
 .tour-stage:not([data-scene="jar"]) .node-guard { transition-delay: 0.7s; }
 .tour-stage:not([data-scene="jar"]) .node-context { transition-delay: 0.95s; }
+/* The build: the model alone; each part (and its spoke) springs in as the voice names it (D-185). */
+.tour-stage[data-scene="build"] :is(.stage-node, .stage-spoke):not(.on),
+.tour-stage[data-scene="build"] .stage-equation { opacity: 0; }
+.tour-stage[data-scene="build"] .stage-node { transition-delay: 0s; }
+.tour-stage[data-scene="build"] .stage-node:not(.on) { transform: scale(0.3); }
+.tour-stage[data-scene="build"] .stage-node.pop { animation: node-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes node-in { 0% { transform: scale(0.3); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
 /* The live diagram: small, no equation, no labels to read. */
 .tour-stage[data-scene="hud"] .stage-equation, .tour-stage[data-scene="hud"] .stage-node text, .tour-stage[data-scene="hud"] .stage-core text { opacity: 0; }
 .tour-stage[data-scene="hud"] .stage-node, .tour-stage[data-scene="hud"] .stage-node text { transition-delay: 0s; }

@@ -1367,3 +1367,11 @@
   - **Chose:** the mark, like cue marks (D-180): the same voice clock, never shown in subtitles, no new audio. The part swells 1.35× and settles (0.8 s), with the existing glow and pulse to the model. It is checked when the tour loads (loop, context, tools or guard). Step 2 has four marks.
   - **Cost:** timing is the word's share of the clip, so it may land a few hundred ms off the spoken word.
 - **The answer's frame (a bug):** when a run finishes, the page ticks the checks first and draws the answer after them (S11). The spotlight looked for the answer too early and stayed on the last check row. Now it waits until the answer is drawn, then frames the answer and its cost line together.
+
+## D-185 · The intro gives the agenda; step 2 builds the harness part by part (2026-11-12)
+- **Your review:** "the intro should say we'll cover the AI model's limits in isolation, why we need a harness and what it is; then talk first about the model in isolation, then why we need a harness; the diagram should come with a pop-up animation matching the voice and script".
+- **Chose:**
+  - **Step 1** (re-voiced, 34 s): the agenda in one line (what a model can't do alone, why it needs a harness, what a harness is), then the brain in the jar. The four parts are no longer listed here (D-183's intro line moved to step 2, where they're shown).
+  - **Step 2** opens on a new `build` scene: the jar lifts away and the model stands alone. Each part (and its spoke) springs in as the voice names it (pop marks, D-184). A new **scene mark**, `{scene:harness}`, then shows the whole harness and "AI Agent = Model + Harness" at "You can see each one on the right."
+  - Scene marks are checked when the tour loads, like pop marks.
+- **Cost:** step 1 re-voiced (~1,000 credits, 2 takes). For about 25 s of step 2 the diagram is the model alone, while the voice explains why it needs a layer around it.

@@ -324,6 +324,7 @@ async function follow(step, seconds, gen, withClip) {
   let shown = 0;
   let next = 0; // the next cue to reach
   let popped = 0; // pop marks the voice has passed (D-184)
+  let switched = 0; // scene marks the voice has passed (D-185)
   let due = tour.pos; // play the run up to here
   for (;;) {
     const clipClock = withClip && !tour.voiceFailed;
@@ -344,6 +345,7 @@ async function follow(step, seconds, gen, withClip) {
     while (next < cues.length && cues[next].word <= word) due = Math.max(due, cues[next++].upto);
     // The diagram: each part pops as the voice names it.
     while (popped < step.pops.length && step.pops[popped].word <= word) pop(step.pops[popped++].part);
+    while (switched < step.scenes.length && step.scenes[switched].word <= word) setScene(step.scenes[switched++].scene);
     if (tour.pos < due) feed(tour.pos);
     const done = (clipClock && tour.audio.ended) || at >= seconds;
     if (done && tour.pos >= due) return true;
@@ -369,6 +371,8 @@ function chapter() {
 function setScene(scene) {
   tour.scene = scene;
   $("tour-stage").dataset.scene = scene;
+  // The build scene starts bare: each part appears only when the voice pops it (D-185).
+  for (const node of $("tour-stage").querySelectorAll(".on")) node.classList.remove("on");
 }
 
 // One part lights up and a pulse runs from it to the model.
@@ -393,6 +397,10 @@ function pop(part) {
   node.classList.remove("pop");
   void node.getBoundingClientRect(); // restart the animation if it pops twice
   node.classList.add("pop");
+  if (tour.scene === "build") {
+    node.classList.add("on");
+    $("tour-stage").querySelector(`.spoke-${part}`).classList.add("on");
+  }
   fire(part);
 }
 
