@@ -2130,3 +2130,8 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 .cost-list, .cost-work, .cost-meter-text, .cost-range { font-size: 12px; line-height: 1.35; }
 .cost-meter { height: 4px; margin-top: 4px; }
 .cost-split { height: 7px; margin-top: 6px; }
+
+/* The eval's model pickers read as controls (your note): a bordered button, not plain text. */
+.cost-card .model-pick.evals-pick { margin: 2px 0 0; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); cursor: pointer; }
+.cost-card .model-pick.evals-pick:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.cost-card .model-pick.evals-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
