@@ -1,0 +1,3 @@
+- 2026-11-12 · Give uptime as measured over the last 12 months, with the UP- record IDs, never rounded.
+- 2026-11-12 · For any uptime promise above 99.9%, say how far it is from our 99.95% record.
+- 2026-11-12 · Commercial or legal questions go to Sales (Priya Raman); don't comment on them.

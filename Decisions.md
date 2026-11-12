@@ -1131,3 +1131,9 @@
 - **Chose:** (b) `read_contract(contract_id, section?, version?)`: no section gives an outline (section titles and clause ranges, ~1 KB); a section or clause gives its text. `version` is `customer` or `standard`. Engineering keeps its technical sections only, same rule as `review_contract`. Team files and the review skills' descriptions say review only on a request to review.
 - **Why:** the file is ~19,000 words, so a whole-file tool would flood the prompt; tools here return small pieces.
 - **Cost:** a fifth tool (D-73 said four on purpose). Answer checks need no change: they already skip when no review ran.
+
+## D-144 · Demo memory for Sales and Engineering (2026-11-12)
+- **Problem:** Sales held one fact that fought the answer style ("no bullet points"); Engineering held none, so the Memory page showed nothing worth demoing.
+- **Chose:** 4 Sales facts (reply tone and signature, lead with what we can offer, "Net 45" wording, ShopCo trade-before-refusal) and 3 Engineering facts (uptime as measured with UP- IDs, headroom to the 99.95% record, commercial questions go to Sales). Kept in `workspaces/cloudco/demo-memory/*.txt` and copied into `.agentic-harness/notes/cloudco/` (git-ignored runtime state).
+- **Why .txt:** a note file is read line by line as facts, so it can't carry a "fictional" header; `.txt` skips the scan that wants one on every `.md`.
+- **Cost:** "ShopCo renews in Q1" is made up and not in the customer record.

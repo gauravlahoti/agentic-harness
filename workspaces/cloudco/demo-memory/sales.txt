@@ -1,0 +1,4 @@
+- 2026-11-12 · Customer emails: short and warm, greet the customer's contact by first name, and close with "Priya, CloudCo Sales".
+- 2026-11-12 · When a request is above Sales' limit, open with what we can offer, then name who decides.
+- 2026-11-12 · Write payment terms as "Net 45", not "45 days".
+- 2026-11-12 · ShopCo renews in Q1 and is price-sensitive: offer a trade (a longer term for a discount) before a straight refusal.
