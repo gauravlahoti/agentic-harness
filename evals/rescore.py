@@ -34,7 +34,7 @@ from evals.cases import load_suite
 from evals.checks import Score
 from evals.judge import Judge
 from evals.runner import role_of, topics_of
-from evals.scoring import ANSWER_QUALITY, one_metric, quality_scores
+from evals.scoring import ANSWER_QUALITY, decides, one_metric, quality_scores
 from evals.traces import RunView, read_run
 
 FOLDER = Path(".agentic-harness/evals")
@@ -143,7 +143,9 @@ async def main(argv: Sequence[str] | None = None) -> int:
             for k, s in new.items():
                 merged[k] = s.to_dict()
             passed = all(
-                v["passed"] for v in merged.values() if v.get("status", "scored") == "scored"
+                v["passed"]
+                for k, v in merged.items()
+                if v.get("status", "scored") == "scored" and decides(k)
             )
             rows.append(
                 {

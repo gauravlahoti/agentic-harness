@@ -44,6 +44,11 @@ def catalog() -> dict[str, Any]:
     return data
 
 
+def decides(metric: str) -> bool:
+    """Whether a metric can fail a run, or is only reported (D-158)."""
+    return bool(catalog()["metrics"].get(metric, {}).get("decides", True))
+
+
 def threshold(metric: str) -> float:
     return float(catalog()["metrics"][metric]["threshold"])
 

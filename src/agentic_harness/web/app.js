@@ -2737,7 +2737,12 @@ function renderMetrics() {
         name.append(el("span", "metric-cat", row.name));
         const by = el("td", "metric-by");
         by.append(gradeChip(info.kind));
-        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, thresholdCell(info.threshold), scoreCell(info, totals[id]));
+        const at = thresholdCell(info.threshold);
+        if (info.decides === false) {
+          at.append(el("span", "metric-reported", "Reported"));
+          at.title = info.note ?? "Shown, but never fails a test";
+        }
+        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, at, scoreCell(info, totals[id]));
         body.append(tr);
       }
     }
@@ -2755,7 +2760,7 @@ function caseRows() {
   return listed.map((s) => {
     const c = ran.get(s.id);
     // Not Scored / Not Applicable and dropped metrics never count as a miss (D-118)
-    const missed = c ? c.runs.flatMap((r) => Object.entries(r.metrics).filter(([id, m]) => inCatalog(id) && statusOf(m) === "scored" && !m.passed).map(([id]) => id)) : [];
+    const missed = c ? c.runs.flatMap((r) => Object.entries(r.metrics).filter(([id, m]) => inCatalog(id) && metricInfo(id).decides !== false && statusOf(m) === "scored" && !m.passed).map(([id]) => id)) : [];
     return { ...s, ...c, status: c?.status ?? "notrun", ask: s.turns[0], turns: s.turns.length, missed: new Set(missed) };
   });
 }

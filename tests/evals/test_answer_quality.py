@@ -116,3 +116,13 @@ def test_d156_bookkeeping_is_not_a_step_for_the_judge() -> None:
     assert [k["name"] for k in kids] == ["model step 1", "model step 2", "lookup_customer_record"]
     assert kids[0]["output"] == "updates its notes"
     assert kids[1]["output"] == "calls ['lookup_customer_record']"
+
+
+def test_d158_three_metrics_are_reported_and_never_fail_a_run() -> None:
+    from evals.scoring import decides
+
+    for metric in ("plan_adherence", "conversation_completeness", "knowledge_retention"):
+        assert not decides(metric)
+        assert "D-158" in catalog()["metrics"][metric]["note"]
+    assert decides("task_completion")
+    assert decides("groundedness")

@@ -58,7 +58,7 @@ from evals.cases import Case, Suite
 from evals.checks import Score
 from evals.judge import BUSY, Judge, JudgeUnavailableError
 from evals.plan import DEFAULT_CAP_USD, estimate
-from evals.scoring import code_scores, judged_scores
+from evals.scoring import code_scores, decides, judged_scores
 from evals.traces import RunView, read_run
 
 ModelFactory = Callable[[str], ModelClient]
@@ -351,7 +351,9 @@ async def run_eval(
                 "run": number,
                 "model": tally.agent,
                 # Not Scored / Not Applicable never fail a run (D-118)
-                "passed": not tally.stop and all(s.passed for s in scores if s.counted),
+                # Reported-only metrics show their score but never fail a run (D-158).
+                "passed": not tally.stop
+                and all(s.passed for s in scores if s.counted and decides(s.metric)),
                 "complete": not tally.stop,
                 "turns": [turn_record(v) for v in views],
                 "metrics": {s.metric: s.to_dict() for s in scores},

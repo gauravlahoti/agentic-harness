@@ -2101,3 +2101,4 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 /* Each metric's threshold, in the metrics tables. */
 .metric-at { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-soft); }
 .metric-on { width: 1%; }
+.metric-reported { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }

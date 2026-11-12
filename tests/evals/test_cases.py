@@ -46,7 +46,7 @@ def test_s10_ac1_the_core_set_mixes_single_and_multi_turn_cases() -> None:
 def test_s10_ac1_fields_come_through() -> None:
     case = next(c for c in load_suite(CLOUDCO).cases if c.id == "send-cfo-rejects")
     assert case.profile == "sales"
-    assert case.approvals == {"CFO": "reject", "Sales": "approve"}
+    assert case.approvals == {"CFO": "reject", "Sales": "approve", "Engineering": "approve"}
     assert case.expect_approval == ("CFO",)
     assert case.key_args == {"send_to_customer": {"discount_pct": 20}}
     assert case.never_call == ("send_to_customer",)

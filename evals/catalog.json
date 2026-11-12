@@ -189,7 +189,9 @@
       "deepeval": "PlanAdherenceMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Did the agent follow its plan (the skill it loaded) step by step?"
+      "measures": "Did the agent follow its plan (the skill it loaded) step by step?",
+      "decides": false,
+      "note": "Reported, not deciding (D-158): DeepEval's metric counts a thinking step with no tool call as skipped; it failed 5 of 7 correct-enough runs."
     },
     "tool_correctness": {
       "name": "Tool Correctness",
@@ -231,14 +233,18 @@
       "deepeval": "KnowledgeRetentionMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Do later turns remember what earlier turns established?"
+      "measures": "Do later turns remember what earlier turns established?",
+      "decides": false,
+      "note": "Reported, not deciding (D-158): it rewards believing what the person said earlier, even a false claim the agent must not accept."
     },
     "conversation_completeness": {
       "name": "Conversation Completeness",
       "deepeval": "ConversationCompletenessMetric",
       "kind": "judge",
       "threshold": 0.7,
-      "measures": "Did the conversation as a whole give the person what they asked for?"
+      "measures": "Did the conversation as a whole give the person what they asked for?",
+      "decides": false,
+      "note": "Reported, not deciding (D-158): it grades what the person wished for, so a correct refusal of a false claim scores 0."
     },
     "role_adherence": {
       "name": "Role Adherence",

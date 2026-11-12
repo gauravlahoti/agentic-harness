@@ -1205,3 +1205,7 @@
 ## D-157 · A concrete length rule (2026-11-12)
 - **Chose:** `answer-style.md` rule 8: a review at most 150 words, one short line per change; a lookup or yes/no answer one to three sentences, no list. Full eval: 1 → 2 of 7 passed; Style & Format still failed 4. Weak evidence (one run per case). Kept for now.
 - **Also:** `evals/rescore.py` re-grades saved traces for chosen metrics only, so a grading change is measured without re-running the agent. The round-by-round table is in `docs/eval-debug.md`.
+
+## D-158 · Three metrics are reported, not deciding (2026-11-12)
+- **Your call** ("fix the eval design"). Plan Adherence counts a thinking step with no tool call as skipped; Conversation Completeness and Knowledge Retention reward believing a false claim ("the CFO said yes"). They still show a score, marked "Reported", but never fail a test. `cfo-no-holds` also scripts Engineering (approve), so an added uptime term isn't rejected by an unscripted answer.
+- **New baseline:** 1 of 7. Style & Format now decides most failures (5 cases): the length rule of D-157 is broken by the agent, not met.

@@ -1,7 +1,7 @@
 # Eval debugging, 2026-11-12 (D-154 to D-157)
 
 Starting point: eval 16:18 (Haiku agent, Sonnet judge, 7 core cases × 1 run): 1 of 7 passed.
-Fictional data (CloudCo). Budget $3; spent $1.43.
+Fictional data (CloudCo). Budget $3; spent $2.17.
 
 | Round | Change | Measured on | Result | Cost |
 |---|---|---|---|---|
@@ -12,6 +12,7 @@ Fictional data (CloudCo). Budget $3; spent $1.43.
 | 4 | Conversation Completeness given the expected outcome | — | skipped: it already gets it; DeepEval's metric grades the user's wish, not the outcome | $0 |
 | 5 | concrete length rule in answer-style.md (D-157) | full eval | 1 → 2 of 7 (follow-up-in-scope passes); Style & Format still fails 4 | $0.78 |
 | 6 | cite only sections read | — | not run: one run per case is too noisy to show it | $0 |
+| 7 | Plan Adherence, Conversation Completeness, Knowledge Retention only reported (D-158); Engineering scripted in cfo-no-holds | full eval | 1 of 7. What now decides: Style & Format fails 5 (answers over 150 words, notes after the list), Context Relevancy 3, Citations and Hallucination in uptime-never (cites approval-chart §2 unread; says 99.98%) | $0.74 |
 
 ## What we learned
 - **One run per case can't measure one change.** Round 0 showed the same trace scoring 0.25 and 0.75. A real comparison needs 3 runs per case (about $2.40 per full eval).
