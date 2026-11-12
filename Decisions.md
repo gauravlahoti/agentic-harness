@@ -1322,3 +1322,4 @@
   - **Theme, whole page:** dark is the default; near-black background, cyan accent `#19e6c8` (a deep teal `#0b7f70` on light, for contrast). The theme is saved under a new key, so old light pins no longer apply.
   - **Kept:** Observability and every pane stay on the page; the tour just doesn't cover them (the online-eval lines stay out of the replay).
 - **Cost:** a few hundred lines of page code; positions are set via `element.style` (the page's security policy blocks style attributes).
+- **Changed 2026-11-12, your review** ("subtitles are very large"; "the heading overlays the text"): the guide strip is compact (16 px subtitles, smaller orb and controls, ~75 px tall); the big chapter title is gone: a new step's name flashes in the label line instead, so nothing covers the content.

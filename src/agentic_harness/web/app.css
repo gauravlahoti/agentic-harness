@@ -2164,19 +2164,19 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 .tour-mode .work-delete { display: none; }
 .tour-mode .work-open { pointer-events: none; }
 /* The guide is taller than the composer: keep the newest line above it when it scrolls in. */
-html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
+html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 
 /* ── The guide (D-178, D-179): a voice orb and film-style subtitles, no box ─────────── */
-.tour-guide { position: relative; z-index: 60; display: flex; align-items: center; gap: 18px; padding: 6px 4px 2px; }
+.tour-guide { position: relative; z-index: 60; display: flex; align-items: center; gap: 12px; padding: 0 4px; }
 .tour-guide[hidden] { display: none; }
-.guide-orb { flex: none; width: 108px; height: 108px; margin: -12px -8px -12px -16px; color: var(--accent); }
+.guide-orb { flex: none; width: 76px; height: 76px; margin: -8px -6px -8px -12px; color: var(--accent); }
 .guide-talk { flex: 1; min-width: 0; }
 .guide-step {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin: 0 0 6px;
-  font: 500 11.5px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  margin: 0 0 3px;
+  font: 500 10.5px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
@@ -2185,22 +2185,22 @@ html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
 #tour-title { color: var(--muted); }
 .guide-caption {
   margin: 0;
-  min-height: 2.6em;
-  font-size: clamp(18px, 1.6vw, 23px);
+  min-height: 1.45em;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--text);
   text-wrap: balance;
   text-shadow: 0 2px 18px light-dark(rgb(255 255 255 / 0.9), rgb(0 0 0 / 0.9));
 }
 .tour-recording .guide-caption { font-size: 18px; line-height: 1.6; max-height: 14em; overflow-y: auto; text-wrap: pretty; } /* your script: read it out */
-.guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .tour-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
   border-radius: 50%;
@@ -2209,22 +2209,22 @@ html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
   cursor: pointer;
   transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
-.tour-icon svg { width: 16px; height: 16px; }
+.tour-icon svg { width: 13px; height: 13px; }
 .tour-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent); }
 .tour-icon[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .tour-icon:disabled { opacity: 0.35; cursor: default; }
 .tour-main, .tour-pill {
-  padding: 8px 18px;
+  padding: 4px 14px;
   border: 1px solid var(--accent);
   border-radius: 999px;
-  font: 600 13px ui-monospace, "SF Mono", Menlo, monospace;
+  font: 600 12px ui-monospace, "SF Mono", Menlo, monospace;
   letter-spacing: 0.04em;
   cursor: pointer;
 }
-.tour-main { min-width: 120px; background: var(--accent); color: var(--accent-text); box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+.tour-main { min-width: 96px; background: var(--accent); color: var(--accent-text); box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); }
 .tour-pill { background: transparent; color: var(--text); }
 .tour-icon:focus-visible, .tour-main:focus-visible, .tour-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.tour-countdown { min-width: 76px; font: 12px ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tour-countdown { min-width: 72px; font: 11px ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
 .tour-timeline { display: flex; flex: 1; min-width: 120px; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .tour-tick { flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background 0.4s ease, box-shadow 0.4s ease; }
 .tour-tick.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -2240,7 +2240,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
 @media (max-width: 600px) {
   .tour-guide { gap: 10px; }
   .guide-orb { width: 56px; height: 56px; }
-  .guide-caption { font-size: 16.5px; }
+  .guide-caption { font-size: 15px; }
 }
 
 /* The spotlight: everything dims except the line being explained (and the Harness pane). */
@@ -2258,30 +2258,14 @@ html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
 .tour-mode #harness-pane { z-index: 50; } /* stays bright: the part being explained */
 .tour-mode .lane-handle { z-index: 50; }
 
-/* The chapter title: the step's name, large, for a moment. */
-.tour-chapter {
-  position: fixed;
-  z-index: 70;
-  left: 50%;
-  top: 30%;
-  margin: 0;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, -50%);
+/* A new step: its name flashes in the label line, never over the content (your review). */
+@media (prefers-reduced-motion: no-preference) {
+  .guide-step.flash #tour-title { animation: step-flash 2.2s ease-out; }
+  @keyframes step-flash {
+    0% { color: var(--accent); text-shadow: 0 0 14px var(--accent); letter-spacing: 0.3em; }
+    60% { color: var(--accent); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); letter-spacing: 0.14em; }
+  }
 }
-.tour-chapter[hidden] { display: none; }
-.chapter-no { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.3em; color: var(--accent); }
-.chapter-title { font-size: clamp(30px, 4vw, 54px); font-weight: 700; letter-spacing: -0.03em; color: var(--text); text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 45%, transparent); white-space: nowrap; }
-.tour-chapter.show { animation: chapter 2.4s ease both; }
-@keyframes chapter {
-  0% { opacity: 0; transform: translate(-50%, -40%); filter: blur(8px); }
-  18%, 70% { opacity: 1; transform: translate(-50%, -50%); filter: blur(0); }
-  100% { opacity: 0; transform: translate(-50%, -58%); filter: blur(6px); }
-}
-@media (prefers-reduced-motion: reduce) { .tour-chapter.show { animation: none; } }
 
 /* The living diagram (D-179): the model alone in a jar, then the harness around it. Exists
    only in tour mode (SVG ignores the hidden attribute). */

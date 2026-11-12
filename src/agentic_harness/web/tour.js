@@ -96,7 +96,7 @@ async function setUpTour() {
   document.body.classList.add("tour-mode");
   document.body.classList.toggle("tour-recording", TOUR_RECORD);
   // The stage floats over everything: out of the chat's layout, into <body>.
-  document.body.append($("tour-spot"), $("tour-chapter"), $("tour-stage"));
+  document.body.append($("tour-spot"), $("tour-stage"));
   $("tour-stage").hidden = false;
   // Whose view and which model the run was recorded with. Not remembered: the tour
   // mustn't change your own page's choices.
@@ -196,7 +196,7 @@ async function playStep(n, { silent = false } = {}) {
   tour.started = true;
   hearVoice();
   setPlayLabel();
-  chapter(n, step.title);
+  chapter();
   const clip = step.audio && !silent ? await loadClip(step.audio) : null;
   if (gen !== tour.gen) return;
   const seconds = clip ? clip.duration : step.seconds;
@@ -313,14 +313,13 @@ function setPlayLabel(text) {
   $("tour-play").textContent = text ?? (TOUR_RECORD ? (tour.playing ? "Pause" : "Play Step") : tour.playing ? "Pause" : "Play");
 }
 
-// ── The stage: chapter titles, the diagram, the spotlight, the orb ─────────
-function chapter(n, title) {
-  const card = $("tour-chapter");
-  card.replaceChildren(el("span", "chapter-no", String(n + 1).padStart(2, "0")), el("span", "chapter-title", title));
-  card.hidden = false;
-  card.classList.remove("show");
-  void card.offsetWidth;
-  card.classList.add("show");
+// ── The stage: the step label, the diagram, the spotlight, the orb ─────────
+// A new step: its name flashes in the label line, never over the content (your review).
+function chapter() {
+  const label = document.querySelector(".guide-step");
+  label.classList.remove("flash");
+  void label.offsetWidth;
+  label.classList.add("flash");
 }
 
 function setScene(scene) {
