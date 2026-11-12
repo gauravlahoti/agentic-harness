@@ -216,11 +216,11 @@ def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
 
 
 def test_s13_ac5_the_tour_pauses_between_steps(ws_copy: Path) -> None:
-    """D-178: the next step starts after a pause (3 s unless the tour says; was 10 s)."""
+    """D-182: the next step starts when the voice ends; a pause only if the tour sets one."""
     tour = load_tour(ws_copy)
     assert tour is not None
     payload = tour_payload(tour, audio_url=lambda s, v: f"a/{s}?v={v}")
-    assert payload["pause"] == DEFAULT_PAUSE == 3
+    assert payload["pause"] == DEFAULT_PAUSE == 0
     assert "guide" not in payload  # your call: no name on the guide
     edit_tour(ws_copy, 'chat = "', 'pause = 4\nchat = "')
     tour = load_tour(ws_copy)

@@ -3,7 +3,7 @@
 # Each step: a caption you record as your voice (`say`), where the replay stops (`until`),
 # which Harness pane part opens (`show`), an optional card over the chat (`card`), and a
 # scene for the diagram (`scene`: jar, harness or finale; else the small live diagram).
-# The next step starts `pause` seconds after the voice ends (default 3).
+# The next step starts when the voice ends; `pause = N` adds N seconds to look (default 0).
 # Cue marks in `say`, like `{tool_finished#2}`, play the run up to that event when the voice
 # reaches that word (D-180); they never show in the subtitles.
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across

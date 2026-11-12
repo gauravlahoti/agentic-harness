@@ -30,7 +30,7 @@ MEDIA_TYPES = {ext: kind for kind, ext in AUDIO_TYPES.items()}
 MAX_CLIP_BYTES = 5_000_000  # one step: several minutes of voice
 MAX_AUDIO_BYTES = 15_000_000  # all clips together; the page must stay quick to load
 WORDS_PER_SECOND = 2.5  # a calm speaking pace: a step with no clip waits this long (D-170)
-DEFAULT_PAUSE = 3  # seconds between steps: a breath to look, then the guide moves on (D-178)
+DEFAULT_PAUSE = 0  # seconds between steps: the voice paces the tour, so none by default (D-182)
 MAX_PAUSE = 60
 # Harness pane parts a step may open; "pane" opens the pane with every part.
 PARTS = {"pane", "loop", "context", "tools", "guard", "verify", "memory"}

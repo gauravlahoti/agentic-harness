@@ -1343,3 +1343,10 @@
 - **Changes D-169:** "your recorded voice" becomes "your voice, cloned or recorded"; `/?tour=record` stays for any step you'd rather record.
 - **Added 2026-11-12, your go-ahead** ("do it for the remaining steps; the subscription allows 30 minutes"): steps 2–10 in the same voice and model, text = each step's `say` with cue marks removed. 2 takes each; the first finished take per step is installed. All 10 clips: 4 min 43 s, 4.5 MB (under 15 MB). Used: about 9.5 of your 30 minutes, ~8,640 credits.
 - **Also:** the pre-commit large-file limit went from 500 KB to 1000 KB (three clips are 510–672 KB). Options: re-encode at a lower bitrate (smaller, but a worse voice) · raise the limit. Chose to raise it: the tour already caps a clip at 5 MB, and 1000 KB still catches stray big files.
+
+## D-182 · No pause between steps: the voice leads straight on (2026-11-12)
+- **Your review:** "the wait of 3 seconds is meaningless; it should be a natural progression rather than waiting for seconds to complete".
+- **Options:** keep 3 s with a countdown · a short hidden gap (~1 s) · none: the next step starts when the voice ends.
+- **Chose:** none by default (`DEFAULT_PAUSE = 0`); a workspace can still set `pause = N` in `tour.toml`. The clips' own trailing silence and the clip load give a natural ~0.3 s breath (measured 285 ms, step 9 → 10).
+- **Changes D-180** (3 s) and D-178 (the countdown): no "Next in N s" unless a pause is set.
+- **Cost:** no time to look at a card after the voice ends; Pause is there for that.

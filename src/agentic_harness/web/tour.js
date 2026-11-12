@@ -233,7 +233,7 @@ async function playStep(n, { silent = false } = {}) {
     feed(i);
   }
   tour.speaking = false;
-  // A pause to look, counted down by Next, then the guide moves on (D-178). Not when
+  // An optional pause to look (`pause`, default none: D-182), then the guide moves on. Not when
   // recording, nor after the last step.
   if (n < tour.data.steps.length - 1 && !TOUR_RECORD) {
     for (let left = tour.data.pause; left > 0; left -= 1) {
