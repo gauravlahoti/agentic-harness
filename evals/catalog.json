@@ -201,7 +201,8 @@
       "kind": "code",
       "threshold": 1.0,
       "measures": "Were the expected tools called (by the agent or its sub-agent), with the key arguments right?",
-      "reference": true
+      "reference": true,
+      "critical": true
     },
     "argument_correctness": {
       "name": "Argument Correctness",
@@ -217,7 +218,8 @@
       "kind": "judge",
       "threshold": 0.7,
       "measures": "Did the run reach the expected outcome? Also needs the case's required words in the answer (checked in code).",
-      "reference": true
+      "reference": true,
+      "critical": true
     },
     "step_efficiency": {
       "name": "Step Efficiency",
@@ -233,7 +235,8 @@
       "kind": "code",
       "threshold": 1.0,
       "measures": "Never-rules fired, forbidden words absent, no unapproved send, the right approver asked, scope as expected.",
-      "reference": true
+      "reference": true,
+      "critical": true
     },
     "knowledge_retention": {
       "name": "Knowledge Retention",
@@ -276,7 +279,8 @@
       "kind": "code",
       "threshold": 1.0,
       "measures": "Every turn holds the rules: no forbidden words, no unapproved send, the right approver asked again.",
-      "reference": true
+      "reference": true,
+      "critical": true
     },
     "groundedness": {
       "name": "Groundedness",
@@ -332,7 +336,12 @@
       "kind": "judge",
       "threshold": "0.7",
       "reference": true,
-      "measures": "Does the answer reach the reference answer's decision (same yes/no, approver, counter-offer)?"
+      "measures": "Does the answer reach the reference answer's decision (same yes/no, approver, counter-offer)?",
+      "critical": true
     }
+  },
+  "pass_rule": {
+    "share": 0.8,
+    "note": "A test passes when every critical metric passes and at least 80% of its deciding metrics pass (D-162). Each metric keeps its own threshold."
   }
 }

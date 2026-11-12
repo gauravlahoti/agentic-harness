@@ -34,7 +34,8 @@ def test_d133_the_sales_prompt_says_sending_starts_the_approvals() -> None:
         Scripted(), Limits(), Workspace.load(ROOT), profile="sales", trace_dir=None, memory_dir=None
     ).system
     assert "Sending starts the approvals" in system
-    assert "Don't wait for approvals or ask the person's permission first" in system
+    assert "Don't ask the person's permission again" in system
+    assert "Review first, then ask." in system  # D-163: a review-and-send shows the review first
     assert "Nothing is sent to a customer without a person approving it first" not in system
 
 

@@ -266,6 +266,15 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
     tables = _tables()
     approvals, rules = tables.get("approvals", []), tables.get("rules", [])
     roles = {a["approver"] for a in approvals}
+    # After a real send, who approved is a fact the run recorded (D-163): a summary line
+    # ("Offered: 25%, 99.95% uptime") needn't repeat them. A person's name counts as their role.
+    role_of = {p["name"]: p["role"] for p in tables.get("people", [])}
+    approved: set[str] = set()
+    for output in record.outputs("send_to_customer"):
+        if '"status": "sent"' in output:
+            for who in json.loads(output[output.find("{") :]).get("approved_by", []):
+                approved.add(role_of.get(who, who))
+    approved |= {role for name, role in role_of.items() if name in answer and _sent(record)}
     problems, checked = [], 0
     # One claim at a time: a list item, or the sentences about one clause (see _units).
     for line in _units(answer):
@@ -274,7 +283,7 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
             continue
         checked += 1
         where = _where(line)
-        named = {r for r in roles if re.search(rf"\b{re.escape(r)}\b", line)}
+        named = {r for r in roles if re.search(rf"\b{re.escape(r)}\b", line)} | approved
         never = [t for t in terms if any(_crosses(r, *t) for r in rules)]
         if never and ACCEPT.search(line) and not HOLD_BACK.search(line):
             problems += [

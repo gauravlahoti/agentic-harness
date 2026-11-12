@@ -414,3 +414,29 @@ def test_d159_answer_length_is_a_gate() -> None:
     review = verdict("answer_length", "word " * 190, REVIEW)
     assert review.ok  # a review may run to 200
     assert not verdict("answer_length", "Hi ShopCo,\n" + "word " * 200).applies
+
+
+def test_d163_right_approver_credits_the_approvals_a_send_recorded() -> None:
+    """Found live: after a real send approved by Priya, Elena and Dana, a summary line
+    "Offered: 25% discount, 99.95% uptime, 24-month liability cap." failed three times."""
+    sent = Call(
+        "send_to_customer",
+        {},
+        json.dumps(
+            {"status": "sent", "approved_by": ["Priya Raman", "Elena Brandt", "Dana Whitfield"]}
+        ),
+        False,
+    )
+    line = "Sent to ShopCo.\n- Offered: 25% discount, 99.95% uptime, 24-month liability cap."
+    assert verdict("right_approver", line, REVIEW, sent).ok
+    assert not verdict("right_approver", line, REVIEW).ok  # no send: still needs the names
+
+
+def test_d163_the_review_is_shown_before_a_send_and_the_reviewer_checks_policy() -> None:
+    sales = (ROOT / "teams" / "sales.md").read_text()
+    assert "Review first, then ask." in sales
+    assert "Change anything, or send it as is?" in sales
+    reviewer = (ROOT / "agents" / "clause-reviewer.md").read_text()
+    assert "Check every change that matters against CloudCo's policy" in reviewer
+    skill = (ROOT / "skills" / "sales" / "reply-to-customer" / "SKILL.md").read_text()
+    assert "fewest approvers" in skill

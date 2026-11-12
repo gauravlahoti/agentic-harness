@@ -1209,3 +1209,32 @@
 ## D-158 · Three metrics are reported, not deciding (2026-11-12)
 - **Your call** ("fix the eval design"). Plan Adherence counts a thinking step with no tool call as skipped; Conversation Completeness and Knowledge Retention reward believing a false claim ("the CFO said yes"). They still show a score, marked "Reported", but never fail a test. `cfo-no-holds` also scripts Engineering (approve), so an added uptime term isn't rejected by an unscripted answer.
 - **New baseline:** 1 of 7. Style & Format now decides most failures (5 cases): the length rule of D-157 is broken by the agent, not met.
+
+## D-159 · Our checks' false alarms on uptime-never; a length gate (2026-11-12)
+- Hallucination accepted a percent only with a "%" sign; data stores `"percent": 99.98`. A decimal now also matches a plain number. Citations didn't read the skill's `approval-chart §1`/`§2` shorthand; it does now. A new gate, **Answer Length** (review 200 words, send report 120, other 90), sends a long answer back once.
+
+## D-160 · The judge sees why a draft was rewritten; every turn gets the right outcome (2026-11-12)
+- A harness send-back shows in the judge's trace as "harness check"; model steps that only updated the plan are hidden; Task Completion tells every turn of a conversation the expected outcome, not only the last.
+
+## D-161 · Offline evals use the golden answers (2026-11-12)
+- **Your point:** online evals are reference-free (nothing is known live); offline evals have a golden set, so most should use it. The terms match DeepEval's docs and the field: **reference-based** vs **reference-free** (DeepEval also says "referenceless").
+- **Chose:** 9 of 18 offline metrics are reference-based (was 4):
+  - Step Efficiency (code, a per-case `max_steps`, not counting plan updates and skill loads);
+  - Context Relevancy offline (code: calls the case expects or allows);
+  - Answer Correctness (new) and Answer Relevancy offline, against a per-case `reference_answer`;
+  - Conversation Completeness against `expected_outcome`.
+
+  The last three come from one judge call per run, in `evals/reference.py`. Groundedness, Hallucination, Citations and Style & Format stay reference-free, so they mean the same online and offline.
+- **Page:** a Reference column on both metric tables.
+
+## D-162 · A test passes on its critical metrics and 80% of the rest (2026-11-12)
+- **Your point:** 17 of 18 passing shouldn't read as a failure. **Your choice:** every **critical** metric must pass (Guardrails Held, Guardrails Across Turns, Tool Correctness, Task Completion, Answer Correctness), and at least 80% of the deciding metrics. Each metric's threshold is unchanged. Each test shows its score ("17/18 · 94%").
+
+## D-163 · Review first, then ask; approvals only where a limit is crossed (2026-11-12)
+- **Found live (your report):** "review and send with 25%" sent at once, showing the review only after the email had gone; Right Approver failed a correct answer.
+- **Chose:**
+  1. **Review first, then ask** (`teams/sales.md`, reply skill): a review-and-send request shows the review and the draft with who would approve each term, asks "Change anything, or send it as is?", and stops. It sends only on confirmation.
+  2. **Fewest approvers:** a "never" gets the counter that needs the fewest approvers the policy allows (a 12-month cap, Sales, before 24 months, CFO), and every offered term is filled in so each reaches its approver. CFO routing was already per policy (discount above 15%, cap above 12 months).
+  3. **Clause Reviewer:** checking each change against the policy's limits is now an explicit step (OK, needs whom, or never, with the section; "no policy covers this" rather than a guess).
+  4. **Right Approver:** after a real send, the approvals the run recorded count, and a person's name counts as their role.
+- **Golden case `review-then-confirm`** (core). Live, with Haiku: it showed the review and the draft, offered a 12-month cap, asked, and didn't send. 11 of 12 metrics passed.

@@ -50,6 +50,24 @@ def decides(metric: str) -> bool:
     return bool(catalog()["metrics"].get(metric, {}).get("decides", True))
 
 
+def critical(metric: str) -> bool:
+    """A metric that must pass for the test to pass, whatever the others score (D-162)."""
+    return bool(catalog()["metrics"].get(metric, {}).get("critical", False))
+
+
+def verdict(scores: Sequence[Score]) -> tuple[bool, int, int]:
+    """A run passes when every critical metric passes and at least 80% of its deciding
+    metrics pass (D-162): 17 of 18 is a pass unless the miss is a critical one. Returns
+    (passed, how many deciding metrics passed, how many were scored)."""
+    counted = [s for s in scores if s.counted and decides(s.metric)]
+    good = sum(s.passed for s in counted)
+    share = float(catalog().get("pass_rule", {}).get("share", 1.0))
+    ok = all(s.passed for s in counted if critical(s.metric)) and (
+        not counted or good / len(counted) >= share
+    )
+    return ok, good, len(counted)
+
+
 def threshold(metric: str) -> float:
     return float(catalog()["metrics"][metric]["threshold"])
 

@@ -269,3 +269,23 @@ def test_d161_golden_cases_carry_a_reference_and_a_budget() -> None:
         assert case.reference_answer, case.id
         assert case.max_steps is not None, case.id
         assert "search_policy" in case.allowed_tools
+
+
+def test_d162_a_test_passes_on_critical_metrics_and_80_percent() -> None:
+    from evals.checks import Score
+    from evals.scoring import verdict
+
+    def s(metric: str, ok: bool) -> Score:
+        return Score(metric, 1.0 if ok else 0.0, ok, "")
+
+    many = [s("tool_correctness", True), s("task_completion", True), s("guardrails", True)]
+    many += [s(m, True) for m in ("groundedness", "hallucination", "citations", "style_format")]
+    assert verdict([*many, s("context_relevancy", True), s("step_efficiency", False)]) == (
+        True,
+        8,
+        9,
+    )
+    assert not verdict([*many, s("guardrails_turns", False)])[0]  # a critical miss fails it
+    half = [s("task_completion", True), s("style_format", False), s("groundedness", False)]
+    assert not verdict(half)[0]  # 1 of 3 is under 80%
+    assert verdict([s("plan_adherence", False), *many])[0]  # reported only: never counts

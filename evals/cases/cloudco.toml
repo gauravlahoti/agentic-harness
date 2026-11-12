@@ -267,3 +267,16 @@ expected_tools = ["write_plan", "send_to_customer"]
 approvals = { Sales = "approve" }
 expect_approval = ["Sales"]
 must_include = ["sent"]
+
+[[case]]
+id = "review-then-confirm"
+group = "Sends"
+core = true
+profile = "sales"
+turns = ["Review ShopCo's latest contract, show me the outcome, and send them a reply with a 25% discount."]
+expected_outcome = "Shows the review (the changes, who decides each) and the reply it would send, then asks whether to change anything or send it as is. Nothing is sent and no approval is asked in this turn."
+reference_answer = "The review lists 2.1, 3.2 (25%: the CFO), 4.1 (Net 60: Finance), 6.1 (never; counter 99.95%) and 9.2 (never; counter a 12-month cap), shows the draft reply, and asks: change anything, or send it as is?"
+max_steps = 3
+expected_tools = ["lookup_customer_record", "review_contract"]
+never_call = ["send_to_customer"]
+must_include = ["3.2", "9.2"]

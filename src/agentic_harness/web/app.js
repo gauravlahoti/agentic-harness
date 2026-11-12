@@ -2793,6 +2793,9 @@ function caseLine(row) {
   main.append(ask, meta);
   line.append(main);
   const missed = [...(row.missed ?? [])].map((id) => metricInfo(id).name);
+  // How many deciding metrics passed, over all runs (D-162): 17/18 reads very differently from 3/18.
+  const tally = (row.runs ?? []).reduce((t, r) => (r.score ? [t[0] + r.score.passed, t[1] + r.score.of] : t), [0, 0]);
+  if (tally[1]) line.append(el("span", "case-score", `${tally[0]}/${tally[1]} · ${Math.round((100 * tally[0]) / tally[1])}%`));
   line.append(el("span", "case-missed", missed.length ? `Missed: ${missed.join(", ")}` : ""));
   return line;
 }
