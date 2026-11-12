@@ -301,27 +301,21 @@ function currentProfile() {
 }
 
 // ── You Are (S12 Part B, D-137): who is answering approvals. Role-played; the server checks. ──
-const PERSON_KEY = "person";
 const people = () => health?.workspace?.people ?? [];
 const roleOf = (p) => (p ? `${p.name} (${p.role})` : "");
+// The profile's person, unless a hand-off put someone else in (the CFO on a CFO card). In memory
+// only: it ends with the approval and with a profile change.
+let handoff = null;
 function currentPerson() {
   const all = people();
-  let saved = null;
-  try {
-    saved = localStorage.getItem(`${PERSON_KEY}:${health.workspace.name}`);
-  } catch {
-    // Storage blocked: the first person for the profile's role.
-  }
-  return all.find((p) => p.id === saved) ?? all.find((p) => p.role === labelFor(currentProfile())) ?? all[0] ?? null;
+  const mine = all.find((p) => p.role === labelFor(currentProfile()));
+  return all.find((p) => p.id === handoff) ?? mine ?? all[0] ?? null;
 }
 const pendingCards = new Set(); // each waiting approval card's refresh, so a switch updates them all
 
 function setPerson(id) {
-  try {
-    localStorage.setItem(`${PERSON_KEY}:${health.workspace.name}`, id);
-  } catch {
-    // Storage blocked: the pick lasts until a reload.
-  }
+  const p = people().find((x) => x.id === id);
+  handoff = p && p.role !== labelFor(currentProfile()) ? id : null;
   renderPeople();
   for (const refresh of pendingCards) refresh();
 }
@@ -331,24 +325,26 @@ function renderPeople() {
   $("people").hidden = all.length === 0;
   if (!all.length) return;
   const me = currentPerson();
+  // Follows the profile: only its role's people. A hand-off to someone else (the CFO) adds them while they act.
+  const mine = all.filter((p) => p.role === labelFor(currentProfile()));
+  const shown = me && !mine.includes(me) ? [...mine, me] : mine.length ? mine : all;
   $("people-list").replaceChildren(
-    ...all.map((p) => {
-      const b = el("button", `person${p.id === me?.id ? " is-me" : ""}`, p.name.charAt(0));
+    ...shown.map((p) => {
+      const b = el("button", `person${p.id === me?.id ? " is-me" : ""}`);
       b.type = "button";
-      b.title = roleOf(p);
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(p.id === me?.id));
-      b.setAttribute("aria-label", roleOf(p));
+      b.append(el("span", "person-avatar", p.name.charAt(0)), el("span", "person-text"));
+      b.lastChild.append(el("strong", null, p.name), el("span", null, p.role));
       b.addEventListener("click", () => setPerson(p.id));
       return b;
     }),
   );
-  $("people-who").replaceChildren(el("strong", null, me?.name ?? ""), el("span", null, me?.role ?? ""));
 }
 
 function setUpPeople() {
   renderPeople();
-  $("profile").addEventListener("change", renderPeople); // the default follows the profile
+  $("profile").addEventListener("change", () => setPerson(null)); // a new profile is a new person
 }
 
 const labelFor = (id) => health?.workspace?.profiles?.find((p) => p.id === id)?.label ?? id;
@@ -1413,6 +1409,7 @@ function approvalCard(turn, d) {
     decided(result) {
       if (tick) clearInterval(tick);
       pendingCards.delete(refresh);
+      if (handoff) setPerson(null); // the hand-off ends with the approval
       hand.remove();
       buttons.remove();
       field.remove();
