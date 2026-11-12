@@ -46,7 +46,7 @@ from agentic_harness.memory import (
 )
 from agentic_harness.model import ModelClient, make_model
 from agentic_harness.pricing import PriceNotFoundError, load_prices
-from agentic_harness.server.approvals import Approvals
+from agentic_harness.server.approvals import Approvals, WrongRoleError
 from agentic_harness.server.checks import run_checks
 from agentic_harness.server.evals import (
     EVAL_JUDGE,
@@ -108,6 +108,7 @@ class ApprovalAnswer(BaseModel):
     call_id: str = Field(min_length=1, max_length=200)
     approved: bool
     note: str = Field(default="", max_length=500)
+    person: str | None = Field(default=None, max_length=50)  # who is answering (D-137)
 
 
 class EvalRequest(BaseModel):
@@ -148,6 +149,7 @@ def create_app(
     app.state.checks_running = False
     app.state.run_active = False
     approvals = Approvals()  # tool calls waiting for the person on the page
+    app.state.approvals = approvals  # tests and tools may reach it
     # Claude shows only when its key is in .env: the person pays for it (D-104).
     priced_models = [
         m
@@ -293,6 +295,8 @@ def create_app(
                 "owner": workspace.owner,
                 "logo": bool(workspace.logo),
                 "synthetic_data": workspace.synthetic_data,
+                # Made-up people who can answer approvals, by role (D-137).
+                "people": [{"id": p.id, "name": p.name, "role": p.role} for p in workspace.people],
                 # One agent per workspace folder for now; the page lists them as a menu so a
                 # company with several is one more entry, not a redesign.
                 "agents": [
@@ -323,7 +327,22 @@ def create_app(
     async def approval(request: Request, body: ApprovalAnswer) -> dict[str, bool]:
         if request.headers.get("x-harness-page") != "1":
             raise HTTPException(403, "Page actions must come from the harness page.")
-        if not approvals.answer(body.call_id, body.approved, body.note):
+        who, role = "", None
+        if workspace is not None and workspace.people:
+            # With people declared, an answer names one, and only that person's role counts.
+            person = next((p for p in workspace.people if p.id == body.person), None)
+            if person is None:
+                raise HTTPException(400, "Say who you are before answering an approval.")
+            who, role = f"{person.name} ({person.role})", person.role
+        try:
+            answered = approvals.answer(
+                body.call_id, body.approved, body.note, person=who, role=role
+            )
+        except WrongRoleError as wrong:
+            raise HTTPException(
+                403, f"This one needs the {wrong}; you are {who}. Switch to the right person."
+            ) from None
+        if not answered:
             raise HTTPException(404, "Nothing is waiting for that approval.")
         return {"ok": True}
 

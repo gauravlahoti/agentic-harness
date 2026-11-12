@@ -255,7 +255,7 @@ async def test_s06_ac3_the_request_carries_the_timeout_for_the_countdown() -> No
     await step(h, "send", {"body": "hi"})
     asked = next(e.data for e in events if e.type == "approval_requested")
     assert asked["approver"] == "Sales"
-    assert asked["timeout_s"] == 600
+    assert asked["timeout_s"] == 1800  # 30 min: time to switch person (D-139)
     assert (asked["step"], asked["of"]) == (1, 1)
 
 

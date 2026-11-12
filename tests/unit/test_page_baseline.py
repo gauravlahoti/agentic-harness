@@ -188,3 +188,11 @@ def test_the_sent_email_shows_under_the_answer() -> None:
     """Your request (2026-11-12): the email that went is shown with the final answer."""
     assert "turn.sent" in JS
     assert "for (const mail of turn.sent ?? []) turn.files.append(fileCard(mail));" in JS
+
+
+def test_s12_ac7_the_page_has_you_are_and_the_switch_on_a_card_you_cant_answer() -> None:
+    assert 'id="people-list"' in HTML  # the "You Are" picker
+    assert "function setPerson" in JS
+    assert "`Switch to ${roleOf(p)}`" in JS  # "Switch to Dana Whitfield (CFO)"
+    assert "person: currentPerson()?.id" in JS  # the server is told who answers
+    assert ".approval-handoff" in CSS

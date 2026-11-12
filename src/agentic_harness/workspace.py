@@ -44,6 +44,15 @@ class Profile:
 
 
 @dataclass(frozen=True, slots=True)
+class Person:
+    """A role-played person who can give approvals (S12 Part B, D-137): no logins."""
+
+    id: str
+    name: str
+    role: str  # the approver role they may answer for, e.g. "CFO"
+
+
+@dataclass(frozen=True, slots=True)
 class MemoryFile:
     path: str  # relative to the workspace, as shown on the page
     text: str
@@ -82,6 +91,7 @@ class Workspace:
     checks: tuple[Check, ...] = ()  # answer checks from [verify] checks (S11, D-125)
     action_checks: tuple[ActionCheck, ...] = ()  # checks on a tool's call, before it runs (S12)
     approval_context: tuple[ApprovalContext, ...] = ()  # where each term started (D-141)
+    people: tuple[Person, ...] = ()  # who may answer an approval, by role (D-137)
     verify_retries: int = 1  # how often a failed answer goes back (D-127)
 
     @classmethod
@@ -136,6 +146,9 @@ class Workspace:
             checks=answer_checks,
             action_checks=action_checks,
             approval_context=contexts,
+            people=_people(
+                config.get("people", []), _approvals(config.get("approvals", []), known_tools)
+            ),
             verify_retries=_retries(config.get("verify", {})),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
@@ -376,6 +389,22 @@ def _approvals(table: Any, known_tools: set[str]) -> tuple[Approval, ...]:
             )
         )
     return tuple(approvals)
+
+
+def _people(table: Any, approvals: tuple[Approval, ...]) -> tuple[Person, ...]:
+    """``[[people]]``: id, name, role. Every approval role needs at least one person."""
+    if not isinstance(table, list) or not all(isinstance(i, dict) for i in table):
+        raise WorkspaceError("workspace.toml: [[people]] must be a list of tables.")
+    people = [Person(_text(i, "id"), _text(i, "name"), _text(i, "role")) for i in table]
+    if any(not (p.id and p.name and p.role) for p in people) or len({p.id for p in people}) != len(
+        people
+    ):
+        raise WorkspaceError("workspace.toml: each person needs a unique id, a name and a role.")
+    if people:
+        roles = {p.role for p in people}
+        if missing := sorted({a.approver for a in approvals if a.approver} - roles):
+            raise WorkspaceError(f"workspace.toml: no person has the role {missing[0]!r}.")
+    return tuple(people)
 
 
 def _window(table: Any) -> Window | None:

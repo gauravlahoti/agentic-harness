@@ -198,6 +198,7 @@ function setUpAgent() {
   );
   setUpModelPicker();
   setUpEffortPicker();
+  setUpPeople();
   setUpPane();
   // Every run calls a real model, so no key means nothing can run: say so only then.
   const hasKey = health.key === "present";
@@ -297,6 +298,55 @@ function setUpProfilePicker(ws) {
 
 function currentProfile() {
   return $("profile-box").hidden ? null : $("profile").value;
+}
+
+// ── You Are (S12 Part B, D-137): who is answering approvals. Role-played; the server checks. ──
+const PERSON_KEY = "person";
+const people = () => health?.workspace?.people ?? [];
+const roleOf = (p) => (p ? `${p.name} (${p.role})` : "");
+function currentPerson() {
+  const all = people();
+  let saved = null;
+  try {
+    saved = localStorage.getItem(`${PERSON_KEY}:${health.workspace.name}`);
+  } catch {
+    // Storage blocked: the first person for the profile's role.
+  }
+  return all.find((p) => p.id === saved) ?? all.find((p) => p.role === labelFor(currentProfile())) ?? all[0] ?? null;
+}
+const pendingCards = new Set(); // each waiting approval card's refresh, so a switch updates them all
+
+function setPerson(id) {
+  try {
+    localStorage.setItem(`${PERSON_KEY}:${health.workspace.name}`, id);
+  } catch {
+    // Storage blocked: the pick lasts until a reload.
+  }
+  renderPeople();
+  for (const refresh of pendingCards) refresh();
+}
+
+function renderPeople() {
+  const all = people();
+  $("people").hidden = all.length === 0;
+  if (!all.length) return;
+  const me = currentPerson();
+  $("people-list").replaceChildren(
+    ...all.map((p) => {
+      const b = el("button", `person${p.id === me?.id ? " is-me" : ""}`);
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(p.id === me?.id));
+      b.append(el("span", "person-avatar", p.name.charAt(0)), el("span", "person-name", p.name), el("span", "person-role", p.role));
+      b.addEventListener("click", () => setPerson(p.id));
+      return b;
+    }),
+  );
+}
+
+function setUpPeople() {
+  renderPeople();
+  $("profile").addEventListener("change", renderPeople); // the default follows the profile
 }
 
 const labelFor = (id) => health?.workspace?.profiles?.find((p) => p.id === id)?.label ?? id;
@@ -1195,6 +1245,7 @@ function approvalCard(turn, d) {
   if (asking) field.rows = 2;
   field.maxLength = 500;
   const approve = el("button", "approve", asking ? "Send Answer" : d.approver ? `Approve as ${d.approver}` : "Approve");
+  const hand = el("div", "approval-handoff"); // "this needs the CFO" and who to switch to
   const reject = el("button", "reject", asking ? "Skip" : "Reject");
   for (const b of [approve, reject]) b.type = "button";
   buttons.append(approve, reject);
@@ -1279,7 +1330,7 @@ function approvalCard(turn, d) {
           termCell,
           ...(withStart ? [el("td", "approval-was", s0?.current ?? "—"), el("td", "approval-was", s0?.asked ?? "—")] : []),
           offerCell,
-          el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · you` : owner.get(k)),
+          el("td", null, owner.get(k) === d.approver ? `${owner.get(k)} · this step` : owner.get(k)),
         );
         table.tBodies[0].append(tr);
       }
@@ -1289,14 +1340,34 @@ function approvalCard(turn, d) {
       // A tool that isn't a message: its arguments, plainly.
       all.append(facts(Object.entries(args).filter(([, v]) => shown(v)).map(([k, v]) => [k.replaceAll("_", " "), typeof v === "string" ? v : JSON.stringify(v)])));
     }
-    approve.textContent = `Approve as ${d.approver}`;
-    card.append(head, focus, ...((d.chain ?? []).length > 1 ? [chain] : []), all, field, buttons);
-    if (d.approver) card.append(el("p", "approval-demo", `Demo: you are acting as ${d.approver}. This project has no logins.`));
+    card.append(head, focus, ...((d.chain ?? []).length > 1 ? [chain] : []), all, hand, field, buttons);
+    if (d.approver) card.append(el("p", "approval-demo", "Role-played: the server checks your role. This project has no logins."));
     card.chainNode = chain.children[d.step - 1]?.querySelector(".chain-node");
   }
   row.li.append(card);
   card.scrollIntoView({ block: "nearest" });
   announce(asking ? "The agent has a question for you" : `${d.name} is waiting for ${role}`);
+
+  // Who may answer (D-137): someone with the card's role. Anyone else is told who to switch to.
+  function refresh() {
+    if (asking || !d.approver || !people().length) return;
+    const me = currentPerson();
+    const mayAnswer = me?.role === d.approver;
+    buttons.hidden = field.hidden = !mayAnswer;
+    approve.textContent = `Approve as ${me?.name ?? d.approver}`;
+    hand.replaceChildren();
+    hand.hidden = mayAnswer;
+    if (mayAnswer) return;
+    hand.append(el("p", "handoff-text", `You are ${roleOf(me)}. This one needs the ${d.approver}.`));
+    for (const p of people().filter((x) => x.role === d.approver)) {
+      const sw = el("button", "handoff-switch", `Switch to ${roleOf(p)}`);
+      sw.type = "button";
+      sw.addEventListener("click", () => setPerson(p.id));
+      hand.append(sw);
+    }
+  }
+  pendingCards.add(refresh);
+  refresh();
 
   // A countdown to the time-out: no answer in time counts as no.
   const ends = Date.now() + (d.timeout_s ?? 0) * 1000;
@@ -1324,6 +1395,7 @@ function approvalCard(turn, d) {
           call_id: d.call_id,
           approved,
           note: asking ? (approved ? said : "skipped") : approved ? "" : said || "rejected on the page",
+          person: currentPerson()?.id ?? null,
         }),
       });
       if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
@@ -1338,6 +1410,8 @@ function approvalCard(turn, d) {
   return {
     decided(result) {
       if (tick) clearInterval(tick);
+      pendingCards.delete(refresh);
+      hand.remove();
       buttons.remove();
       field.remove();
       countdown.remove();
@@ -1348,8 +1422,8 @@ function approvalCard(turn, d) {
           ? "✓ You answered"
           : "✗ Skipped"
         : result.approved
-          ? `✓ Approved as ${role}`
-          : `✗ ${noAnswer ? `No answer from ${role}` : `Rejected as ${role}`}`;
+          ? `✓ Approved by ${result.person || role}`
+          : `✗ ${noAnswer ? `No answer from ${role}` : `Rejected by ${result.person || role}`}`;
       setActivity(row, { text: `${label} · ${d.name}`, state: result.approved ? "done" : "error" });
       card.classList.add(result.approved ? "approved" : "rejected");
       if (card.chainNode) {
@@ -1801,6 +1875,11 @@ function renderPane() {
       : el("p", "guard-text", `Not applicable for ${g.profile}`),
   ]);
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
+  if (people().length) {
+    // Who may answer an approval (D-137): said plainly, with what is and isn't enforced.
+    const me = currentPerson();
+    guardBody.push(facts([["Identity", `You are ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`]]));
+  }
   // Say so plainly if an action this profile may use would run without a person.
   const asks = new Set(g.approvals.map((a) => a.tool));
   const unguarded = info.tools.filter((t) => t.risk === "action" && g.allowed.includes(t.name) && !asks.has(t.name));

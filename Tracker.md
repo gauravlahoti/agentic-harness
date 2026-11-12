@@ -32,7 +32,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
-| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 Part A | 5/10 | 0/10 | 1 |
+| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 9/10 | 0/10 | 1 |
 
 ## Checks
 
@@ -259,10 +259,10 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC3 | A hard-limits step shows each rule with its value and line, before the approval card | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s05_ac12_approved_actions_run` (limits_checked before the approval, each rule's value and line) · `test_action_checks.py::test_s12_ac1_a_blocked_call_*` · page: `test_s12_ac3_ac4_ac5_*` |
 | AC4 | The email card appears under its send step, in run order | 👀 | 🟨 | Chrome 2026-11-12 with replayed events: memory read → send → hard limits held → checked before sending → the email inside the run's steps |
 | AC5 | The injection step names the response; the memory step lists the facts read | 🧪 👀 | 🟨 | `test_cloudco_checks.py::test_s12_ac5_the_context_says_which_facts_it_read` · page: `test_s12_ac3_ac4_ac5_*` (injection wording, memory step) |
-| AC6 | Personas from `workspace.toml`; the server refuses an approval from the wrong role | 🧪 | 🟦 |  |
-| AC7 | The card offers "Switch to <persona>"; the run keeps waiting; the thread stays | 👀 | 🟦 |  |
-| AC8 | The sender can give the "any message" sign-off; the CFO card needs the CFO | 🧪 | 🟦 |  |
-| AC9 | The outbox and trace record the person and the role | 🧪 | 🟦 |  |
+| AC6 | Personas from `workspace.toml`; the server refuses an approval from the wrong role | 🧪 | 🟨 | `test_identity.py::test_s12_ac6_*` (5): people from `workspace.toml`, a role nobody has is refused at load, the server refuses a wrong role and accepts the right one, the page gets the people |
+| AC7 | The card offers "Switch to <persona>"; the run keeps waiting; the thread stays | 👀 | 🟨 | Chrome 2026-11-12: Priya on the CFO card sees "This one needs the CFO" and **Switch to Dana Whitfield (CFO)**; switching flips the card to "Approve as Dana Whitfield" and the picker follows (replayed events; the run keeps waiting by design) |
+| AC8 | The sender can give the "any message" sign-off; the CFO card needs the CFO | 🧪 | 🟨 | `test_identity.py::test_s12_ac8_ac9_*`: Priya signs off the send, Elena and Dana answer their own cards · the role rule itself: `test_s12_ac6_the_approvals_object_refuses_a_wrong_role` |
+| AC9 | The outbox and trace record the person and the role | 🧪 | 🟨 | `test_identity.py::test_s12_ac8_ac9_*`: the outbox and the send tool's result name each person; `approval_decided` carries `person` |
 | AC10 | Live: a 25% discount send waits for Dana (CFO); Priya can't approve it | 🔑 👀 | 🟦 |  |
 
 ## Product goals
@@ -369,3 +369,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your request: the approval card shows the message and its terms open (no fold, no "See what will be sent"): an email preview and a Term · Offered · Decided by table with your own rows marked. Checked in Chrome. |
 | 2026-11-12 | Your request (D-141): the approval card shows where each term started (contract today, customer asked, our offer with ↑/↓, the clause), from a generic workspace hook; CloudCo reads it from the contract files. 457 offline tests; checked in Chrome. |
 | 2026-11-12 | Your last run reviewed: execution good (email passed its check, three approvals). Fixed (D-142): after a send, the answer reports the send, not the review (two checks skip it, the style says so, the retry note says write for the person); the sent email shows open under the answer. 460 offline tests. |
+| 2026-11-12 | S12 Part B built: personas in `workspace.toml`, a "You Are" picker, the server accepts an approval only from the card's role, the outbox names who approved, a hand-off with a Switch button on cards you can't answer, 30-minute timeout, an Identity fact in the pane. AC6–AC9 → 🟨 (467 offline tests; AC7 checked in Chrome). AC10 (live: a 25% discount send waits for Dana) waits for your run. The planned per-rule "sender may" flag dropped: role match covers it (D-138). |

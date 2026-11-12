@@ -263,7 +263,9 @@ def send_to_customer(
     footer = "(Demo: delivered to the local outbox instead of email. Fictional.)"
     # Who said yes, in what role and when (S06-AC10). Roles are played on the page, not logins.
     signed = (
-        "\n".join(f"- {a['approver']} · {a['at']} · {a['rule']}" for a in ctx.approvals)
+        "\n".join(
+            f"- {a.get('person') or a['approver']} · {a['at']} · {a['rule']}" for a in ctx.approvals
+        )
         or "- none recorded"
     )
     text = (
@@ -280,7 +282,7 @@ def send_to_customer(
         "status": "sent",
         "delivered_to": "the local outbox (this demo sends no real email)",
         "file": saved,
-        "approved_by": [a["approver"] for a in ctx.approvals],
+        "approved_by": [a.get("person") or a["approver"] for a in ctx.approvals],
     }
 
 

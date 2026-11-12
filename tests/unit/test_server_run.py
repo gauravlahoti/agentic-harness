@@ -188,13 +188,13 @@ async def test_s05_ac12_the_page_answers_a_waiting_approval() -> None:
     assert approvals.waiting() == ["c1"]
     assert not approvals.answer("nope", True, "")  # nothing waits under that ID
     assert approvals.answer("c1", False, "wrong price")
-    assert await waiting == (False, "wrong price")
+    assert await waiting == (False, "wrong price", "")
     assert approvals.waiting() == []
 
 
 def test_s05_ac12_approval_endpoint_needs_the_page_and_a_waiting_request(tmp_path: Path) -> None:
     web = client(tmp_path, workspace=CLOUDCO)
-    body = {"call_id": "c1", "approved": True}
+    body = {"call_id": "c1", "approved": True, "person": "priya"}  # CloudCo has people (D-137)
     assert web.post("/api/approval", json=body).status_code == 403
     assert web.post("/api/approval", headers=PAGE_HEADER, json=body).status_code == 404
 

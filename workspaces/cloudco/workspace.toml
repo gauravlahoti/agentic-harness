@@ -112,6 +112,28 @@ arg = "unlimited_liability"
 equals = true
 because = "standard-terms §5"
 
+# Made-up people who can answer an approval, each for one role (S12 Part B, D-137). The page
+# lets you pick who you are; the server accepts an answer only from the card's role. No logins.
+[[people]]
+id = "priya"
+name = "Priya Raman"
+role = "Sales"
+
+[[people]]
+id = "elena"
+name = "Elena Brandt"
+role = "Engineering"
+
+[[people]]
+id = "farid"
+name = "Farid Aziz"
+role = "Finance"
+
+[[people]]
+id = "dana"
+name = "Dana Whitfield"
+role = "CFO"
+
 # Human in the loop: these wait for a person to approve them (D-79).
 # Who decides (D-87, D-88). Every rule that matches is asked, in this order: from the sender
 # up (D-120). Sales first, because Sales approves every send (approval-chart §3) and owns the

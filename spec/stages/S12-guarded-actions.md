@@ -59,3 +59,4 @@
 | AC10 | Live: a 25% discount send waits for Dana (CFO); Priya can't approve it | 🔑 👀 |
 
 ## Changes
+- 2026-11-12 · Part B built as planned, except D-138: no per-rule "sender may" flag; a person's role must equal the card's role, which already lets Sales give the "send" sign-off.

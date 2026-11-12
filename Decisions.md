@@ -1086,6 +1086,7 @@
 - **Instead of:** role-play by one person (D-87), real logins
 - **Because:** separation of duties you can demo; the page can't fake it
 - **Cost:** not real authentication (the pane says so)
+- **Built:** `[[people]]` (id, name, role) in `workspace.toml`, checked at load (every approval role needs a person); `Approvals.answer(role=…)` raises `WrongRoleError`; `POST /api/approval` names the person, 400 without one, 403 for the wrong role; the answer carries "Dana Whitfield (CFO)" into the loop, the `approval_decided` event, the outbox's "Approved by" and the send tool's result. Page: a "You Are" picker (default: the person whose role matches the profile), cards that show a hand-off ("You are Priya Raman (Sales). This one needs the CFO" + a Switch button) instead of Approve and Reject, and an Identity fact in the Guardrails pane. D-139: the approval timeout is 30 minutes.
 
 ### D-138 · Self-approval only for the sender's own sign-off
 ✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12
@@ -1093,6 +1094,7 @@
 - **Instead of:** anyone may approve anything
 - **Because:** the feedback: fine for the sender's sign-off, not for the CFO's
 - **Cost:** one flag per approval rule
+- **Changed while building, 2026-11-12:** no per-rule flag. A person's role must equal the card's role, so Priya (Sales) giving Sales's "send" sign-off is naturally allowed, and the CFO's, Engineering's and Finance's cards need that person. One rule instead of a rule plus a flag.
 
 ### D-139 · Approval timeout: 30 minutes
 ✅ Accepted · S12 · external feedback + your picks ("personas on the page", "S12 now, two parts"), 2026-11-12

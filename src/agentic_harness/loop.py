@@ -68,8 +68,11 @@ SYSTEM_PROMPT = (
 Outcome = Literal["completed", "stopped", "failed"]
 
 # A person's answer to an approval request: (approved, note). The server and CLI supply one.
-Approver = Callable[[ApprovalRequest], Awaitable[tuple[bool, str]]]
-APPROVAL_TIMEOUT = 600.0  # seconds; no answer counts as "no" (D-79)
+# Returns (approved, note), or (approved, note, who answered) when the page knows who (D-137).
+Approver = Callable[[ApprovalRequest], Awaitable[tuple[Any, ...]]]
+APPROVAL_TIMEOUT = (
+    1800.0  # seconds; no answer counts as "no" (D-79). 30 min: time to switch person (D-139)
+)
 SCOPE_CHECK_SECONDS = 15.0  # the scope check is small; a stuck one must not hold the run
 EXCHANGE_CHARS = 600  # how much of the last question and answer the scope check sees (D-118)
 
@@ -431,7 +434,7 @@ class Harness:
                             step=number,
                             of=len(steps),
                         )
-                        approved, note = await self._pause(
+                        approved, note, person = await self._pause(
                             run,
                             request,
                             budget,
@@ -440,10 +443,11 @@ class Harness:
                             context=started,
                             context_labels=context_labels(self.approval_context, name),
                         )
-                        who = approver
+                        who = f"{person}, {approver}" if person else approver
                         given.append(
                             {
                                 "approver": approver,
+                                "person": person,  # who answered, when the page knows (D-137)
                                 "rule": labels,
                                 "at": time.strftime("%Y-%m-%d %H:%M:%S"),
                                 "note": note,
@@ -545,8 +549,9 @@ class Harness:
 
     async def _pause(
         self, run: "_Run", request: ApprovalRequest, budget: Budget, **shown: Any
-    ) -> tuple[bool, str]:
-        """Pause for a person. The wait is not run time: it doesn't count toward the limit."""
+    ) -> tuple[bool, str, str]:
+        """Pause for a person. The wait is not run time: it doesn't count toward the limit.
+        Returns (approved, note, who answered)."""
         run.emit(
             "approval_requested",
             call_id=request.call_id,
@@ -561,11 +566,14 @@ class Harness:
             **shown,
         )
         started = budget.elapsed()
+        person = ""
         if self.approver is None:
             approved, note = False, "no one is here to answer"
         else:
             try:
-                approved, note = await asyncio.wait_for(self.approver(request), APPROVAL_TIMEOUT)
+                answer = await asyncio.wait_for(self.approver(request), APPROVAL_TIMEOUT)
+                approved, note = bool(answer[0]), str(answer[1])
+                person = str(answer[2]) if len(answer) > 2 else ""
             except TimeoutError:
                 approved, note = False, "no answer in time"
         budget.exclude(budget.elapsed() - started)
@@ -577,10 +585,11 @@ class Harness:
             note=note,
             kind=request.kind,
             approver=request.approver,
+            person=person,
             step=request.step,
             of=request.of,
         )
-        return approved, note
+        return approved, note, person
 
     async def _question(
         self, run: "_Run", call_id: str, arguments: dict[str, Any], budget: Budget
@@ -594,7 +603,7 @@ class Harness:
             "The agent needs to know",
             kind="question",
         )
-        answered, text = await self._pause(run, request, budget)
+        answered, text, _ = await self._pause(run, request, budget)
         if answered:
             return f"The person answered: {text}"
         return (
