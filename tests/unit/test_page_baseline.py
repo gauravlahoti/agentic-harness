@@ -191,7 +191,7 @@ def test_the_sent_email_shows_under_the_answer() -> None:
 
 
 def test_s12_ac7_the_page_has_you_are_and_the_switch_on_a_card_you_cant_answer() -> None:
-    assert 'id="people-list"' in HTML  # the "You Are" picker
+    assert 'id="people-list"' in HTML  # the "Acting As" picker
     assert "function setPerson" in JS
     assert "`Switch to ${roleOf(p)}`" in JS  # "Switch to Dana Whitfield (CFO)"
     assert "person: currentPerson()?.id" in JS  # the server is told who answers

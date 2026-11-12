@@ -300,7 +300,7 @@ function currentProfile() {
   return $("profile-box").hidden ? null : $("profile").value;
 }
 
-// ── You Are (S12 Part B, D-137): who is answering approvals. Role-played; the server checks. ──
+// ── Acting As (S12 Part B, D-137): who is answering approvals. Role-played; the server checks. ──
 const people = () => health?.workspace?.people ?? [];
 const roleOf = (p) => (p ? `${p.name} (${p.role})` : "");
 // The profile's person, unless a hand-off put someone else in (the CFO on a CFO card). In memory
@@ -1356,7 +1356,7 @@ function approvalCard(turn, d) {
     hand.replaceChildren();
     hand.hidden = mayAnswer;
     if (mayAnswer) return;
-    hand.append(el("p", "handoff-text", `You are ${roleOf(me)}. This one needs the ${d.approver}.`));
+    hand.append(el("p", "handoff-text", `You are acting as ${roleOf(me)}. This one needs the ${d.approver}.`));
     for (const p of people().filter((x) => x.role === d.approver)) {
       const sw = el("button", "handoff-switch", `Switch to ${roleOf(p)}`);
       sw.type = "button";
@@ -1877,7 +1877,7 @@ function renderPane() {
   if (people().length) {
     // Who may answer an approval (D-137): said plainly, with what is and isn't enforced.
     const me = currentPerson();
-    guardBody.push(facts([["Identity", `You are ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`]]));
+    guardBody.push(facts([["Identity", `Acting as ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`]]));
   }
   // Say so plainly if an action this profile may use would run without a person.
   const asks = new Set(g.approvals.map((a) => a.tool));
