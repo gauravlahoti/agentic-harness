@@ -583,6 +583,15 @@ async function saveTake(step, blob) {
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
+// Leave the tour: the voice stops and the normal page opens, with your own chats and the
+// composer back. Same page, without ?tour, so nothing from the replay stays behind.
+function exitTour() {
+  tour.gen += 1;
+  tour.audio.pause();
+  if (recorder?.state === "recording") recorder.stop();
+  location.assign(location.pathname + location.hash);
+}
+
 function go(n) {
   if (TOUR_RECORD) {
     tour.playing = false;
@@ -612,6 +621,10 @@ if (TOUR) {
     mute.querySelector(".visually-hidden").textContent = mute.title;
   });
   $("tour-rec").addEventListener("click", toggleRecord);
+  $("tour-exit").addEventListener("click", exitTour);
+  addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented) exitTour();
+  });
   if (health) setUpTour();
   else addEventListener("harness-ready", setUpTour, { once: true });
 }

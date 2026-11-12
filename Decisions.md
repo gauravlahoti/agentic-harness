@@ -1323,3 +1323,4 @@
   - **Kept:** Observability and every pane stay on the page; the tour just doesn't cover them (the online-eval lines stay out of the replay).
 - **Cost:** a few hundred lines of page code; positions are set via `element.style` (the page's security policy blocks style attributes).
 - **Changed 2026-11-12, your review** ("subtitles are very large"; "the heading overlays the text"): the guide strip is compact (16 px subtitles, smaller orb and controls, ~75 px tall); the big chapter title is gone: a new step's name flashes in the label line instead, so nothing covers the content.
+- **Added 2026-11-12, your request:** an **Exit Tour** button (and Esc) stops the voice and opens the normal page (the same URL without `?tour`): your chats, the composer and live runs come back; nothing from the replay stays.

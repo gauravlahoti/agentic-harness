@@ -2230,6 +2230,23 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-tick { flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background 0.4s ease, box-shadow 0.4s ease; }
 .tour-tick.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .tour-tick.now { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.tour-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: 500 12px ui-monospace, "SF Mono", Menlo, monospace;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.tour-exit svg { width: 12px; height: 12px; }
+.tour-exit:hover { color: var(--text); border-color: var(--line); }
+.tour-exit:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .tour-rec { display: inline-flex; align-items: center; gap: 8px; }
 .tour-rec[hidden], .tour-card[hidden] { display: none; } /* display above would beat hidden */
 .tour-record.is-on { border-color: var(--fail); background: var(--fail); color: var(--surface); }

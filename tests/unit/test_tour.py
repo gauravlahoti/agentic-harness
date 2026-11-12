@@ -264,3 +264,12 @@ def test_s13_dark_is_the_default_theme_with_the_sites_cyan() -> None:
     assert '<meta name="color-scheme" content="dark">' in (web / "index.html").read_text()
     assert 'const DEFAULT_SCHEME = "dark";' in (web / "theme.js").read_text()
     assert "--accent: light-dark(#0b7f70, #19e6c8)" in (web / "app.css").read_text()
+
+
+def test_s13_ac5_the_tour_can_be_left_for_the_normal_page() -> None:
+    """Your request: an option to exit the tour and go back to the normal page (Esc too)."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    assert ">Exit Tour<" in (web / "index.html").read_text()
+    tour_js = (web / "tour.js").read_text()
+    assert "function exitTour(" in tour_js
+    assert '"Escape"' in tour_js
