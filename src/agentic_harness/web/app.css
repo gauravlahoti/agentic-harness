@@ -2098,20 +2098,6 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .q-pill.is-passed { background: color-mix(in srgb, var(--pass) 14%, var(--surface)); color: var(--pass); }
 .q-pill.is-failed { background: color-mix(in srgb, var(--skip) 16%, var(--surface)); color: var(--skip); }
 
-/* Agent = Model + Harness: boxes inside a box, the whole pane. */
+/* Each metric's threshold, in the metrics tables. */
 .metric-at { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-soft); }
-.nest { display: grid; gap: 6px; padding: 10px; border: 1.5px solid var(--line); border-radius: 14px; }
-.nest-agent { border-color: var(--text); background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
-.nest-model { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
-.nest-harness { border-color: color-mix(in srgb, var(--part-verify) 55%, var(--line)); background: var(--surface); padding: 10px 6px 6px; }
-.nest-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 0 4px; }
-.nest-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-.nest-agent > .nest-head .nest-label { color: var(--text); }
-.nest-model .nest-label { color: var(--accent); }
-.nest-harness .nest-label { color: var(--part-verify); }
-.nest-name { font-size: 14px; font-weight: 650; }
-.nest-note { flex-basis: 100%; font-size: 11.5px; color: var(--text-soft); }
-.nest-op { justify-self: center; font-size: 18px; font-weight: 700; line-height: 1; color: var(--muted); }
-.eq-pick { font: inherit; font-size: 14px; font-weight: 650; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
-.eq-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .metric-on { width: 1%; }

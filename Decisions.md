@@ -1188,3 +1188,6 @@
   - Both metrics tables get a **Threshold** column ("≥ 0.70", or "1.00 · all" for code metrics that must be perfect).
 - **Found while building:** the Acting As group has no fold button, and the fold code stopped there, so no group after it could fold. Fixed.
 - **Cost:** none.
+
+## D-153 · The Harness pane is back as it was (2026-11-12)
+- **Your call:** bring back the original Harness pane. D-152's Agent = Model + Harness boxes are removed: title "Harness", the parts as before. Kept from D-152: Threshold columns, the Observability group, Online Evals outside the pane, Checks off the sidebar, the fold fix. Workspace and Observability both start folded; Chats starts open (your call).

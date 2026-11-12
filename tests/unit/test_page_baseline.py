@@ -226,10 +226,8 @@ def test_d151_online_and_offline_evals_on_the_page() -> None:
     assert 'if (ev.type === "run_finished" && !ev.data.agent_id) free();' in JS
 
 
-def test_the_pane_opens_with_agent_equals_model_plus_harness() -> None:
-    """Your request: the pane says first what an agent is, and each metric its threshold."""
-    assert "function agentBox" in JS
-    assert '"Agent: Model plus Harness"' in JS
+def test_each_metric_shows_its_threshold() -> None:
+    """Your request: each metric shows its threshold (the Agent pane was reverted, D-153)."""
     assert "function thresholdCell" in JS
 
 

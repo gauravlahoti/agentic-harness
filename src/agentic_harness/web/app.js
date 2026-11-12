@@ -2055,34 +2055,7 @@ function renderPane() {
   // answer at the end (S11), then what is kept.
   const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), memory];
   for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
-  $("pane-body").replaceChildren(agentBox(sections));
-}
-
-// Agent = Model + Harness (your request), drawn as boxes inside a box: the Agent holds the
-// model you picked (here or under the message box: one choice, kept in sync) and the
-// harness, which holds every part below. Swap the model; the harness stays the same.
-function agentBox(sections) {
-  const agent = el("section", "nest nest-agent");
-  agent.setAttribute("aria-label", "Agent: Model plus Harness");
-  const head = (cls, label, name, note) => {
-    const h = el("div", `nest-head ${cls}`);
-    h.append(el("span", "nest-label", label), ...(name ? [el("span", "nest-name", name)] : []), ...(note ? [el("span", "nest-note", note)] : []));
-    return h;
-  };
-  const model = el("div", "nest nest-model");
-  const pick = el("select", "eq-pick");
-  pick.setAttribute("aria-label", "Model");
-  for (const o of $("model").options) pick.append(new Option(modelLabel(o.value), o.value, false, o.selected));
-  pick.value = $("model").value;
-  pick.addEventListener("change", () => {
-    $("model").value = pick.value; // the same choice as under the message box
-    $("model").dispatchEvent(new Event("change")); // remembered, and the pane redraws
-  });
-  model.append(head("", "Model", "", "thinks and writes the answer"), pick);
-  const harness = el("div", "nest nest-harness");
-  harness.append(head("", "Harness", "", `${plural(sections.length, "part")}: the code around the model; what it sees, may do and must prove`), ...sections);
-  agent.append(head("", "Agent", agentName, ""), model, el("span", "nest-op", "+"), harness);
-  return agent;
+  $("pane-body").replaceChildren(...sections);
 }
 
 // Who does the small jobs (helpers, the off-topic check, titles, summaries) for the model
