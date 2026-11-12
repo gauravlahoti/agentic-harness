@@ -2315,6 +2315,10 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-guide.is-tucked .guide-orb { width: 40px; height: 40px; margin: 0; }
 .tour-mode .dock:has(.tour-guide.is-tucked) { padding-top: 10px; }
 .tour-show[hidden] { display: none; }
+/* Every approval card fits on screen in the tour (your review): the email's subject stays;
+   its body and header lines were shown in full one step before (the draft), the terms table
+   carries what matters, and nobody types a note into a replay. */
+.tour-mode :is(.approval-mail-body, .approval-mail-meta, .approval-field) { display: none; }
 /* Room below the newest line, so the tour can scroll it up to the middle of the screen. */
 .tour-mode .thread { padding-bottom: 50vh; }
 /* Both side panels stay bright (your review): the spotlight dims the chat column only. */

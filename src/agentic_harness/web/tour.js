@@ -495,7 +495,8 @@ function centre(top, bottom, floor) {
   const last = tour.centred;
   if (last.spot === tour.spot && Math.abs(height - last.height) < 40) return;
   tour.centred = { spot: tour.spot, height };
-  const delta = height <= floor * 0.8 ? (top + bottom) / 2 - floor / 2 : bottom - floor * 0.8;
+  const fits = height <= floor - 24;
+  const delta = fits ? (top + bottom) / 2 - floor / 2 : bottom - (floor - 24);
   if (Math.abs(delta) > 24) scrollBy({ top: delta, behavior: lessMotion() ? "auto" : "smooth" });
 }
 
