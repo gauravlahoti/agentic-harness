@@ -928,9 +928,12 @@ function onEvent(ev, turn) {
   } else if (ev.type === "file_saved") {
     // In the run's steps, where it happened: after its limits, checks and approvals (D-136).
     const row = el("li", "act file-row");
-    row.append(fileCard(d));
+    const inline = fileCard(d);
+    inline.open = false; // folded here; the email shows open under the answer
+    row.append(inline);
     turn.activity.append(row);
     row.scrollIntoView({ block: "nearest" });
+    if (d.folder === "outbox") (turn.sent ??= []).push(d);
   } else if (ev.type === "run_finished") {
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
     if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
@@ -939,6 +942,8 @@ function onEvent(ev, turn) {
     const numbers = [plural(d.model_calls, "call"), `${turn.tokens} tokens`, money(d.usd), `${d.seconds.toFixed(1)} s`];
     turn.meta.replaceChildren(receipt(turn, d));
     if (d.answer) renderProse(turn.reply, d.answer);
+    // What went out, with the answer that reports it (your request, 2026-11-12).
+    for (const mail of turn.sent ?? []) turn.files.append(fileCard(mail));
     const reason = REASONS[d.reason] ?? d.reason;
     const unverified = d.checks?.passed === false ? d.checks.results.filter((r) => r.status === "failed").map((r) => r.label) : [];
     const note =

@@ -1114,3 +1114,11 @@
 - **Instead of:** offered values alone
 - **Because:** an approver can't judge 25% without knowing it was 10% and the customer asked 25%; the harness must not know "contract" or "customer", so the workspace supplies both the facts and the words
 - **Cost:** one file read per approval; a broken hook is left out, never blocking a decision
+
+### D-142 · After a send, the answer reports the send; the sent email shows with it
+✅ Accepted · S11, S12 · your report ("the final response had too many unnecessary details, and the final email sent should have been shown as well"), 2026-11-12
+- **Found (run `20261112-113645`):** the run was right (the email passed Body Matches Terms; Sales, Engineering and the CFO approved), but Every Change Covered then made the answer list the whole review again, and the answer was sent back once, with the checks' words ("These changes have no line…"). The email appeared only inside the steps, folded.
+- **Chose:** a run that sent is not a review: Every Change Covered and Answer Format skip it ("This answer reports a send"); the answer style says to report the send in a few lines (what went to whom, the terms, who approved, what's open); the retry note says to write for the person and not mention the checks or the earlier draft; the email shows open under the answer (folded to one line in the steps).
+- **Instead of:** re-listing the review in every answer
+- **Because:** the review is in the email and in the steps the person saw; the answer should say what happened
+- **Cost:** a send's answer is no longer checked for covering every change (the Body Matches Terms check still guards the email itself)

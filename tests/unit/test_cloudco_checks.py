@@ -388,3 +388,32 @@ def test_s12_the_pane_and_prompt_name_the_check_before_the_send() -> None:
     h = create_harness(Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None)
     assert "- Body Matches Terms (before send_to_customer runs): " in h.system
     assert [c.name for c in h.action_checks] == ["body_matches_terms"]
+
+
+def test_an_answer_that_reports_a_send_is_not_asked_to_repeat_the_review() -> None:
+    """Found live 2026-11-12: after "review and send", Every Change Covered made the answer
+    list the whole review again. A send's answer reports the send."""
+    sent = Call(
+        "send_to_customer",
+        {},
+        json.dumps({"status": "sent", "approved_by": ["Sales", "CFO"]}),
+        False,
+    )
+    answer = (
+        "Sent to ShopCo, approved by Sales and the CFO: a 25% discount (`approval-chart §1`).\n"
+        "Still open: Net 60."
+    )
+    for name in ("every_change_covered", "answer_format"):
+        got = CHECKS[name].fn(answer, Record((REVIEW, sent)))
+        assert got.applies is False, name
+        assert "reports a send" in got.message
+    assert (
+        not CHECKS["every_change_covered"].fn(answer, Record((REVIEW,))).ok
+    )  # no send: still a review
+
+
+def test_the_retry_note_asks_for_an_answer_written_for_the_person() -> None:
+    from agentic_harness.verify import Result, feedback
+
+    note = feedback([Result("x", "X", "failed", "wrong")])
+    assert "don't mention these checks or your earlier draft" in note

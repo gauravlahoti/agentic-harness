@@ -182,3 +182,9 @@ def test_d141_an_approval_card_shows_where_each_term_started() -> None:
     assert "d.context_labels?.current" in JS  # column titles come from the workspace
     assert '"We offer"' in JS
     assert ".approval-change.is-up" in CSS
+
+
+def test_the_sent_email_shows_under_the_answer() -> None:
+    """Your request (2026-11-12): the email that went is shown with the final answer."""
+    assert "turn.sent" in JS
+    assert "for (const mail of turn.sent ?? []) turn.files.append(fileCard(mail));" in JS

@@ -206,7 +206,8 @@ def feedback(failures: Sequence[Result]) -> str:
     return (
         f"{NOTE_PREFIX} Your answer did not pass these checks:\n{lines}\n"
         "Fix them with what you already have; call a tool only if the fix needs a fact you "
-        "don't have yet. Then give your full answer again."
+        "don't have yet. Then give your full answer again, written for the person: don't "
+        "mention these checks or your earlier draft."
     )
 
 
