@@ -30,3 +30,7 @@ workspaces/*/outbox/
 .vscode/*
 !.vscode/extensions.json
 .deepeval/
+
+# Kept local, not on GitHub (your request, 2026-11-13): the tour's voice clips and the stage specs
+workspaces/*/tour/audio/
+spec/stages/
