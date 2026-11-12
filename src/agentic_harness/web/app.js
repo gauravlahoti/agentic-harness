@@ -398,8 +398,12 @@ function pastTurn(t) {
     shown.append(row);
   }
   if (t.checks) {
-    // The same line as a live run; addActivity only needs somewhere to add it.
-    addActivity({ activity: shown }, { ...verifyLine({ ...t.checks, retrying: false, round: t.checks.rounds }, { past: true }), part: "verify", raw: t.checks });
+    // The finished line of a live run, chips included; addActivity only needs a list to add to.
+    const r = { ...t.checks, retrying: false, round: t.checks.rounds };
+    const check = startCheck({ activity: shown }, r.round, r.results);
+    for (const x of r.results) settleChip(check.chips.get(x.name), x.status);
+    finishChips(check, r.results);
+    setActivity(check.row, verifyLine(r, { past: true }));
   }
   if (shown.children.length) agent.append(shown);
   const reply = el("div", "reply");
@@ -682,6 +686,8 @@ function onEvent(ev, turn) {
     document.querySelector(`.work-item[data-id="${d.session_id}"] .work-title`)?.classList.add("retitled");
     return;
   }
+  // While a check round's ticks play (S11), later events wait their turn, in order.
+  if (turn.holding) return void turn.queue.push(ev);
   // A helper's events carry agent_id (D-63): they go to its own lane, not the main list.
   if (d.agent_id) return onLaneEvent(ev, turn);
   if (ev.type === "run_started") {
@@ -783,12 +789,32 @@ function onEvent(ev, turn) {
       turn.activity.append(turn.todo);
     }
     turn.todo.replaceChildren(todoCard(d.items));
+  } else if (ev.type === "verify_started") {
+    // A circle while it checks, and each check as a chip: ○ now, ✓ or ✗ when done (S11).
+    turn.check = startCheck(turn, d.round, d.checks);
   } else if (ev.type === "verify_finished") {
-    // One quiet line per round, in run order (S11): draft → checked → rewrote → checked.
-    // It opens to each check, what the agent was told, and the draft.
+    // One line per round, in run order: draft → checked → rewrote → checked. It opens to
+    // each check's reason, what the agent was told, and the draft.
     if (d.retrying && turn.model) setActivity(turn.model, { text: "Model wrote a draft" });
-    addActivity(turn, { ...verifyLine(d, { first: !turn.rounds?.length }), part: "verify", raw: d });
+    const first = !turn.rounds?.length;
     (turn.rounds ??= []).push(d);
+    const check = turn.check ?? startCheck(turn, d.round, d.results); // an old trace: no start event
+    turn.check = null;
+    // The checks are code and take milliseconds: hold the circle a moment so it can be
+    // seen, then tick them off one by one. Nothing here slows the run itself.
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wait = reduce ? 0 : Math.max(0, 400 - (performance.now() - check.since));
+    const step = reduce ? 0 : 110;
+    const shown = d.results.filter((r) => r.status !== "skipped");
+    turn.holding = true;
+    turn.queue ??= [];
+    shown.forEach((r, i) => setTimeout(() => settleChip(check.chips.get(r.name), r.status), wait + i * step));
+    setTimeout(() => {
+      finishChips(check, d.results);
+      setActivity(check.row, verifyLine(d, { first }));
+      turn.holding = false;
+      for (const e of turn.queue.splice(0)) onEvent(e, turn);
+    }, wait + shown.length * step);
   } else if (ev.type === "tool_started" && d.name === "write_plan") {
     turn.tools.set(d.call_id, { plan: true }); // the To-Do card shows it
   } else if (ev.type === "tool_finished" && turn.tools.get(d.call_id)?.plan) {
@@ -901,6 +927,42 @@ function todoCard(items) {
   }
   card.append(head, list);
   return card;
+}
+
+// A check round's line with its checks as chips under it, all pending (○) at first (S11).
+// ``checks``: [{name, label}] (results work too). Returns what verify_finished fills in.
+function startCheck(turn, round, checks) {
+  const row = addActivity(turn, { text: round > 1 ? "Checking the new answer…" : "Checking the answer…", part: "verify" });
+  const box = el("div", "vchips");
+  const chips = new Map();
+  for (const c of checks) {
+    const chip = el("span", "vchip is-pending");
+    chip.append(el("span", "vmark", "○"), c.label);
+    box.append(chip);
+    chips.set(c.name, chip);
+  }
+  const wrap = el("div", "vwrap");
+  wrap.append(box);
+  row.li.append(wrap);
+  return { row, box, wrap, chips, since: performance.now() };
+}
+
+function settleChip(chip, status) {
+  if (!chip) return;
+  chip.className = `vchip is-${status}`;
+  chip.firstChild.textContent = { passed: "✓", failed: "✗", error: "!", skipped: "–" }[status] ?? "○";
+}
+
+// Checks that didn't apply fold into one quiet note; each failure's reason sits under the chips.
+function finishChips(check, results) {
+  const skipped = results.filter((r) => r.status === "skipped");
+  for (const r of skipped) check.chips.get(r.name)?.remove();
+  if (skipped.length) check.box.append(el("span", "vchip-note", `${skipped.length} didn't apply`));
+  for (const r of results.filter((x) => x.status === "failed")) {
+    const p = el("p", "vreason");
+    p.append(el("strong", null, `${r.label}: `), r.message);
+    check.wrap.append(p);
+  }
 }
 
 // One VERIFY round (S11) as an activity line: a short verdict on top, each check inside.

@@ -1911,3 +1911,32 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 }
 .run-foot.unverified { color: var(--fail); } /* the answer failed a check twice (S11) */
 .check-names .item-name { font-family: inherit; } /* the pane's check names: names, not code */
+/* A check round, live (S11): chips under the VERIFY line, ○ while checking, then ✓ or ✗. */
+.vwrap { margin: 2px 0 8px 31px; }
+.vchips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; }
+.vchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 9px 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 12px;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.vmark { width: 1em; text-align: center; font-weight: 700; }
+.vchip.is-passed { color: var(--pass); border-color: color-mix(in srgb, var(--pass) 40%, var(--line)); background: color-mix(in srgb, var(--pass) 7%, var(--surface)); }
+.vchip.is-failed { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); background: color-mix(in srgb, var(--fail) 7%, var(--surface)); }
+.vchip.is-error { color: var(--skip); }
+.vchip-note { color: var(--muted); font-size: 12px; }
+.vreason { margin: 6px 0 0; color: var(--fail); font-size: 12.5px; line-height: 1.5; }
+.vreason strong { font-weight: 650; }
+@media (prefers-reduced-motion: no-preference) {
+  .vchip.is-pending .vmark { animation: vpulse 1s ease-in-out infinite; }
+  .vchip.is-passed .vmark, .vchip.is-failed .vmark { animation: vpop 0.3s ease-out; }
+}
+@keyframes vpulse { 50% { opacity: 0.35; } }
+@keyframes vpop { from { transform: scale(0.4); } }
+@media (max-width: 600px) { .vwrap { margin-left: 0; } }

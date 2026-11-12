@@ -137,21 +137,50 @@ def _said(arg: str, value: float | bool) -> str:
     }[arg]
 
 
-def _where(line: str) -> str:
-    """Which line, briefly: its clause ID if it starts with one, else its first words."""
-    found = re.match(r"\W*(?:clause\s+)?([A-Z]?\d*\.\d+|[A-Z]\.\d+)\b", line, re.I)
+def _where(unit: str) -> str:
+    """Which claim, briefly: its clause if it starts with one, else its first words."""
+    found = ANCHOR.match(unit)
     if found:
-        return f"Line {found[1]}"
-    words = re.sub(r"[`*]", "", line).split()
-    return f'The sentence "{" ".join(words[:6])}…"'
+        return f"Clause {found[1]}"
+    words = re.sub(r"[`*]", "", unit).split()
+    return f'"{" ".join(words[:6])}…"'
 
 
-def _sentences(answer: str) -> list[str]:
-    """Each line, cut into sentences. A list line is usually one sentence already."""
-    out = []
+# A claim starts at a clause: "Clause 3.2 …", "**3.2 · Discount**", "- **B.7 …". Not "99.95%".
+ANCHOR = re.compile(r"^\W*(?:clause\s+)?((?:[A-Z]|\d+)\.\d+)\b(?!%)", re.I)
+SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z*`(])")
+LIST_LINE = re.compile(r"^(\s*)(?:[-*•]|\d+[.)])\s")
+
+
+def _units(answer: str) -> list[str]:
+    """The answer cut into claims, each about one clause (D-130, changed twice live):
+
+    - a list item is one claim, with its indented lines (its verdict may be a sentence later:
+      "**3.2 · Discount**: 10% → 25%. Needs the CFO.");
+    - in prose, a claim runs from a sentence that starts at a clause to the next one
+      ("Clause 3.2 raises the discount to 25%. That needs the CFO.").
+    Whole paragraphs mixed clauses; single sentences split a claim. Both gave false failures.
+    """
+    units: list[str] = []
+    in_item = False
     for line in answer.splitlines():
-        out += [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z*`(])", line) if s.strip()]
-    return out
+        if not line.strip():
+            in_item = False  # a blank line ends a list item and a paragraph
+            continue
+        item = LIST_LINE.match(line)
+        if item and not item[1]:  # a top-level list item: a new claim
+            units.append(line.strip())
+            in_item = True
+        elif in_item and line[:1].isspace():  # an indented detail of that item
+            units[-1] += " " + line.strip()
+        else:  # a paragraph: a new claim, then one more at each sentence that starts a clause
+            in_item = False
+            for number, sentence in enumerate(SENTENCE.split(line.strip())):
+                if number == 0 or ANCHOR.match(sentence):
+                    units.append(sentence)
+                else:
+                    units[-1] += " " + sentence
+    return units
 
 
 def _crosses(rule: dict[str, Any], arg: str, value: float | bool) -> bool:
@@ -175,9 +204,8 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
     approvals, rules = tables.get("approvals", []), tables.get("rules", [])
     roles = {a["approver"] for a in approvals}
     problems, checked = [], 0
-    # Per sentence, not per line: a prose paragraph is one "line" and mixes terms and people
-    # (found live 2026-11-12: a paragraph named Engineering for a counter in another sentence).
-    for line in _sentences(answer):
+    # One claim at a time: a list item, or the sentences about one clause (see _units).
+    for line in _units(answer):
         terms = list(dict.fromkeys(_terms(line)))  # once each, in order
         if not terms:
             continue
@@ -205,7 +233,7 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
     if problems:
         return failed(". ".join(problems) + ". See approval-chart §1.")
     return passed(
-        f"Who decides, in {checked} sentence{'s' if checked > 1 else ''}, matches the chart."
+        f"Who decides matches the chart in all {checked} claim{'s' if checked > 1 else ''}."
     )
 
 
@@ -244,9 +272,12 @@ def no_false_sent(answer: str, record: Record) -> Verdict | None:
 
 LIST_OR_HEADING = re.compile(r"^\s*(?:[-*•]\s|\d+[.)]\s|#)")
 # An item line: a top-level list line that starts with a bold ID ("- **3.2 · Discount**").
-ITEM = re.compile(r"^[-*•]\s+\*\*\s*((?:[A-Z]?\d+|[A-Z])\.\d+|[A-Z]{2,}-\d+)")
+ITEM = re.compile(
+    r"^[-*•]\s+\*\*\s*((?:[A-Z]?\d+|[A-Z])\.\d+|[A-Z]{2,}-\d+)\b(?!%)"
+)  # not "99.95%"
 # A source in backticks: a policy section, a record ID or a path (answer-style.md rule 3).
 SOURCE = re.compile(r"`[^`]*(?:§|[A-Z]{2,}-\d+|\.md)[^`]*`")
+VERDICT = re.compile(r"\b(?:ok|never|needs?|approves?|decides?)\b", re.I)
 
 
 @check("Answer Format", "Bottom line first, and every item line cites a source (answer-style.md)")
@@ -257,7 +288,15 @@ def answer_format(answer: str, record: Record) -> Verdict | None:
     problems = []
     if LIST_OR_HEADING.match(lines[0]):
         problems.append("it starts with a list or a heading; begin with one sentence that answers")
-    bare = [m[1] for x in lines if (m := ITEM.match(x)) and not SOURCE.search(x)]
+    # Only an item that decides something must cite its rule: it names a term, a role, or a
+    # verdict. "B.7 · a note to an AI: I ignored it" decides nothing (found live 2026-11-12).
+    roles = {a["approver"] for a in _tables().get("approvals", [])}
+
+    def decides(line: str) -> bool:
+        named = any(re.search(rf"\b{re.escape(r)}\b", line) for r in roles)
+        return bool(_terms(line)) or named or VERDICT.search(line) is not None
+
+    bare = [m[1] for x in lines if (m := ITEM.match(x)) and decides(x) and not SOURCE.search(x)]
     # Several clauses in paragraphs instead of one line each (found live 2026-11-12).
     clauses = set(re.findall(r"(?<![\w.])(?:[A-Z]|\d+)\.\d+(?![\d%])", answer))
     if len(clauses) >= 3 and not any(LIST_OR_HEADING.match(x) for x in lines):
@@ -272,7 +311,7 @@ def answer_format(answer: str, record: Record) -> Verdict | None:
     items = sum(bool(ITEM.match(x)) for x in lines)
     return passed(
         "Bottom line first"
-        + (f"; all {items} item lines cite a source." if items else "; no item lines to cite.")
+        + (f"; every decision among {items} items cites a source." if items else "; no items.")
     )
 
 

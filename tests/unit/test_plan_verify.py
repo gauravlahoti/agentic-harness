@@ -274,7 +274,12 @@ async def test_s11_ac6_checks_run_after_the_draft_and_before_the_finish() -> Non
     h, events = harness(model, checks=[names_owner])
     result = await h.run("Who owns acme?")
     kinds = [e.type for e in events]
-    assert kinds.index("verify_finished") < kinds.index("run_finished")
+    assert (
+        kinds.index("verify_started") < kinds.index("verify_finished") < kinds.index("run_finished")
+    )
+    started = of(events, "verify_started")[0]
+    assert started["round"] == 1
+    assert [c["label"] for c in started["checks"]] == ["Plan Complete", "Names the Owner"]
     verdict = of(events, "verify_finished")[0]
     assert verdict["passed"] is True
     assert verdict["round"] == 1

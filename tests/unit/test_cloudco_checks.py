@@ -251,7 +251,7 @@ def test_s11_ac14_answer_format() -> None:
 Next: ask the CFO about 3.2."""
     ok = verdict("answer_format", good)
     assert ok.ok
-    assert "all 2 item lines" in ok.message
+    assert "every decision among 2 items" in ok.message
     starts_with_list = verdict(
         "answer_format", "- **3.2 · Discount**: needs the CFO (`approval-chart §1`)\nmore\nmore"
     )

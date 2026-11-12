@@ -82,6 +82,8 @@ Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, 
 
 ## Changes
 
+- 2026-11-12 · Your report and request: Right Approver reads claims (a list item, or the sentences about one clause), not lines or sentences; Answer Format asks a source only of decisions; six real answers labelled by hand are now a test. The check round is live: `verify_started`, a spinning circle, chips that tick ○ → ✓/✗, the answer after the ticks (D-128, D-130 changed).
+
 - 2026-11-12 · Your Haiku run and review: a loaded skill now asks for a plan (D-121 changed); Right Approver reads sentences (its "Not verified" was a false failure); Answer Format fails several clauses in paragraphs; the retry note says fix with what you have (the reviewer had run twice); each check round is one compact activity line (D-128 changed); the run summary says "Model Calls" and "Tokens".
 
 - 2026-11-12 · Your question ("no create plan, only update plan?"): the tool is renamed `write_plan`. The first call writes the list; each later call rewrites it whole (D-122). Saved conversations still show their plans (the page reads the turn record).

@@ -1016,6 +1016,7 @@
 - **Because:** the pane says what the harness will do; the chat shows what it did
 - **Cost:** one more pane section
 - **Changed 2026-11-12, your review** ("taking too much space, cluttered"): each check round is one activity line, like every other step ("Checked the draft · Every Change Covered failed → sent back to fix"), opening to each check, what the agent was told and the draft. A failed final answer gets one small red line under it. The To-Do card stays a card.
+- **Changed again 2026-11-12, your request** ("circle while verification is in progress, tick when passed"): the harness sends `verify_started`; the line shows a spinning circle and each check as a chip (○), which tick to ✓ or ✗ one by one, with a failure's reason under them. The circle holds at least 0.4 s and the answer waits for the ticks: page only, the run is not slowed.
 
 ### D-129 · Answer format: rules always in the prompt, not a skill or a tool
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
@@ -1031,6 +1032,7 @@
 - **Because:** the prompt guides, VERIFY enforces (S11); the same one-retry rule
 - **Cost:** a retry when the format slips
 - **Changed 2026-11-12, live run** (Haiku answered in paragraphs and the check passed it): three or more clauses written as paragraphs now fail ("put each on its own list line"). Right Approver now reads sentence by sentence, because a paragraph mixed terms and people and gave a false failure.
+- **Changed again 2026-11-12, your report** ("the right approver check is failing miserably"): both earlier units were wrong. A whole line mixed clauses in a paragraph; a sentence split "**3.2 · Discount**: 10% → 25%. Needs the CFO." in two. Right Approver now reads **claims**: a list item with its indented lines, or in prose the sentences from one "Clause X" to the next. Answer Format asks a source only of items that decide something (a term, a role or a verdict). A test runs both checks on six real answers from today's runs, each labelled by hand (`tests/unit/test_real_answers.py`); a change that flips any verdict fails it.
 
 ### D-131 · The page does the styling
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")

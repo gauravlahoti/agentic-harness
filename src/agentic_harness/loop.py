@@ -286,7 +286,14 @@ class Harness:
             if reply.status == "incomplete":
                 return finish("stopped", "output_limit", reply.text)
             if reply.status == "completed" and not calls:
-                # VERIFY (S11): check the draft before the person sees it.
+                # VERIFY (S11): check the draft before the person sees it. The page shows the
+                # checks as they start, then ticks them off (your request, 2026-11-12).
+                if self.checks:
+                    run.emit(
+                        "verify_started",
+                        round=rounds + 1,
+                        checks=[{"name": c.name, "label": c.label} for c in self.checks],
+                    )
                 verdicts = run_checks(self.checks, reply.text, run.record(self.profile))
                 if not verdicts:  # no checks switched on
                     return finish("completed", "answered", reply.text)
