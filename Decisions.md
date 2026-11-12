@@ -1333,3 +1333,11 @@
   - **The spotlight:** a step that starts a turn shows the question first, in the spotlight; one event's lines are framed together; a helper's lines are framed one by one inside its lane. Events of one cue arrive 0.32 s apart.
   - **The pause between steps: 3 seconds** (was 10, D-178): the voice already paces each step; Next skips the wait.
 - **Later:** with an ElevenLabs voice, its word timestamps can place each mark exactly on its word.
+
+## D-181 · Step clips in your cloned ElevenLabs voice (2026-11-12)
+- **Your request:** "pick the Gaurav voice, create a sample for step 1 and integrate it".
+- **Options:** record each clip yourself at `/?tour=record` (D-169) · your cloned ElevenLabs voice "Gaurav" (`DN4vZODiJl45AFhmdQg7`, cloned, en-Indian) · a stock library voice.
+- **Chose:** your cloned voice, model `eleven_v4`, text exactly the step's `say` (no cue marks). Made outside the harness (ElevenLabs connector), saved as `workspaces/cloudco/tour/audio/01-jar.mp3`; the tour already plays any `audio/<step>.mp3`, so no code changed.
+- **Why:** sounds like you, with no fumbled takes; a line change means a new clip in seconds.
+- **Cost:** ~380 credits a take (~$0.08; 2 takes for step 1, ~25 s each); about 3,000 credits for all 10 steps. It is a synthetic voice, so the tour should say so (open).
+- **Changes D-169:** "your recorded voice" becomes "your voice, cloned or recorded"; `/?tour=record` stays for any step you'd rather record.
