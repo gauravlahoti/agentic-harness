@@ -1341,3 +1341,4 @@
 - **Why:** sounds like you, with no fumbled takes; a line change means a new clip in seconds.
 - **Cost:** ~380 credits a take (~$0.08; 2 takes for step 1, ~25 s each); about 3,000 credits for all 10 steps. It is a synthetic voice, so the tour should say so (open).
 - **Changes D-169:** "your recorded voice" becomes "your voice, cloned or recorded"; `/?tour=record` stays for any step you'd rather record.
+- **Added 2026-11-12, your go-ahead** ("do it for the remaining steps; the subscription allows 30 minutes"): steps 2–10 in the same voice and model, text = each step's `say` with cue marks removed. 2 takes each; the first finished take per step is installed. All 10 clips: 4 min 43 s, 4.5 MB (under 15 MB). Used: about 9.5 of your 30 minutes, ~8,640 credits.

@@ -11,6 +11,7 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
+        args: ["--maxkb=1000"]  # tour voice clips run to ~700 KB each (D-181)
       - id: detect-private-key
 
   - repo: https://github.com/gitleaks/gitleaks

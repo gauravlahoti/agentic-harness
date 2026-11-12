@@ -113,3 +113,4 @@ The card's text lives in `tour.toml` (a `card` field, Markdown); the player only
 - 2026-11-12 · Your review: a guide presents the tour (person icon, name, speech bubble), captions one sentence at a time with the voice, a 10-second pause before the next step; controls Previous · Pause · Next · Mute (D-178; D-170 changed). AC5 re-checked → 🟦 until shown again.
 - 2026-11-12 · Your review: the guide's name removed; a cinematic tour (voice orb, subtitles, chapter titles, living diagram with jar/harness/finale scenes, spotlight); dark + cyan theme for the whole page, like gauravlahoti.dev; Observability kept on the page (D-179).
 - 2026-11-12 · Your request: step 1's clip made in your cloned ElevenLabs voice "Gaurav" (`audio/01-jar.mp3`, 25 s); D-169 changed (D-181). AC5 and AC8 stay as they were; re-check step 1 with its clip.
+- 2026-11-12 · Your go-ahead: steps 2–10 voiced the same way; every step now has a clip (4 min 43 s, 4.5 MB). Re-check AC5 with the clips.
