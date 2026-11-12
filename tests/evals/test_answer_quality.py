@@ -60,3 +60,59 @@ def test_d151_the_table_says_code_or_llm_as_judge_for_every_metric() -> None:
     assert {data["metrics"][m]["kind"] for m in listed} == {"code", "judge"}
     quality = next(t for t in data["tables"] if t["id"] == "quality")
     assert (quality["title"], quality["subtitle"]) == ("Answer Quality", "Same as Online")
+
+
+def test_d155_plan_adherence_grades_the_plan_the_agent_wrote() -> None:
+    """Found in the eval of 2026-11-12: graded against the skill's text, 5 of 7 cases failed
+    Plan Adherence for merging or reordering the skill's steps in their own plan."""
+    from evals.replay import trace_dict
+    from evals.traces import Span
+
+    skill = Span(
+        "tool", "load_skill", {"name": "contract-review"}, "1. Look up 2. Review 3. Answer"
+    )
+    first = {"items": [{"text": "Look up ShopCo", "status": "doing"}]}
+    last = {
+        "items": [
+            {"text": "Look up ShopCo", "status": "done"},
+            {"text": "Answer", "status": "done"},
+        ]
+    }
+    root = Span(
+        "agent",
+        "agent",
+        "Review CT-2207",
+        children=[
+            skill,
+            Span("tool", "write_plan", first, "saved"),
+            Span("tool", "write_plan", last, "saved"),
+        ],
+    )
+    given = trace_dict(root, for_judge=True)["input"]
+    assert "with write_plan):\n1. Look up ShopCo [done]\n2. Answer [done]" in given
+    assert "The skill it followed, for reference:\n1. Look up 2. Review 3. Answer" in given
+    no_plan = Span("agent", "agent", "q", children=[skill])
+    assert "The plan (the skill it loaded):" in trace_dict(no_plan, for_judge=True)["input"]
+
+
+def test_d156_bookkeeping_is_not_a_step_for_the_judge() -> None:
+    """Found in the eval of 2026-11-12: write_plan updates and load_skill counted as wasted
+    or unplanned steps (Step Efficiency, Plan Adherence)."""
+    from evals.replay import trace_dict
+    from evals.traces import Span
+
+    root = Span(
+        "agent",
+        "agent",
+        "q",
+        children=[
+            Span("llm", "model step 1", output="calls ['load_skill', 'write_plan']"),
+            Span("tool", "write_plan", {"items": [{"text": "Look up", "status": "done"}]}, "ok"),
+            Span("llm", "model step 2", output="calls ['write_plan', 'lookup_customer_record']"),
+            Span("tool", "lookup_customer_record", {"record": "customer"}, "CUS-0042"),
+        ],
+    )
+    kids = trace_dict(root, for_judge=True)["children"]
+    assert [k["name"] for k in kids] == ["model step 1", "model step 2", "lookup_customer_record"]
+    assert kids[0]["output"] == "updates its notes"
+    assert kids[1]["output"] == "calls ['lookup_customer_record']"

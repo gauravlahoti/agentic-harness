@@ -374,3 +374,13 @@ def test_d148_the_page_stream_saves_the_scores_and_lists_them(tmp_path: Path) ->
     session = events[0]["data"]["session_id"]
     turn = web.get(f"/api/sessions/{session}").json()["turns"][0]
     assert turn["online"]["results"] == listed[0]["results"]
+
+
+def test_d154_a_refused_call_is_context_for_the_judge() -> None:
+    """Found in the eval of 2026-11-12 (cfo-no-holds): the send was rejected by the CFO and
+    the agent said so, but the judge never saw the rejection and called it made up."""
+    from agentic_harness.online_evals import context_blocks
+
+    rejected = Call("send_to_customer", {}, "Not sent: the CFO rejected it.", True)
+    blocks = context_blocks(Record((rejected,)))
+    assert blocks == ["[send_to_customer · failed] Not sent: the CFO rejected it."]

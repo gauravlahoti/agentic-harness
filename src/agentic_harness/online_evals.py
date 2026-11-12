@@ -287,13 +287,18 @@ JUDGE_SYSTEM = (
 
 def context_blocks(record: Record) -> list[str]:
     """What the tools returned, this turn and earlier ones, each cut to a fair share."""
-    blocks = [f"[{c.name}] {c.output[:OUTPUT_CHARS]}" for c in record.calls if not c.is_error]
+    # A failed or refused call counts too: "the CFO rejected the send" is grounded in it
+    # (found in the eval of 2026-11-12: dropped, a true answer looked made up; D-154).
+    blocks = [
+        f"[{c.name}{' · failed' if c.is_error else ''}] {c.output[:OUTPUT_CHARS]}"
+        for c in record.calls
+    ]
     blocks += [f"[earlier turn] {text[:OUTPUT_CHARS]}" for text in record.earlier]
     return blocks
 
 
 def context_text(record: Record) -> str:
-    return "\n".join(c.output for c in record.calls if not c.is_error) + "\n".join(record.earlier)
+    return "\n".join(c.output for c in record.calls) + "\n".join(record.earlier)
 
 
 def judge_prompt(

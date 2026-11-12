@@ -1191,3 +1191,17 @@
 
 ## D-153 · The Harness pane is back as it was (2026-11-12)
 - **Your call:** bring back the original Harness pane. D-152's Agent = Model + Harness boxes are removed: title "Harness", the parts as before. Kept from D-152: Threshold columns, the Observability group, Online Evals outside the pane, Checks off the sidebar, the fold fix. Workspace and Observability both start folded; Chats starts open (your call).
+
+## D-154 · The online judge sees failed and refused tool calls (2026-11-12)
+- **Found in the eval:** `cfo-no-holds` answered correctly ("the CFO rejected it, nothing was sent"), but the rejection was a failed call, which `context_blocks` dropped, so Groundedness called it made up.
+- **Chose:** keep failed calls in the judge's context, labelled "· failed". Re-graded: Groundedness 0.38 → 0.62, Answer Relevancy 0.38 → 0.68.
+
+## D-155 · Plan Adherence grades the plan the agent wrote (2026-11-12)
+- **Chose:** the judge's "plan" is the last `write_plan` list; the skill text is given for reference, and is the plan only when none was written. Re-graded: one case of four passes (0.50 → 0.75).
+
+## D-156 · Bookkeeping isn't a step for the judge (2026-11-12)
+- **Chose:** `write_plan` and `load_skill` are hidden from the judge's trace, including the model steps' "calls [...]" text. Effects were within judge noise (round 0); kept because the judge was literally counting them as wasted or unplanned steps.
+
+## D-157 · A concrete length rule (2026-11-12)
+- **Chose:** `answer-style.md` rule 8: a review at most 150 words, one short line per change; a lookup or yes/no answer one to three sentences, no list. Full eval: 1 → 2 of 7 passed; Style & Format still failed 4. Weak evidence (one run per case). Kept for now.
+- **Also:** `evals/rescore.py` re-grades saved traces for chosen metrics only, so a grading change is measured without re-running the agent. The round-by-round table is in `docs/eval-debug.md`.

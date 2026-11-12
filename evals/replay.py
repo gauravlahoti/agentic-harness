@@ -49,19 +49,58 @@ def trace_dict(span: Span, *, for_judge: bool = False) -> dict[str, Any]:
     children = list(span.children)
     plan = ""
     if for_judge:
-        plan = "\n\n".join(
+        skill = "\n\n".join(
             str(c.output) for c in children if c.kind == "tool" and c.name == READS_PLAN
         )
-        children = nest_helpers([c for c in children if c.name != READS_PLAN])
+        # The plan is the agent's own to-do list when it wrote one (D-155): graded against
+        # the skill's text, it lost marks for merging or reordering the skill's steps.
+        own = written_plan(children)
+        if own:
+            plan = f"The plan (the to-do list it wrote with write_plan):\n{own}"
+            if skill:
+                plan += f"\n\nThe skill it followed, for reference:\n{skill}"
+        elif skill:
+            plan = f"The plan (the skill it loaded):\n{skill}"
+        # Reading the skill and updating the to-do list are bookkeeping, not steps of the
+        # task (D-156): the judge counted them as wasted or "unplanned" steps.
+        children = nest_helpers([unbooked(c) for c in children if c.name not in BOOKKEEPING])
     given = span.input
     if plan:
-        given = f"{span.input}\n\nThe plan (the skill it loaded):\n{plan}"
+        given = f"{span.input}\n\n{plan}"
     if given not in (None, "", {}):
         node["input"] = cut(given)
     if span.output not in (None, ""):
         node["output"] = cut(span.output)
     node["children"] = [trace_dict(child, for_judge=for_judge) for child in children]
     return node
+
+
+WRITES_PLAN = "write_plan"
+BOOKKEEPING = (READS_PLAN, WRITES_PLAN)
+
+
+def unbooked(span: Span) -> Span:
+    """A model step's "calls [...]" without the bookkeeping calls; dropped if nothing is left."""
+    text = span.output
+    if span.kind != "llm" or not isinstance(text, str) or not text.startswith("calls ["):
+        return span
+    names = [n.strip(" '\"") for n in text[len("calls [") : -1].split(",") if n.strip()]
+    kept = [n for n in names if n not in BOOKKEEPING]
+    return Span(span.kind, span.name, span.input, f"calls {kept}" if kept else "updates its notes")
+
+
+def written_plan(children: Sequence[Span]) -> str:
+    """The last to-do list the agent wrote, one numbered line per item, with its status."""
+    plans = [c.input for c in children if c.kind == "tool" and c.name == WRITES_PLAN]
+    items = plans[-1].get("items") if plans and isinstance(plans[-1], dict) else None
+    if not isinstance(items, list):
+        return ""
+    return "\n".join(
+        f"{n}. {i.get('text', '')} [{i.get('status', '')}]"
+        + (f" ({i['note']})" if i.get("note") else "")
+        for n, i in enumerate(items, 1)
+        if isinstance(i, dict)
+    )
 
 
 def nest_helpers(children: list[Span]) -> list[Span]:
