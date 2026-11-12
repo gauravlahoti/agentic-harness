@@ -2358,6 +2358,10 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .stage-node { transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); transform-box: fill-box; transform-origin: center; }
 .stage-node.fire circle { animation: node-fire 0.9s ease-out; }
 @keyframes node-fire { 0% { fill: var(--node); filter: drop-shadow(0 0 14px var(--node)); } 100% { fill: var(--surface); } }
+/* Named by the voice: the part swells and settles (D-184). */
+.stage-node.pop { animation: node-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes node-pop { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .stage-node.pop { animation: none; } }
 .stage-pulse { fill: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
 .pulse-loop { fill: var(--part-loop); }
 .pulse-context { fill: var(--part-context); }

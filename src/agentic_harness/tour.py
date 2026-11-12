@@ -40,6 +40,10 @@ STEP_ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 UNTIL = re.compile(r"([a-z_]+)#([1-9]\d*)")
 # A cue mark in a caption: play the run up to this event when the voice gets here (D-180).
 CUE = re.compile(r"\{([a-z_]+#[1-9]\d*)\}")
+# A pop mark: that diagram part pops when the voice gets here (D-184).
+POP = re.compile(r"\{pop:([a-z_]+)\}")
+DIAGRAM = {"loop", "context", "tools", "guard"}  # the diagram's four parts around the model
+MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{pop:[a-z_]+\})")
 
 Event = dict[str, Any]
 
@@ -64,6 +68,7 @@ class TourStep:
     scene: str  # the diagram: a big scene, or the small live one (D-179)
     upto: int  # play the tour's events up to here (exclusive), counted over all turns
     cues: tuple[tuple[int, int], ...] = ()  # (word, upto): events released at that word (D-180)
+    pops: tuple[tuple[int, str], ...] = ()  # (word, part): the diagram part popped there (D-184)
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
                 "card": s.card,
                 "scene": s.scene,
                 "cues": [{"word": w, "upto": u} for w, u in s.cues],
+                "pops": [{"word": w, "part": p} for w, p in s.pops],
                 "upto": s.upto,
                 # The version changes with every new take, so the browser fetches the new one.
                 "audio": audio_url(s.id, clip.stat().st_mtime_ns) if clip else None,
@@ -223,7 +229,7 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     upto = start if until is None else _position(step_id, str(until), sequence)
     if upto < start:
         raise TourError(f"Step {step_id} stops before the step ahead of it: steps only go forward.")
-    text, cues = _cues(step_id, say, sequence, start, upto)
+    text, cues, pops = _marks(step_id, say, sequence, start, upto)
     card = raw.get("card")
     scene = raw.get("scene", "hud")
     if scene not in SCENES:
@@ -237,29 +243,39 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
         upto=upto,
         scene=scene,
         cues=cues,
+        pops=pops,
     )
 
 
-def _cues(
+def _marks(
     step_id: str, say: str, sequence: list[Event], start: int, upto: int
-) -> tuple[str, tuple[tuple[int, int], ...]]:
-    """Take the cue marks out of a caption: each becomes (the word it sits before, how far
-    the run plays). They only move forward and stay inside the step (D-180)."""
+) -> tuple[str, tuple[tuple[int, int], ...], tuple[tuple[int, str], ...]]:
+    """Take the marks out of a caption, each tied to the word it sits before. A cue mark
+    says how far the run plays; cues only move forward and stay inside the step (D-180).
+    A pop mark names the diagram part to pop (D-184)."""
     words: list[str] = []
     cues: list[tuple[int, int]] = []
+    pops: list[tuple[int, str]] = []
     last = start
-    for piece in CUE.split(say):
-        if CUE.fullmatch("{" + piece + "}") and UNTIL.fullmatch(piece):
-            at = _position(step_id, piece, sequence)
+    for piece in MARK.split(say):
+        if pop := POP.fullmatch(piece):
+            part = pop.group(1)
+            if part not in DIAGRAM:
+                raise TourError(
+                    f"Step {step_id}: {piece} must pop one of {', '.join(sorted(DIAGRAM))}."
+                )
+            pops.append((len(words), part))
+        elif cue := CUE.fullmatch(piece):
+            at = _position(step_id, cue.group(1), sequence)
             if at < last:
-                raise TourError(f"Step {step_id}: cue {{{piece}}} goes back in the run.")
+                raise TourError(f"Step {step_id}: cue {piece} goes back in the run.")
             if at > upto:
-                raise TourError(f"Step {step_id}: cue {{{piece}}} plays past the step's `until`.")
+                raise TourError(f"Step {step_id}: cue {piece} plays past the step's `until`.")
             cues.append((len(words), at))
             last = at
         else:
             words.extend(piece.split())
-    return " ".join(words), tuple(cues)
+    return " ".join(words), tuple(cues), tuple(pops)
 
 
 def _position(step_id: str, until: str, sequence: list[Event]) -> int:

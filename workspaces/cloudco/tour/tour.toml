@@ -6,6 +6,8 @@
 # The next step starts when the voice ends; `pause = N` adds N seconds to look (default 0).
 # Cue marks in `say`, like `{tool_finished#2}`, play the run up to that event when the voice
 # reaches that word (D-180); they never show in the subtitles.
+# Pop marks, like `{pop:context}`, make that diagram part pop when the voice reaches the word
+# (loop, context, tools or guard; D-184).
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across
 # the runs below; a helper's events play along but aren't counted. No `until`: nothing plays.
 # Clips: audio/<step id>.webm|.m4a|.mp3|.ogg, recorded on the page at /?tour=record.
@@ -31,7 +33,7 @@ title = "Why We Need a Harness"
 show = "pane"
 scene = "harness"
 say = """
-As models get more powerful, we expect more than answers in a chat window. We want them to finish whole tasks: build a customer proposal, pull in the right information, and send it once it's approved. For that, the model needs a layer around it, like an operating system. That layer is the harness. An AI agent is the model plus the harness. Ours has four parts: an agentic loop, context and memory, tools, and guardrails. You can see each one on the right.
+As models get more powerful, we expect more than answers in a chat window. We want them to finish whole tasks: build a customer proposal, pull in the right information, and send it once it's approved. For that, the model needs a layer around it, like an operating system. That layer is the harness. An AI agent is the model plus the harness. Ours has four parts: an {pop:loop} agentic loop, {pop:context} context and memory, {pop:tools} tools, and {pop:guard} guardrails. You can see each one on the right.
 """
 
 [[steps]]

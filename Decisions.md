@@ -1358,3 +1358,11 @@
   - The welcome opens step 1 (10 steps; ids and the jar scene unchanged). It names the four parts as a map; step 2 still shows them.
   - The ending merges routing with complexity matching ("routing each task to a model that matches its complexity"). It says "deeper" verification and "stronger" attack protection, since steps 6 and 7 show the basics. It adds "evals and observability" (built, not toured). "Just a folder" stays the last line.
 - **Cost:** steps 1 and 10 re-voiced (~2,280 credits, 2 takes each); the tour grows by ~30 s.
+
+## D-184 · The diagram's parts pop as the voice names them; the answer's cost is framed (2026-11-12)
+- **Your review:** "when the voice talks about how many components it has, highlight each component on the diagram, like a pop-up animation"; "the model and cost pane is not highlighted matching the audio".
+- **Pop marks:**
+  - **Options:** pop all four on a timer when the step starts · a new mark in the script, `{pop:part}`, on the word that names the part.
+  - **Chose:** the mark, like cue marks (D-180): the same voice clock, never shown in subtitles, no new audio. The part swells 1.35× and settles (0.8 s), with the existing glow and pulse to the model. It is checked when the tour loads (loop, context, tools or guard). Step 2 has four marks.
+  - **Cost:** timing is the word's share of the clip, so it may land a few hundred ms off the spoken word.
+- **The answer's frame (a bug):** when a run finishes, the page ticks the checks first and draws the answer after them (S11). The spotlight looked for the answer too early and stayed on the last check row. Now it waits until the answer is drawn, then frames the answer and its cost line together.

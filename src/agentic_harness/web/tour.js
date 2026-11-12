@@ -25,6 +25,7 @@ const tour = {
   show: null,
   scene: "jar",
   spot: [], // the elements in the spotlight
+  answer: null, // a finished run's turn, framed once its answer is drawn
   audio: new Audio(),
   analyser: null,
 };
@@ -143,7 +144,9 @@ function feed(i, { quiet = false } = {}) {
   fire(partOf(ev));
   // The spotlight frames everything this event added (three lines at a run's start, say),
   // and inside a helper's lane its newest line, not the whole lane (your review).
-  if (ev.type === "run_finished" && !helper && turn.reply.childElementCount) return void (tour.spot = [turn.reply]);
+  // A finished run: the answer and its cost line, framed together (your review). The page
+  // may still be ticking the checks and draws the answer after them, so wait for it.
+  if (ev.type === "run_finished" && !helper) return void (tour.answer = turn);
   const now = listOf();
   const added = now ? [...now.children].slice(now === list ? before : 0) : [];
   if (added.length) tour.spot = added;
@@ -179,6 +182,7 @@ const startOf = (n) => (n > 0 ? tour.data.steps[n - 1].upto : 0);
 // Show step n, its events up to where it starts already played (instantly).
 function showStep(n) {
   tour.gen += 1;
+  tour.answer = null;
   tour.audio.pause();
   const steps = tour.data.steps;
   if (startOf(n) < tour.pos) resetReplay(); // going back: replay from the start, quickly
@@ -319,6 +323,7 @@ async function follow(step, seconds, gen, withClip) {
   let played = 0; // seconds heard, when there's no clip to ask
   let shown = 0;
   let next = 0; // the next cue to reach
+  let popped = 0; // pop marks the voice has passed (D-184)
   let due = tour.pos; // play the run up to here
   for (;;) {
     const clipClock = withClip && !tour.voiceFailed;
@@ -337,6 +342,8 @@ async function follow(step, seconds, gen, withClip) {
     }
     // The run: every cue the voice has passed; one event per tick, so they cascade in.
     while (next < cues.length && cues[next].word <= word) due = Math.max(due, cues[next++].upto);
+    // The diagram: each part pops as the voice names it.
+    while (popped < step.pops.length && step.pops[popped].word <= word) pop(step.pops[popped++].part);
     if (tour.pos < due) feed(tour.pos);
     const done = (clipClock && tour.audio.ended) || at >= seconds;
     if (done && tour.pos >= due) return true;
@@ -378,6 +385,15 @@ function fire(part) {
   dot.setAttribute("class", `stage-pulse pulse-${part}`);
   $("stage-particles").append(dot);
   dot.animate([{ transform: `translate(${x}px, ${y}px)`, opacity: 1 }, { transform: "translate(200px, 200px)", opacity: 0.2 }], { duration: 700, easing: "cubic-bezier(0.5, 0, 0.2, 1)" }).finished.then(() => dot.remove());
+}
+
+// A part named by the voice pops: it swells, glows and settles (D-184).
+function pop(part) {
+  const node = $("tour-stage").querySelector(`.node-${part}`);
+  node.classList.remove("pop");
+  void node.getBoundingClientRect(); // restart the animation if it pops twice
+  node.classList.add("pop");
+  fire(part);
 }
 
 // Every frame: the diagram's place, the spotlight's frame and the orb's voice.
@@ -425,6 +441,12 @@ function placeSpot() {
   const spot = $("tour-spot");
   spot.hidden = !tour.started;
   if (!tour.started) return;
+  // A finished run's answer is drawn: frame it with its cost line.
+  const done = tour.answer;
+  if (done && !done.holding && done.reply.childElementCount) {
+    tour.spot = [done.reply, done.meta];
+    tour.answer = null;
+  }
   // One frame round every element in the spotlight (an event can add several lines).
   const targets = (tour.spot ?? []).filter((node) => node?.isConnected);
   const target = targets.length > 0;

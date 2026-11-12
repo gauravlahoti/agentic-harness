@@ -116,3 +116,4 @@ The card's text lives in `tour.toml` (a `card` field, Markdown); the player only
 - 2026-11-12 · Your go-ahead: steps 2–10 voiced the same way; every step now has a clip (4 min 43 s, 4.5 MB). Re-check AC5 with the clips.
 - 2026-11-12 · Your review: no wait between steps; the next starts when the voice ends (D-182; D-180's 3 s changed). AC5 → re-check.
 - 2026-11-12 · Your review: step 1 opens with a welcome that names the four primary parts; step 10 adds what a production-grade harness still needs (decomposition, deeper verification, routing by complexity, stronger attack protection, evals and observability). Both re-voiced (D-183). The live script is `tour.toml`. AC5 → re-check.
+- 2026-11-12 · Your review: pop marks (`{pop:part}`) pop each diagram part as step 2's voice names it; the finished run's answer and cost line are framed once drawn (D-184). AC5 and AC6 → re-check.

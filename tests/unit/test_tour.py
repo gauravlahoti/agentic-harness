@@ -313,3 +313,24 @@ def test_s13_ac5_a_cue_may_not_play_past_its_step(ws_copy: Path) -> None:
     edit_tour(ws_copy, "{tool_finished#1}", "{run_finished#2}")
     with pytest.raises(TourError, match="past"):
         load_tour(ws_copy)
+
+
+def test_s13_ac6_pop_marks_pop_each_part_as_the_voice_names_it(ws_copy: Path) -> None:
+    """D-184: `{pop:part}` in a caption pops that diagram part when the voice reaches the word."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    harness = next(s for s in steps if s["id"] == "02-harness")
+    assert "{" not in harness["say"]  # the marks never show in the subtitles
+    assert [p["part"] for p in harness["pops"]] == ["loop", "context", "tools", "guard"]
+    words = harness["say"].split()
+    names = ["agentic", "context", "tools,", "guardrails."]
+    for pop, name in zip(harness["pops"], names, strict=True):
+        assert words[pop["word"]] == name  # each pop sits on the word that names its part
+    assert all(s["pops"] == [] for s in steps if s["id"] != "02-harness")
+
+
+def test_s13_ac6_a_pop_must_name_a_diagram_part(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{pop:tools}", "{pop:wheels}")
+    with pytest.raises(TourError, match="wheels"):
+        load_tour(ws_copy)
