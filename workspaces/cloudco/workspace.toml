@@ -72,11 +72,11 @@ model = "gemini-3.5-flash-lite"  # a tiny yes/no check: the cheapest model
 # Permissions: what each profile may use (allow-list) and must not see (D-75, D-76).
 [profiles.sales]
 label = "Sales"
-tools = ["lookup_customer_record", "review_contract", "search_policy", "send_to_customer"]
+tools = ["lookup_customer_record", "review_contract", "read_contract", "search_policy", "send_to_customer"]
 
 [profiles.engineering]
 label = "Engineering"
-tools = ["lookup_customer_record", "review_contract", "search_policy"]
+tools = ["lookup_customer_record", "review_contract", "read_contract", "search_policy"]
 hide_fields = ["annual_value_usd", "amount_usd", "days_late", "average_days_late"]
 
 # Never allowed: blocked for everyone, and no one can approve them (D-77).

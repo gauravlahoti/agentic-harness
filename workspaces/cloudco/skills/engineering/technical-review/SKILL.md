@@ -1,6 +1,6 @@
 ---
 name: technical-review
-description: Review the technical clauses of a customer's contract (service levels, support, data protection, security) and say what Engineering can approve.
+description: Review the technical clauses of a customer's contract (service levels, support, data protection, security) and say what Engineering can approve. Only when asked to review or check; not for just showing a contract.
 ---
 
 # Technical review

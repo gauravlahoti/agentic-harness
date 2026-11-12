@@ -1124,3 +1124,10 @@
 - **Instead of:** re-listing the review in every answer
 - **Because:** the review is in the email and in the steps the person saw; the answer should say what happened
 - **Cost:** a send's answer is no longer checked for covering every change (the Body Matches Terms check still guards the email itself)
+
+## D-143 · A plain pull of a contract, without a review (2026-11-12)
+- **Problem:** the only contract tool was `review_contract` (the diff), and "load the skill that covers the task" turned any contract request into a full review.
+- **Options:** (a) one tool returning the whole contract; (b) outline, then a section; (c) wording only.
+- **Chose:** (b) `read_contract(contract_id, section?, version?)`: no section gives an outline (section titles and clause ranges, ~1 KB); a section or clause gives its text. `version` is `customer` or `standard`. Engineering keeps its technical sections only, same rule as `review_contract`. Team files and the review skills' descriptions say review only on a request to review.
+- **Why:** the file is ~19,000 words, so a whole-file tool would flood the prompt; tools here return small pieces.
+- **Cost:** a fifth tool (D-73 said four on purpose). Answer checks need no change: they already skip when no review ran.

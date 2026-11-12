@@ -32,11 +32,12 @@ async def call(tools: dict[str, Tool], name: str, ctx: ToolContext | None = None
     return json.loads(result.output)
 
 
-def test_s03_ac4_four_tools_and_their_risks(tools: dict[str, Tool]) -> None:
-    """Four tools on purpose: a simple demo (D-73)."""
+def test_s03_ac4_five_tools_and_their_risks(tools: dict[str, Tool]) -> None:
+    """Four tools on purpose (D-73); a fifth, read_contract, was added for a plain pull (D-143)."""
     assert {n: t.risk for n, t in tools.items()} == {
         "lookup_customer_record": "read",
         "review_contract": "read",
+        "read_contract": "read",
         "search_policy": "read",
         "send_to_customer": "action",
     }
@@ -338,3 +339,61 @@ async def test_s05_ac3_engineering_reads_only_technical_policy(tools: dict[str, 
     assert "99.95%" in text  # the uptime rule and who approves it are still there
     sales = await call(tools, "search_policy", SALES, query="payment liability")
     assert any(h["section"] == "§3" for h in sales)  # Sales is unchanged
+
+
+async def test_d143_read_contract_gives_an_outline_then_a_section(tools: dict[str, Tool]) -> None:
+    """A plain pull: no comparison, no judging, and never the whole 19,000-word file (D-143)."""
+    outline = await call(tools, "read_contract", SALES, contract_id="CT-2207")
+    assert outline["version"] == "customer"
+    assert outline["words"] > 1000
+    ids = [s_["section"] for s_ in outline["sections"]]
+    assert ids[:3] == ["1", "2", "3"]
+    assert "A" in ids
+    fees = next(x for x in outline["sections"] if x["section"] == "3")
+    assert fees["title"] == "Fees and discounts"
+    assert fees["clauses"] == "3.1 to 3.12"
+    assert len(json.dumps(outline)) < 3000  # an outline, not the contract
+    assert "edits" not in outline  # no review
+
+    section = await call(tools, "read_contract", SALES, contract_id="CT-2207", section="3")
+    assert {c["clause"].split(".")[0] for c in section["clauses"]} == {"3"}
+    assert all(c["text"] for c in section["clauses"])
+    one = await call(tools, "read_contract", SALES, contract_id="CT-2207", section="3.2")
+    assert [c["clause"] for c in one["clauses"]] == ["3.2"]
+
+
+async def test_d143_read_contract_versions_differ_where_the_customer_edited(
+    tools: dict[str, Tool],
+) -> None:
+    ours = await call(
+        tools, "read_contract", SALES, contract_id="CT-2207", section="3.2", version="standard"
+    )
+    theirs = await call(tools, "read_contract", SALES, contract_id="CT-2207", section="3.2")
+    assert ours["version"] == "standard"
+    assert ours["clauses"][0]["text"] != theirs["clauses"][0]["text"]  # 3.2 is the discount edit
+
+
+async def test_d143_read_contract_unknowns_list_what_exists(tools: dict[str, Tool]) -> None:
+    for args, word in (
+        ({"contract_id": "CT-9999"}, "CT-2207"),
+        ({"contract_id": "CT-2207", "section": "42"}, "Sections"),
+        ({"contract_id": "CT-2207", "version": "draft"}, "customer"),
+    ):
+        result = await call_tool(tools["read_contract"], args, SALES)
+        assert result.is_error, result.output
+        assert word in result.output, result.output
+
+
+async def test_d143_engineering_reads_only_technical_sections(tools: dict[str, Tool]) -> None:
+    engineering = ToolContext("run-1", CLOUDCO, profile="engineering")
+    outline = await call(tools, "read_contract", engineering, contract_id="CT-2207")
+    assert {x["section"] for x in outline["sections"]} == {"5", "6", "7", "8", "A", "B"}
+    assert outline["hidden"].startswith("Only technical clauses")
+    assert "Fees" not in json.dumps(outline)
+    technical = await call(tools, "read_contract", engineering, contract_id="CT-2207", section="6")
+    assert technical["clauses"]
+    for section in ("2", "3.2", "4", "9.2"):
+        hidden = await call(
+            tools, "read_contract", engineering, contract_id="CT-2207", section=section
+        )
+        assert set(hidden) == {"contract_id", "section", "hidden"}  # no text, no titles

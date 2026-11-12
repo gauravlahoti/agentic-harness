@@ -1,6 +1,6 @@
 ---
 name: contract-review
-description: Check each change a customer made to a contract against CloudCo's standard terms, and say who must decide.
+description: Check each change a customer made to a contract against CloudCo's standard terms, and say who must decide. Only when asked to review, check or compare; not for just showing a contract.
 ---
 
 # Contract review
