@@ -30,7 +30,7 @@ MEDIA_TYPES = {ext: kind for kind, ext in AUDIO_TYPES.items()}
 MAX_CLIP_BYTES = 5_000_000  # one step: several minutes of voice
 MAX_AUDIO_BYTES = 15_000_000  # all clips together; the page must stay quick to load
 WORDS_PER_SECOND = 2.5  # a calm speaking pace: a step with no clip waits this long (D-170)
-DEFAULT_PAUSE = 10  # seconds between steps: time to look before the guide moves on (D-178)
+DEFAULT_PAUSE = 3  # seconds between steps: a breath to look, then the guide moves on (D-178)
 MAX_PAUSE = 60
 # Harness pane parts a step may open; "pane" opens the pane with every part.
 PARTS = {"pane", "loop", "context", "tools", "guard", "verify", "memory"}
@@ -38,6 +38,8 @@ PARTS = {"pane", "loop", "context", "tools", "guard", "verify", "memory"}
 SCENES = {"jar", "harness", "finale", "hud"}
 STEP_ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 UNTIL = re.compile(r"([a-z_]+)#([1-9]\d*)")
+# A cue mark in a caption: play the run up to this event when the voice gets here (D-180).
+CUE = re.compile(r"\{([a-z_]+#[1-9]\d*)\}")
 
 Event = dict[str, Any]
 
@@ -61,6 +63,7 @@ class TourStep:
     card: str | None  # Markdown shown over the chat
     scene: str  # the diagram: a big scene, or the small live one (D-179)
     upto: int  # play the tour's events up to here (exclusive), counted over all turns
+    cues: tuple[tuple[int, int], ...] = ()  # (word, upto): events released at that word (D-180)
 
 
 @dataclass(frozen=True)
@@ -163,6 +166,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
                 "show": s.show,
                 "card": s.card,
                 "scene": s.scene,
+                "cues": [{"word": w, "upto": u} for w, u in s.cues],
                 "upto": s.upto,
                 # The version changes with every new take, so the browser fetches the new one.
                 "audio": audio_url(s.id, clip.stat().st_mtime_ns) if clip else None,
@@ -219,6 +223,7 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     upto = start if until is None else _position(step_id, str(until), sequence)
     if upto < start:
         raise TourError(f"Step {step_id} stops before the step ahead of it: steps only go forward.")
+    text, cues = _cues(step_id, say, sequence, start, upto)
     card = raw.get("card")
     scene = raw.get("scene", "hud")
     if scene not in SCENES:
@@ -226,12 +231,35 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     return TourStep(
         id=step_id,
         title=str(raw.get("title") or step_id),
-        say=" ".join(say.split()),
+        say=text,
         show=show,
         card=card.strip() if isinstance(card, str) and card.strip() else None,
         upto=upto,
         scene=scene,
+        cues=cues,
     )
+
+
+def _cues(
+    step_id: str, say: str, sequence: list[Event], start: int, upto: int
+) -> tuple[str, tuple[tuple[int, int], ...]]:
+    """Take the cue marks out of a caption: each becomes (the word it sits before, how far
+    the run plays). They only move forward and stay inside the step (D-180)."""
+    words: list[str] = []
+    cues: list[tuple[int, int]] = []
+    last = start
+    for piece in CUE.split(say):
+        if CUE.fullmatch("{" + piece + "}") and UNTIL.fullmatch(piece):
+            at = _position(step_id, piece, sequence)
+            if at < last:
+                raise TourError(f"Step {step_id}: cue {{{piece}}} goes back in the run.")
+            if at > upto:
+                raise TourError(f"Step {step_id}: cue {{{piece}}} plays past the step's `until`.")
+            cues.append((len(words), at))
+            last = at
+        else:
+            words.extend(piece.split())
+    return " ".join(words), tuple(cues)
 
 
 def _position(step_id: str, until: str, sequence: list[Event]) -> int:

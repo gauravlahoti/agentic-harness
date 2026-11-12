@@ -24,13 +24,12 @@ const tour = {
   gen: 0, // bumped on every jump, so an old step's timers stop
   show: null,
   scene: "jar",
-  spot: null, // the element in the spotlight
+  spot: [], // the elements in the spotlight
   audio: new Audio(),
   analyser: null,
 };
 
-const MIN_GAP = 150; // ms between two events: fast enough to follow, slow enough to see
-const MAX_GAP = 1500;
+const MIN_GAP = 320; // ms between two events: slow enough for the eye and the spotlight to follow
 const EVENTS_SHARE = 0.75; // events fill this share of a step, so the voice can finish on them
 const lessMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -97,7 +96,8 @@ async function setUpTour() {
   document.body.classList.toggle("tour-recording", TOUR_RECORD);
   // The stage floats over everything: out of the chat's layout, into <body>.
   document.body.append($("tour-spot"), $("tour-stage"));
-  $("tour-stage").hidden = false;
+  // Hidden by its own attributes until now, so a stale stylesheet can never show it (your report).
+  for (const name of ["display", "width", "height"]) $("tour-stage").removeAttribute(name);
   // Whose view and which model the run was recorded with. Not remembered: the tour
   // mustn't change your own page's choices.
   if (data.profile && [...$("profile").options].some((o) => o.value === data.profile)) $("profile").value = data.profile;
@@ -116,21 +116,38 @@ async function setUpTour() {
 }
 
 // ── Playing events ─────────────────────────────────────────────────────────
+// A turn's question bubble, before any of its events: the voice introduces the ask first.
+function openTurn(k) {
+  if (tour.turns[k]) return;
+  if (k === 0) onEvent({ type: "session_started", data: { session_id: "tour", title: tour.data.chat, new: true } }, null);
+  $("empty-state").hidden = true;
+  tour.turns[k] = newTurn(tour.data.turns[k].task);
+}
+
+const bubbleOf = (turn) => turn.activity.closest(".turn").querySelector(".you");
+
 function feed(i, { quiet = false } = {}) {
   const { ev, turn: k } = tour.flat[i];
-  if (tour.turnStart.has(i)) {
-    if (k === 0) onEvent({ type: "session_started", data: { session_id: "tour", title: tour.data.chat, new: true } }, null);
-    $("empty-state").hidden = true;
-    tour.turns[k] = newTurn(tour.data.turns[k].task);
-  }
-  onEvent(ev, tour.turns[k]);
+  if (tour.turnStart.has(i)) openTurn(k);
+  const turn = tour.turns[k];
+  // Where this event's lines go: the main list, or a helper's own lane (D-63).
+  const helper = ev.data.agent_id;
+  const listOf = () => (helper ? turn.lanes.get(helper)?.activity : turn.activity);
+  const list = listOf();
+  const before = list ? list.children.length : 0;
+  onEvent(ev, turn);
   tour.pos = i + 1;
   // A card waiting for another role: switch to that person, as someone at the page would.
-  if (ev.type === "approval_requested" && !ev.data.agent_id) handOff(ev.data.approver);
+  if (ev.type === "approval_requested" && !helper) handOff(ev.data.approver);
   if (quiet) return;
   fire(partOf(ev));
-  const turn = tour.turns[k];
-  tour.spot = ev.type === "run_finished" && !ev.data.agent_id && turn.reply.childElementCount ? turn.reply : turn.activity.lastElementChild;
+  // The spotlight frames everything this event added (three lines at a run's start, say),
+  // and inside a helper's lane its newest line, not the whole lane (your review).
+  if (ev.type === "run_finished" && !helper && turn.reply.childElementCount) return void (tour.spot = [turn.reply]);
+  const now = listOf();
+  const added = now ? [...now.children].slice(now === list ? before : 0) : [];
+  if (added.length) tour.spot = added;
+  else if (helper && !list && turn.lanes.get(helper)) tour.spot = [turn.lanes.get(helper).box]; // the lane just opened
 }
 
 function partOf(ev) {
@@ -182,7 +199,8 @@ function showStep(n) {
   $("tour-next").disabled = n === steps.length - 1;
   setScene(step.scene);
   showCard(step.card);
-  tour.spot = step.card ? $("tour-card") : step.scene === "hud" ? (tour.turns.at(-1)?.activity.lastElementChild ?? null) : null;
+  const last = tour.turns.at(-1)?.activity.lastElementChild;
+  tour.spot = step.card ? [$("tour-card")] : step.scene === "hud" && last ? [last] : [];
   markPart(step.show);
   noteClip(step);
 }
@@ -200,16 +218,20 @@ async function playStep(n, { silent = false } = {}) {
   const clip = step.audio && !silent ? await loadClip(step.audio) : null;
   if (gen !== tour.gen) return;
   const seconds = clip ? clip.duration : step.seconds;
-  const count = step.upto - tour.pos;
-  const gap = Math.min(MAX_GAP, Math.max(MIN_GAP, (seconds * 1000 * EVENTS_SHARE) / Math.max(count, 1)));
+  // A step that starts a turn: the question appears first, in the spotlight.
+  if (tour.turnStart.has(tour.pos) && step.upto > tour.pos) {
+    openTurn(tour.turnStart.get(tour.pos));
+    tour.spot = [bubbleOf(tour.turns.at(-1))];
+  }
   tour.speaking = true;
-  const voice = clip ? playClip(gen) : wait(seconds * 1000, gen);
-  captions(step, seconds, gen, Boolean(clip));
+  const voice = clip ? playClip(gen) : null;
+  if (!(await follow(step, seconds, gen, Boolean(clip)))) return;
+  if (voice && !(await voice)) return;
+  // Whatever the cues left, the step still ends where its `until` says.
   for (let i = tour.pos; i < step.upto; i += 1) {
-    if (!(await wait(gap, gen))) return;
+    if (!(await wait(MIN_GAP, gen))) return;
     feed(i);
   }
-  if (!(await voice) || gen !== tour.gen) return;
   tour.speaking = false;
   // A pause to look, counted down by Next, then the guide moves on (D-178). Not when
   // recording, nor after the last step.
@@ -252,8 +274,12 @@ function playClip(gen) {
   const audio = tour.audio;
   audio.currentTime = 0;
   return new Promise((resolve) => {
+    tour.voiceFailed = false;
     audio.onended = () => resolve(gen === tour.gen);
-    audio.play().catch(() => resolve(gen === tour.gen)); // blocked: go on without sound
+    audio.play().catch(() => {
+      tour.voiceFailed = true; // blocked: the captions' clock takes over
+      resolve(gen === tour.gen);
+    });
   });
 }
 
@@ -279,22 +305,29 @@ function sentences(text) {
   return text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
 }
 
-async function captions(step, seconds, gen, withClip) {
-  if (TOUR_RECORD) return; // the whole script stays up while you read it
+// One clock for the subtitles and the run: where the voice is now (D-180). Each sentence
+// and each cue mark sits at a word; a word's time is its share of the voice. With a clip
+// the clock is the clip itself, so Pause holds everything.
+async function follow(step, seconds, gen, withClip) {
   const parts = sentences(step.say);
-  const words = parts.map((p) => p.split(/\s+/).length);
-  const total = words.reduce((a, b) => a + b, 0);
-  let played = 0; // seconds of the step heard so far, when there's no clip to ask
+  const total = Math.max(step.say.split(/\s+/).length, 1);
+  const starts = []; // the word each sentence starts at
+  parts.reduce((at, part) => (starts.push(at), at + part.split(/\s+/).length), 0);
+  // No cue marks: spread the step's events over three quarters of the voice, as before.
+  const span = step.upto - tour.pos;
+  const cues = step.cues.length ? step.cues : Array.from({ length: span }, (_, k) => ({ word: Math.round(((k + 1) / span) * total * EVENTS_SHARE), upto: tour.pos + k + 1 }));
+  let played = 0; // seconds heard, when there's no clip to ask
   let shown = 0;
+  let next = 0; // the next cue to reach
+  let due = tour.pos; // play the run up to here
   for (;;) {
-    const at = withClip ? tour.audio.currentTime : played;
-    let end = 0;
+    const clipClock = withClip && !tour.voiceFailed;
+    const at = clipClock ? tour.audio.currentTime : played;
+    const word = (at / seconds) * total;
+    // The subtitle: the last sentence whose first word the voice has reached.
     let i = 0;
-    for (; i < parts.length - 1; i += 1) {
-      end += (words[i] / total) * seconds;
-      if (at < end) break;
-    }
-    if (i !== shown) {
+    while (i + 1 < parts.length && starts[i + 1] <= word) i += 1;
+    if (!TOUR_RECORD && i !== shown) {
       shown = i;
       const say = $("tour-say");
       say.textContent = parts[i];
@@ -302,9 +335,13 @@ async function captions(step, seconds, gen, withClip) {
       void say.offsetWidth; // restart the fade for the new sentence
       say.classList.add("enter");
     }
-    if (at >= seconds || (withClip && tour.audio.ended)) return;
-    if (!(await wait(100, gen))) return;
-    played += 0.1;
+    // The run: every cue the voice has passed; one event per tick, so they cascade in.
+    while (next < cues.length && cues[next].word <= word) due = Math.max(due, cues[next++].upto);
+    if (tour.pos < due) feed(tour.pos);
+    const done = (clipClock && tour.audio.ended) || at >= seconds;
+    if (done && tour.pos >= due) return true;
+    if (!(await wait(MIN_GAP, gen))) return false;
+    played += MIN_GAP / 1000;
   }
 }
 
@@ -388,12 +425,20 @@ function placeSpot() {
   const spot = $("tour-spot");
   spot.hidden = !tour.started;
   if (!tour.started) return;
-  const target = tour.spot?.isConnected ? tour.spot : null;
+  // One frame round every element in the spotlight (an event can add several lines).
+  const targets = (tour.spot ?? []).filter((node) => node?.isConnected);
+  const target = targets.length > 0;
   const pad = 8;
   let box;
   if (target) {
-    const r = target.getBoundingClientRect();
-    box = { left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: Math.min(r.height + pad * 2, innerHeight * 0.7) };
+    const rects = targets.map((node) => node.getBoundingClientRect());
+    const left = Math.min(...rects.map((r) => r.left));
+    const top = Math.min(...rects.map((r) => r.top));
+    const right = Math.max(...rects.map((r) => r.right));
+    const bottom = Math.max(...rects.map((r) => r.bottom));
+    // Never under the guide: the frame stops above its floor.
+    const floor = document.querySelector(".dock").getBoundingClientRect().top + 24;
+    box = { left: left - pad, top: top - pad, width: right - left + pad * 2, height: Math.max(0, Math.min(bottom + pad, floor) - (top - pad)) };
   } else {
     // Nothing to frame: the whole page dims behind the scene.
     box = { left: innerWidth / 2, top: innerHeight * 0.4, width: 0, height: 0 };

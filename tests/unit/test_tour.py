@@ -216,11 +216,11 @@ def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
 
 
 def test_s13_ac5_the_tour_pauses_between_steps(ws_copy: Path) -> None:
-    """D-178: the next step starts after a pause (10 s unless the tour says)."""
+    """D-178: the next step starts after a pause (3 s unless the tour says; was 10 s)."""
     tour = load_tour(ws_copy)
     assert tour is not None
     payload = tour_payload(tour, audio_url=lambda s, v: f"a/{s}?v={v}")
-    assert payload["pause"] == DEFAULT_PAUSE == 10
+    assert payload["pause"] == DEFAULT_PAUSE == 3
     assert "guide" not in payload  # your call: no name on the guide
     edit_tour(ws_copy, 'chat = "', 'pause = 4\nchat = "')
     tour = load_tour(ws_copy)
@@ -285,3 +285,31 @@ def test_s13_ac5_a_button_in_the_sidebar_starts_the_tour() -> None:
     tour_js = (web / "tour.js").read_text()
     assert "async function startTour(" in tour_js
     assert 'history.pushState(null, "", ' in tour_js  # same page: the click lets the voice play
+
+
+def test_s13_ac5_cue_marks_tie_events_to_the_words(ws_copy: Path) -> None:
+    """D-180: `{event#n}` in a caption plays the run up to that event when the voice gets there."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    context = next(s for s in steps if s["id"] == "04-context")
+    assert "{" not in context["say"]  # the marks never show in the subtitles
+    assert context["cues"], "the context step ties its events to its words"
+    words = [c["word"] for c in context["cues"]]
+    ends = [c["upto"] for c in context["cues"]]
+    assert words == sorted(words)
+    assert ends == sorted(ends)
+    assert ends[-1] <= context["upto"]
+    assert all(c["word"] <= len(context["say"].split()) for c in context["cues"])
+
+
+def test_s13_ac5_a_cue_must_name_a_real_event_within_its_step(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{tool_finished#1}", "{tool_finished#99}")
+    with pytest.raises(TourError, match="tool_finished#99"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac5_a_cue_may_not_play_past_its_step(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{tool_finished#1}", "{run_finished#2}")
+    with pytest.raises(TourError, match="past"):
+        load_tour(ws_copy)
