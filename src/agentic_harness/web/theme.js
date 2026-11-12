@@ -1,23 +1,20 @@
-// The light/dark toggle. Two visible states: "follow the system" and "the opposite of it".
-// Choosing the theme the system already has removes the saved choice, so the page never
-// stays pinned by accident. The new theme spreads out in a circle from the toggle.
+// The light/dark toggle. Dark is the default, like gauravlahoti.dev (D-179); light is the
+// other state. Choosing dark again removes the saved choice, so the page never stays pinned
+// by accident. The new theme spreads out in a circle from the toggle.
 
-const STORAGE_KEY = "color-scheme";
+const STORAGE_KEY = "theme"; // new name (D-179): old "light" pins from the system-following days don't count
 const meta = document.querySelector('meta[name="color-scheme"]');
-const systemDark = matchMedia("(prefers-color-scheme: dark)");
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
-function systemScheme() {
-  return systemDark.matches ? "dark" : "light";
-}
+const DEFAULT_SCHEME = "dark";
 
-// What the user sees right now: the pinned theme, or the system's.
+// What the user sees right now: the saved theme, or the default.
 function shownScheme() {
-  return meta.content === "light" || meta.content === "dark" ? meta.content : systemScheme();
+  return meta.content === "light" ? "light" : DEFAULT_SCHEME;
 }
 
 function apply(saved) {
-  meta.content = saved ?? "light dark";
+  meta.content = saved ?? DEFAULT_SCHEME;
 }
 
 function save(saved) {
@@ -55,8 +52,8 @@ function revealFrom(button, change) {
 const toggle = document.getElementById("theme-toggle");
 toggle.addEventListener("click", () => {
   const target = shownScheme() === "dark" ? "light" : "dark";
-  // Same as the system → back to "follow the system"; otherwise remember it.
-  const saved = target === systemScheme() ? null : target;
+  // The default needs no saving; only light is remembered.
+  const saved = target === DEFAULT_SCHEME ? null : target;
   save(saved);
   revealFrom(toggle, () => apply(saved));
 });

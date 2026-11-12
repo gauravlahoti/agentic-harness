@@ -2,7 +2,7 @@
 
 > **Goal:** a public, voice-led tour of the harness on gauravlahoti.dev: real recorded runs replay in the real page, step by step, with your voice and captions explaining each harness part.
 > **Why it matters:** people can watch the harness work without a key, a backend or a cost per visitor. It's the "Replay" proof S08 planned (S08-AC2, S08-AC9), now with a guide.
-> **Scope:** harness engineering only. The tour shows Loop, Context, Tools, Guardrails, Verification and Memory. Observability and Evals are hidden.
+> **Scope:** harness engineering only. The tour covers Loop, Context, Tools, Guardrails, Verification and Memory. Observability and every pane stay on the page; the tour just doesn't cover them (your call, D-179).
 
 ## What we'll have at the end
 - `uv run agentic-harness export-tour --workspace workspaces/cloudco --out dist/tour` builds one folder of static files.
@@ -110,3 +110,5 @@ The card's text lives in `tour.toml` (a `card` field, Markdown); the player only
 - 2026-11-12 · Your request: a use-case step (3) explains CloudCo, the ShopCo renewal and what the agent is expected to do, framed as the deal-desk case every B2B software company has. Tour is 10 steps.
 - 2026-11-12 · Script drafted from your notes: brain in a jar, why we need a harness, Agent = Model + Harness, context engineering (summarise vs prune), memory beyond the window.
 - 2026-11-12 · Approved (your go-ahead). Local first: the export (AC2) and subfolder check (AC7) wait for the hosting step (D-175). Voice recorded in the page (D-176). The run has two turns: the agent raises concerns first, Priya agrees, four people approve the send; step 9 shows memory being read, as this run saved no new fact.
+- 2026-11-12 · Your review: a guide presents the tour (person icon, name, speech bubble), captions one sentence at a time with the voice, a 10-second pause before the next step; controls Previous · Pause · Next · Mute (D-178; D-170 changed). AC5 re-checked → 🟦 until shown again.
+- 2026-11-12 · Your review: the guide's name removed; a cinematic tour (voice orb, subtitles, chapter titles, living diagram with jar/harness/finale scenes, spotlight); dark + cyan theme for the whole page, like gauravlahoti.dev; Observability kept on the page (D-179).

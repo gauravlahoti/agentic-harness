@@ -8,13 +8,13 @@
   &:has(> head > meta[name="color-scheme"][content="dark"]) { color-scheme: dark; }
   &:has(> head > meta[name="color-scheme"][content="light"]) { color-scheme: light; }
 
-  --bg: light-dark(#f7f7f5, #161615);
-  --surface: light-dark(#ffffff, #1f1f1d);
-  --text: light-dark(#1d1d1b, #ececea);
-  --muted: light-dark(#6b6b66, #a3a39d);
-  --line: light-dark(#e4e4df, #34342f);
-  --accent: light-dark(#1f5fd6, #7aa7ff);
-  --accent-text: light-dark(#ffffff, #0d1a33);
+  --bg: light-dark(#f7f7f5, #040807); /* dark: near-black with a teal cast, like gauravlahoti.dev */
+  --surface: light-dark(#ffffff, #0b1312);
+  --text: light-dark(#1d1d1b, #e6efed);
+  --muted: light-dark(#6b6b66, #8da09c);
+  --line: light-dark(#e4e4df, #1b2a28);
+  --accent: light-dark(#0b7f70, #19e6c8); /* the site's cyan (D-179); a deep teal on light for contrast */
+  --accent-text: light-dark(#ffffff, #00211c);
   --pass: light-dark(#1f7a3d, #5cc983);
   --fail: light-dark(#b42318, #ff8a80);
   --skip: light-dark(#8a6a00, #e0b84a);
@@ -31,13 +31,13 @@
   --claude: light-dark(#b85a33, #e8956a); /* Claude's warm orange: paid */
 
   /* Agent view surfaces. */
-  --bubble: light-dark(#ecebe6, #2b2b28);
-  --dot-bg: light-dark(#ecebe6, #2b2b28);
-  --text-soft: light-dark(#45453f, #cfcfca);
+  --bubble: light-dark(#ecebe6, #12201e);
+  --dot-bg: light-dark(#ecebe6, #12201e);
+  --text-soft: light-dark(#45453f, #c6d4d1);
 
   /* The theme toggle's own colors. */
-  --toggle-track: light-dark(#cfe3ff, #1b2440);
-  --toggle-knob: light-dark(#ffffff, #2b3557);
+  --toggle-track: light-dark(#cfe3ff, #0e2a26);
+  --toggle-knob: light-dark(#ffffff, #15403a);
   --toggle-sun: #f2a516;
   --toggle-moon: #e8ecff;
 }
@@ -2154,54 +2154,198 @@ main:has(> #view-online:not([hidden])) { max-width: 1400px; }
 .cost-card .model-pick.evals-pick:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
 .cost-card .model-pick.evals-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ── Guided Tour (S13, D-168–D-177) ──────────────────────────────────────────
-   /?tour: the chat replays a recorded run; the tour bar takes the composer's place and
-   looks like it. Nothing here can send: no composer, no deletes, no Observability. */
+/* ── Guided Tour (S13, D-168–D-178) ──────────────────────────────────────────
+   /?tour: the chat replays a recorded run and a guide presents it, in the composer's place.
+   Nothing here can send: no composer, no new chat, no deletes. Every pane and the
+   Observability views stay; the tour just doesn't cover them (your call). */
 .tour-mode #composer,
 .tour-mode .examples,
 .tour-mode #new-task,
-.tour-mode .work-delete,
-.tour-mode [data-group="observability"] { display: none; }
+.tour-mode .work-delete { display: none; }
 .tour-mode .work-open { pointer-events: none; }
-/* The tour bar is taller than the composer: keep the newest line above it when it scrolls in. */
-html:has(body.tour-mode) { scroll-padding-bottom: 340px; }
+/* The guide is taller than the composer: keep the newest line above it when it scrolls in. */
+html:has(body.tour-mode) { scroll-padding-bottom: 260px; }
 
-.tour-bar {
-  position: relative;
-  overflow: hidden;
-  padding: 14px 16px 12px;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow: 0 6px 28px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.35));
+/* ── The guide (D-178, D-179): a voice orb and film-style subtitles, no box ─────────── */
+.tour-guide { position: relative; z-index: 60; display: flex; align-items: center; gap: 18px; padding: 6px 4px 2px; }
+.tour-guide[hidden] { display: none; }
+.guide-orb { flex: none; width: 108px; height: 108px; margin: -12px -8px -12px -16px; color: var(--accent); }
+.guide-talk { flex: 1; min-width: 0; }
+.guide-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  font: 500 11.5px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
-.tour-progress { position: absolute; inset: 0 0 auto; height: 3px; background: var(--line); }
-.tour-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.4s ease; }
-.tour-text { min-height: 74px; }
-.tour-head { margin: 0 0 4px; font-size: 14px; }
-.tour-count { margin-right: 6px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.tour-say { margin: 0; color: var(--text-soft); font-size: 14.5px; line-height: 1.55; max-height: 9.5em; overflow-y: auto; }
-.tour-recording .tour-say { font-size: 18px; line-height: 1.6; max-height: 14em; color: var(--text); } /* read it out: a teleprompter */
-.tour-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.tour-btn {
-  padding: 6px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
+.guide-sep { opacity: 0.4; }
+#tour-title { color: var(--muted); }
+.guide-caption {
+  margin: 0;
+  min-height: 2.6em;
+  font-size: clamp(18px, 1.6vw, 23px);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
+  text-wrap: balance;
+  text-shadow: 0 2px 18px light-dark(rgb(255 255 255 / 0.9), rgb(0 0 0 / 0.9));
 }
-.tour-btn:hover:not(:disabled) { border-color: var(--accent); }
-.tour-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.tour-btn:disabled { opacity: 0.45; cursor: default; }
-.tour-btn.tour-main { min-width: 96px; border-color: var(--accent); background: var(--accent); color: var(--accent-text); font-weight: 600; }
-.tour-rec { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.tour-recording .guide-caption { font-size: 18px; line-height: 1.6; max-height: 14em; overflow-y: auto; text-wrap: pretty; } /* your script: read it out */
+.guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.tour-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.tour-icon svg { width: 16px; height: 16px; }
+.tour-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent); }
+.tour-icon[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.tour-icon:disabled { opacity: 0.35; cursor: default; }
+.tour-main, .tour-pill {
+  padding: 8px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font: 600 13px ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.tour-main { min-width: 120px; background: var(--accent); color: var(--accent-text); box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+.tour-pill { background: transparent; color: var(--text); }
+.tour-icon:focus-visible, .tour-main:focus-visible, .tour-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tour-countdown { min-width: 76px; font: 12px ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tour-timeline { display: flex; flex: 1; min-width: 120px; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tour-tick { flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background 0.4s ease, box-shadow 0.4s ease; }
+.tour-tick.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.tour-tick.now { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.tour-rec { display: inline-flex; align-items: center; gap: 8px; }
 .tour-rec[hidden], .tour-card[hidden] { display: none; } /* display above would beat hidden */
 .tour-record.is-on { border-color: var(--fail); background: var(--fail); color: var(--surface); }
 .tour-rec-note { color: var(--muted); font-size: 12.5px; }
+@media (prefers-reduced-motion: no-preference) {
+  .guide-caption.enter { animation: caption-in 0.45s ease-out; }
+  @keyframes caption-in { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } }
+}
+@media (max-width: 600px) {
+  .tour-guide { gap: 10px; }
+  .guide-orb { width: 56px; height: 56px; }
+  .guide-caption { font-size: 16.5px; }
+}
+
+/* The spotlight: everything dims except the line being explained (and the Harness pane). */
+.tour-spot {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  border-radius: 14px;
+  box-shadow: 0 0 0 200vmax light-dark(rgb(245 247 246 / 0.72), rgb(1 4 4 / 0.62)), 0 0 0 1.5px var(--accent), 0 0 32px color-mix(in srgb, var(--accent) 40%, transparent);
+  transition: left 0.5s cubic-bezier(0.22, 1, 0.36, 1), top 0.5s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s ease, height 0.5s ease;
+}
+.tour-spot.is-empty { box-shadow: 0 0 0 200vmax light-dark(rgb(245 247 246 / 0.82), rgb(1 4 4 / 0.86)); }
+.tour-spot[hidden] { display: none; }
+.tour-mode .dock { z-index: 55; background: none; }
+.tour-mode #harness-pane { z-index: 50; } /* stays bright: the part being explained */
+.tour-mode .lane-handle { z-index: 50; }
+
+/* The chapter title: the step's name, large, for a moment. */
+.tour-chapter {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  top: 30%;
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+.tour-chapter[hidden] { display: none; }
+.chapter-no { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.3em; color: var(--accent); }
+.chapter-title { font-size: clamp(30px, 4vw, 54px); font-weight: 700; letter-spacing: -0.03em; color: var(--text); text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 45%, transparent); white-space: nowrap; }
+.tour-chapter.show { animation: chapter 2.4s ease both; }
+@keyframes chapter {
+  0% { opacity: 0; transform: translate(-50%, -40%); filter: blur(8px); }
+  18%, 70% { opacity: 1; transform: translate(-50%, -50%); filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%, -58%); filter: blur(6px); }
+}
+@media (prefers-reduced-motion: reduce) { .tour-chapter.show { animation: none; } }
+
+/* The living diagram (D-179): the model alone in a jar, then the harness around it. Exists
+   only in tour mode (SVG ignores the hidden attribute). */
+.tour-stage { display: none; }
+.tour-mode .tour-stage {
+  display: block;
+  position: fixed;
+  z-index: 45;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  transition: left 0.9s cubic-bezier(0.22, 1, 0.36, 1), top 0.9s cubic-bezier(0.22, 1, 0.36, 1), width 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+.tour-mode .tour-stage.is-away { opacity: 0; }
+.tour-stage text { font: 600 15px ui-sans-serif, system-ui, sans-serif; fill: var(--text); text-anchor: middle; }
+.stage-core path { fill: none; stroke: #00211c; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.stage-core text { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; fill: var(--accent); letter-spacing: 0.12em; }
+.stage-core { transform-origin: 200px 200px; animation: core-breathe 3.2s ease-in-out infinite; }
+@keyframes core-breathe { 50% { transform: scale(1.05); } }
+.stage-jar rect, .stage-jar path { fill: color-mix(in srgb, var(--accent) 6%, transparent); stroke: color-mix(in srgb, var(--accent) 55%, var(--muted)); stroke-width: 2; }
+.stage-jar .jar-shine { fill: none; stroke: color-mix(in srgb, white 60%, transparent); stroke-width: 4; stroke-linecap: round; }
+.stage-jar { transition: opacity 0.8s ease, transform 1s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 200px 200px; }
+.stage-orbit { fill: none; stroke: color-mix(in srgb, var(--accent) 40%, transparent); stroke-width: 1.5; stroke-dasharray: 4 7; transform-origin: 200px 200px; animation: orbit 40s linear infinite; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+.stage-spoke { stroke: color-mix(in srgb, var(--accent) 35%, transparent); stroke-width: 1.5; }
+.stage-node circle { fill: var(--surface); stroke: var(--node); stroke-width: 2; transition: fill 0.3s ease; }
+.stage-node path { fill: none; stroke: var(--node); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.stage-node text { font-size: 14px; }
+.node-loop { --node: var(--part-loop); }
+.node-context { --node: var(--part-context); }
+.node-tools { --node: var(--part-actions); }
+.node-guard { --node: var(--part-guard); }
+.stage-node { transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); transform-box: fill-box; transform-origin: center; }
+.stage-node.fire circle { animation: node-fire 0.9s ease-out; }
+@keyframes node-fire { 0% { fill: var(--node); filter: drop-shadow(0 0 14px var(--node)); } 100% { fill: var(--surface); } }
+.stage-pulse { fill: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
+.pulse-loop { fill: var(--part-loop); }
+.pulse-context { fill: var(--part-context); }
+.pulse-tools { fill: var(--part-actions); }
+.pulse-guard { fill: var(--part-guard); }
+.stage-harness .stage-orbit, .stage-harness .stage-spoke { transition: opacity 0.8s ease; }
+.stage-equation { font: 700 20px ui-sans-serif, system-ui, sans-serif !important; fill: var(--accent) !important; letter-spacing: -0.01em; transition: opacity 0.8s ease 0.6s; }
+
+/* Scenes. The jar: the model alone. */
+.tour-stage[data-scene="jar"] .stage-node,
+.tour-stage[data-scene="jar"] .stage-orbit,
+.tour-stage[data-scene="jar"] .stage-spoke,
+.tour-stage[data-scene="jar"] .stage-equation { opacity: 0; }
+.tour-stage[data-scene="jar"] .stage-node { transform: scale(0.3); }
+/* The harness and the finale: the jar lifts away, the four parts snap in, one by one. */
+.tour-stage:not([data-scene="jar"]) .stage-jar { opacity: 0; transform: translateY(-60px) scale(1.15); }
+.tour-stage:not([data-scene="jar"]) .node-loop { transition-delay: 0.2s; }
+.tour-stage:not([data-scene="jar"]) .node-tools { transition-delay: 0.45s; }
+.tour-stage:not([data-scene="jar"]) .node-guard { transition-delay: 0.7s; }
+.tour-stage:not([data-scene="jar"]) .node-context { transition-delay: 0.95s; }
+/* The live diagram: small, no equation, no labels to read. */
+.tour-stage[data-scene="hud"] .stage-equation, .tour-stage[data-scene="hud"] .stage-node text, .tour-stage[data-scene="hud"] .stage-core text { opacity: 0; }
+.tour-stage[data-scene="hud"] .stage-node, .tour-stage[data-scene="hud"] .stage-node text { transition-delay: 0s; }
+/* The finale: every part lit. */
+.tour-stage[data-scene="finale"] .stage-node circle { fill: color-mix(in srgb, var(--node) 22%, var(--surface)); filter: drop-shadow(0 0 10px var(--node)); }
+@media (prefers-reduced-motion: reduce) {
+  .stage-core, .stage-orbit { animation: none; }
+  .tour-stage, .stage-node, .stage-jar { transition: none; }
+}
 
 /* A step's card over the empty chat: the use case, seen while you hear it. */
 .tour-card {

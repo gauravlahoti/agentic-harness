@@ -1,7 +1,9 @@
 # The guided tour of the harness (S13, D-168–D-177). Fictional company, people and numbers.
 #
 # Each step: a caption you record as your voice (`say`), where the replay stops (`until`),
-# which Harness pane part opens (`show`), and an optional card over the chat (`card`).
+# which Harness pane part opens (`show`), an optional card over the chat (`card`), and a
+# scene for the diagram (`scene`: jar, harness or finale; else the small live diagram).
+# The next step starts `pause` seconds after the voice ends (default 10).
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across
 # the runs below; a helper's events play along but aren't counted. No `until`: nothing plays.
 # Clips: audio/<step id>.webm|.m4a|.mp3|.ogg, recorded on the page at /?tour=record.
@@ -16,6 +18,7 @@ skip = ["online_evals_started", "online_evals_finished"]  # Observability isn't 
 [[steps]]
 id = "01-jar"
 title = "Brain in a Jar"
+scene = "jar"
 say = """
 AI models are very good at reasoning and writing. But on their own, they can't take actions. Think of a brain in a jar: capable, but trapped. It can tell you how to send a proposal; it can't send it. This tour shows what we build around the model so it can do the work. Everything here is a real recorded run of an agent I built from scratch. The company and its data are made up.
 """
@@ -24,6 +27,7 @@ AI models are very good at reasoning and writing. But on their own, they can't t
 id = "02-harness"
 title = "Why We Need a Harness"
 show = "pane"
+scene = "harness"
 say = """
 As models get more powerful, we expect more than answers in a chat window. We want them to finish whole tasks: build a customer proposal, pull in the right information, and send it once it's approved. For that, the model needs a layer around it, like an operating system. That layer is the harness. An AI agent is the model plus the harness. Ours has four parts: an agentic loop, context and memory, tools, and guardrails. You can see each one on the right.
 """
@@ -105,6 +109,7 @@ Here's the answer, checked again, with what the run cost: model calls, tokens, d
 id = "10-why"
 title = "Why the Harness Matters"
 show = "pane"
+scene = "finale"
 say = """
 So that's the harness: a loop to pursue the goal, context and memory to stay grounded, tools to act, and guardrails to stay in control. How well you build it matters as much as which model you pick. And this agent is just a folder: its instructions, tools and skills. Point the same harness at another folder, and you have another agent.
 """

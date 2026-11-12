@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from agentic_harness.config import Settings
 from agentic_harness.server.app import create_app
 from agentic_harness.tour import (
+    DEFAULT_PAUSE,
     MAX_CLIP_BYTES,
     WORDS_PER_SECOND,
     TourError,
@@ -204,7 +205,7 @@ def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
     tour_js = (web / "tour.js").read_text()
     assert 'id="tour-bar"' in html
     assert "/static/tour.js" in html
-    for label in (">Start Tour<", ">Back<", ">Next<", ">Mute<"):
+    for label in (">Start Tour<", ">Previous<", ">Next<", ">Mute<"):
         assert label in html, label
     assert 'const TOUR = new URLSearchParams(location.search).get("tour")' in js
     assert "if (TOUR) return; // the tour sends nothing" in js  # approvals
@@ -212,3 +213,54 @@ def test_s13_ac5_the_page_has_a_tour_mode_that_writes_nothing() -> None:
     assert "onEvent(" in tour_js  # the page's own drawing code (D-171)
     assert 'fetch("/api/run"' not in tour_js
     assert '"/api/tour"' in tour_js
+
+
+def test_s13_ac5_the_tour_pauses_between_steps(ws_copy: Path) -> None:
+    """D-178: the next step starts after a pause (10 s unless the tour says)."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    payload = tour_payload(tour, audio_url=lambda s, v: f"a/{s}?v={v}")
+    assert payload["pause"] == DEFAULT_PAUSE == 10
+    assert "guide" not in payload  # your call: no name on the guide
+    edit_tour(ws_copy, 'chat = "', 'pause = 4\nchat = "')
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    assert tour.pause == 4
+    edit_tour(ws_copy, "pause = 4", "pause = 600")
+    with pytest.raises(TourError, match="pause"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac6_steps_name_their_scene(ws_copy: Path) -> None:
+    """D-179: the brain in a jar, the harness assembling, the finale; else the live diagram."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    scenes = [s["scene"] for s in tour_payload(tour, audio_url=lambda s, v: "")["steps"]]
+    assert scenes[0] == "jar"
+    assert scenes[1] == "harness"
+    assert scenes[-1] == "finale"
+    assert "hud" in scenes  # the replay steps show the small live diagram
+    edit_tour(ws_copy, 'scene = "jar"', 'scene = "fireworks"')
+    with pytest.raises(TourError, match="scene"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac5_the_page_shows_a_voice_orb_diagram_and_spotlight() -> None:
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    html = (web / "index.html").read_text()
+    tour_js = (web / "tour.js").read_text()
+    assert 'id="guide-avatar"' in html  # the voice orb
+    assert 'id="guide-name"' not in html  # no name (your call)
+    assert 'id="tour-stage"' in html  # the living diagram
+    assert 'id="tour-spot"' in html  # the spotlight
+    assert "createAnalyser" in tour_js  # the orb moves with the real voice
+    assert "function sentences(" in tour_js  # captions one sentence at a time
+    assert "Next in" in tour_js  # the countdown before the next step
+
+
+def test_s13_dark_is_the_default_theme_with_the_sites_cyan() -> None:
+    """D-179: black by default with a cyan accent, like gauravlahoti.dev; light stays."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    assert '<meta name="color-scheme" content="dark">' in (web / "index.html").read_text()
+    assert 'const DEFAULT_SCHEME = "dark";' in (web / "theme.js").read_text()
+    assert "--accent: light-dark(#0b7f70, #19e6c8)" in (web / "app.css").read_text()

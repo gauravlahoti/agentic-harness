@@ -30,8 +30,12 @@ MEDIA_TYPES = {ext: kind for kind, ext in AUDIO_TYPES.items()}
 MAX_CLIP_BYTES = 5_000_000  # one step: several minutes of voice
 MAX_AUDIO_BYTES = 15_000_000  # all clips together; the page must stay quick to load
 WORDS_PER_SECOND = 2.5  # a calm speaking pace: a step with no clip waits this long (D-170)
+DEFAULT_PAUSE = 10  # seconds between steps: time to look before the guide moves on (D-178)
+MAX_PAUSE = 60
 # Harness pane parts a step may open; "pane" opens the pane with every part.
 PARTS = {"pane", "loop", "context", "tools", "guard", "verify", "memory"}
+# The diagram's big scenes (D-179); a step without one shows the small live diagram, "hud".
+SCENES = {"jar", "harness", "finale", "hud"}
 STEP_ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 UNTIL = re.compile(r"([a-z_]+)#([1-9]\d*)")
 
@@ -55,6 +59,7 @@ class TourStep:
     say: str  # the caption, and the script you record
     show: str | None  # which Harness pane part opens
     card: str | None  # Markdown shown over the chat
+    scene: str  # the diagram: a big scene, or the small live one (D-179)
     upto: int  # play the tour's events up to here (exclusive), counted over all turns
 
 
@@ -65,6 +70,7 @@ class Tour:
     chat: str
     profile: str | None
     person: str | None
+    pause: int  # seconds between steps
     skip: frozenset[str]
     turns: tuple[TourTurn, ...]
     steps: tuple[TourStep, ...]
@@ -102,6 +108,7 @@ def load_tour(workspace: Path) -> Tour | None:
         chat=str(config.get("chat") or config.get("title", "")),
         profile=config.get("profile"),
         person=config.get("person"),
+        pause=_pause(config),
         skip=skip,
         turns=turns,
         steps=tuple(steps),
@@ -155,6 +162,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
                 "say": s.say,
                 "show": s.show,
                 "card": s.card,
+                "scene": s.scene,
                 "upto": s.upto,
                 # The version changes with every new take, so the browser fetches the new one.
                 "audio": audio_url(s.id, clip.stat().st_mtime_ns) if clip else None,
@@ -166,6 +174,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
         "chat": tour.chat,
         "profile": tour.profile,
         "person": tour.person,
+        "pause": tour.pause,
         "model": first.get("data", {}).get("model"),
         "turns": [{"task": t.task, "events": list(t.events)} for t in tour.turns],
         "steps": steps,
@@ -211,6 +220,9 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     if upto < start:
         raise TourError(f"Step {step_id} stops before the step ahead of it: steps only go forward.")
     card = raw.get("card")
+    scene = raw.get("scene", "hud")
+    if scene not in SCENES:
+        raise TourError(f"Step {step_id}: `scene` must be one of {', '.join(sorted(SCENES))}.")
     return TourStep(
         id=step_id,
         title=str(raw.get("title") or step_id),
@@ -218,6 +230,7 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
         show=show,
         card=card.strip() if isinstance(card, str) and card.strip() else None,
         upto=upto,
+        scene=scene,
     )
 
 
@@ -239,6 +252,13 @@ def _position(step_id: str, until: str, sequence: list[Event]) -> int:
             if seen == nth:
                 return i + 1
     raise TourError(f"Step {step_id}: until {until!r}, but the runs have only {seen} of those.")
+
+
+def _pause(config: dict[str, Any]) -> int:
+    value = config.get("pause", DEFAULT_PAUSE)
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= MAX_PAUSE:
+        raise TourError(f"`pause` must be whole seconds from 0 to {MAX_PAUSE}.")
+    return value
 
 
 def _text(config: dict[str, Any], key: str) -> str:

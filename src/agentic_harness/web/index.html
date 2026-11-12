@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="dark">
   <!-- Before any paint: apply a saved theme so the page never flashes the wrong one. -->
   <script src="/static/theme-init.js"></script>
   <title>agentic-harness</title>
@@ -132,24 +132,52 @@
             </button>
           </div>
         </form>
-        <!-- The guided tour (S13, D-168–D-177): /?tour plays it, /?tour=record records your voice. -->
-        <section class="tour-bar" id="tour-bar" aria-label="Guided Tour" hidden>
-          <div class="tour-progress" aria-hidden="true"><span id="tour-fill"></span></div>
-          <div class="tour-text">
-            <p class="tour-head"><span class="tour-count" id="tour-count"></span> <strong id="tour-title" aria-live="polite"></strong></p>
-            <p class="tour-say" id="tour-say"></p>
-          </div>
-          <div class="tour-controls">
-            <button type="button" class="tour-btn" id="tour-back">Back</button>
-            <button type="button" class="tour-btn tour-main" id="tour-play">Start Tour</button>
-            <button type="button" class="tour-btn" id="tour-next">Next</button>
-            <button type="button" class="tour-btn" id="tour-mute" aria-pressed="false">Mute</button>
-            <span class="tour-rec" id="tour-rec-box" hidden>
-              <button type="button" class="tour-btn tour-record" id="tour-rec">Record</button>
-              <span class="tour-rec-note" id="tour-rec-note" role="status"></span>
-            </span>
+        <!-- The guided tour (S13, D-168–D-179): a voice orb speaks each step in subtitles;
+             /?tour plays it, /?tour=record records your voice. -->
+        <section class="tour-guide" id="tour-bar" aria-label="Guided Tour" hidden>
+          <canvas class="guide-orb" id="guide-avatar" width="168" height="168" aria-hidden="true"></canvas>
+          <div class="guide-talk">
+            <p class="guide-step"><span id="tour-count"></span><span class="guide-sep" aria-hidden="true">/</span><span id="tour-title"></span></p>
+            <p class="guide-caption" id="tour-say" aria-live="polite"></p>
+            <div class="guide-controls">
+              <button type="button" class="tour-icon" id="tour-back" title="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 20 9 12l10-8zM5 19V5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden">Previous</span></button>
+              <button type="button" class="tour-main" id="tour-play">Start Tour</button>
+              <button type="button" class="tour-icon" id="tour-next" title="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 4 10 8-10 8zM19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden">Next</span></button>
+              <button type="button" class="tour-icon" id="tour-mute" title="Mute" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden">Mute</span></button>
+              <span class="tour-countdown" id="tour-countdown" aria-live="off"></span>
+              <ol class="tour-timeline" id="tour-dots" aria-hidden="true"></ol>
+              <span class="tour-rec" id="tour-rec-box" hidden>
+                <button type="button" class="tour-pill tour-record" id="tour-rec">Record</button>
+                <span class="tour-rec-note" id="tour-rec-note" role="status"></span>
+              </span>
+            </div>
           </div>
         </section>
+        <!-- The tour's stage (moved to <body> by tour.js): a spotlight, a chapter title, and the
+             living diagram: the model (a brain in a jar), then the harness around it (D-179). -->
+        <div class="tour-spot" id="tour-spot" hidden></div>
+        <p class="tour-chapter" id="tour-chapter" aria-hidden="true" hidden></p>
+        <svg class="tour-stage" id="tour-stage" viewBox="0 0 400 440" aria-hidden="true" hidden>
+          <defs>
+            <radialGradient id="stage-core" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#b9fff3"/><stop offset=".45" stop-color="#19e6c8"/><stop offset="1" stop-color="#03463e"/></radialGradient>
+            <filter id="stage-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <g class="stage-harness">
+            <circle class="stage-orbit" cx="200" cy="200" r="135"/>
+            <line class="stage-spoke spoke-loop" x1="200" y1="156" x2="200" y2="99"/>
+            <line class="stage-spoke spoke-tools" x1="244" y1="200" x2="301" y2="200"/>
+            <line class="stage-spoke spoke-guard" x1="200" y1="244" x2="200" y2="301"/>
+            <line class="stage-spoke spoke-context" x1="156" y1="200" x2="99" y2="200"/>
+            <g class="stage-node node-loop" data-part="loop"><circle cx="200" cy="65" r="32"/><path d="M188 58a13 13 0 1 1-2 13M186 52v8h8" /><text x="200" y="20">Agentic Loop</text></g>
+            <g class="stage-node node-tools" data-part="tools"><circle cx="335" cy="200" r="32"/><path d="M326 209l14-14m-4-5a7 7 0 1 0 9 9l-3-3-4 1-1-4z"/><text x="335" y="255">Tools</text></g>
+            <g class="stage-node node-guard" data-part="guard"><circle cx="200" cy="335" r="32"/><path d="M200 320l13 5v9c0 8-6 13-13 16-7-3-13-8-13-16v-9z"/><text x="200" y="390">Guardrails</text></g>
+            <g class="stage-node node-context" data-part="context"><circle cx="65" cy="200" r="32"/><path d="M53 190h24M53 200h24M53 210h15"/><text x="65" y="255">Context &amp; Memory</text></g>
+          </g>
+          <g class="stage-jar"><rect x="160" y="112" width="80" height="16" rx="5"/><path d="M152 136h96a18 18 0 0 1 18 18v92a38 38 0 0 1-38 38h-56a38 38 0 0 1-38-38v-92a18 18 0 0 1 18-18z"/><path class="jar-shine" d="M150 160v70"/></g>
+          <g class="stage-core" filter="url(#stage-glow)"><circle cx="200" cy="200" r="44" fill="url(#stage-core)"/><path d="M198 178c-9-4-19 2-18 11-7 3-7 13-1 16-1 8 6 14 13 12 2 4 5 5 6 5zM202 178c9-4 19 2 18 11 7 3 7 13 1 16 1 8-6 14-13 12-2 4-5 5-6 5zM198 178v44"/><text x="200" y="262">Model</text></g>
+          <g id="stage-particles"></g>
+          <text class="stage-equation" x="200" y="428">AI Agent = Model + Harness</text>
+        </svg>
       </div>
 
       <!-- Icons the script copies in. Templates keep the strict security policy: no HTML strings. -->

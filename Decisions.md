@@ -1304,3 +1304,21 @@
 
 ## D-177 · A step says where it stops: `until = "event#n"` (2026-11-12)
 - `until = "approval_requested#2"`: play up to and including the main agent's 2nd `approval_requested`, counted across the tour's turns; a helper's events play along but aren't counted. `"end"` plays everything. Readable, and it survives re-recording better than line numbers. Hidden event types (e.g. the online evals) are listed in `skip`.
+
+## D-178 · A guide presents the tour, not a box (2026-11-12)
+- **Your request:** "a human icon / guiding agent explaining the concepts, his voice has captions, he moves next automatically taking a pause of 10 sec; someone can click Next, Pause, Previous."
+- **Chose:** a guide (a person icon and a name from `tour.toml`, e.g. `guide = "Gaurav"`) with a speech bubble; the caption shows one sentence at a time, timed to the voice (each sentence gets its share of the clip by word count). The avatar glows while speaking. After a step, a 10-second countdown on Next, then the next step (`pause` in `tour.toml`, default 10). Controls: Previous · Pause · Next · Mute. Record mode keeps the whole paragraph: it's your script.
+- **Changes D-170:** the next step no longer starts the moment the voice ends; it waits the pause.
+- **Cost:** sentence timing is an estimate (word counts), not word-exact subtitles; a photo instead of the icon can come later (`guide_photo`).
+
+## D-179 · A cinematic tour, and the site's look: black and cyan (2026-11-12)
+- **Your review:** "remove Gaurav's name; the UI looks weak, nothing is jaw dropping; we need a UI marvel"; "black as default, with a cyan touch, like gauravlahoti.dev"; "keep all the observability and panes, just not covered in the demo".
+- **Options (you picked the first):** Living Diagram + Spotlight · Cinematic Spotlight only · Full-screen Story Mode.
+- **Chose:**
+  - A **voice orb** in place of the person icon and name: its ring follows the real voice's frequencies (Web Audio analyser), and breathes when there's no clip.
+  - **Film-style subtitles**, no box; a chapter title fades in at each step; icon controls; a step timeline; the countdown sits beside them.
+  - A **living diagram** (SVG): step 1 the model alone in a glass jar; step 2 the jar lifts away and the four parts snap in around it ("AI Agent = Model + Harness"); during the replay it docks beside the chat and each event lights its part, a pulse running to the model; the last step shows it all lit. Steps name a `scene` in `tour.toml` (jar, harness, finale; else the live diagram). Which part an event lights is mapped from the harness's own event names, so `src/` still knows no workspace.
+  - A **spotlight**: the page dims and a cyan-edged frame follows the newest line or card; the Harness pane stays bright with its part open.
+  - **Theme, whole page:** dark is the default; near-black background, cyan accent `#19e6c8` (a deep teal `#0b7f70` on light, for contrast). The theme is saved under a new key, so old light pins no longer apply.
+  - **Kept:** Observability and every pane stay on the page; the tour just doesn't cover them (the online-eval lines stay out of the replay).
+- **Cost:** a few hundred lines of page code; positions are set via `element.style` (the page's security policy blocks style attributes).
