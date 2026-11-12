@@ -62,7 +62,8 @@ def every_change_covered(answer: str, record: Record) -> Verdict | None:
         return None  # no contract was reviewed in this run
     missing = [e for e in changes if not mentions(answer, e["clause"])]
     if not missing:
-        return passed(f"All {len(changes)} changes that matter are in the answer.")
+        n = len(changes)
+        return passed(f"{n} change{'s' if n > 1 else ''} that matter, all in the answer.")
     named = ", ".join(f"{e['clause']} ({e.get('title', '')})" for e in missing)
     return failed(f"These changes have no line in the answer: {named}.")
 
@@ -84,7 +85,8 @@ def citations_exist(answer: str, record: Record) -> Verdict | None:
             seen |= set(RETURNED.findall(call.output)) | set(CITED.findall(call.output))
     unsupported = sorted(cited - seen)
     if not unsupported:
-        return passed(f"All {len(cited)} cited sections were read this run.")
+        n = len(cited)
+        return passed(f"{n} cited section{'s' if n > 1 else ''}, all read this run.")
     names = ", ".join(f"{p} §{n}" for p, n in unsupported)
     return failed(f"Cited but never read this run: {names}. Look them up or drop them.")
 

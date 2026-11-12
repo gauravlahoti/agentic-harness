@@ -391,6 +391,18 @@ function pastTurn(t) {
   const you = el("div", "you");
   you.append(el("p", "bubble", t.task));
   const agent = el("div", "agent");
+  const shown = el("ol", "activity past-cards");
+  if (t.plan) {
+    const row = el("li", "act part-plan todo-row");
+    row.append(todoCard(t.plan));
+    shown.append(row);
+  }
+  if (t.checks) {
+    const row = el("li", "act part-verify checks-row");
+    row.append(checksCard([{ ...t.checks, retrying: false, round: t.checks.rounds }], t.checks.rounds));
+    shown.append(row);
+  }
+  if (shown.children.length) agent.append(shown);
   const reply = el("div", "reply");
   if (t.answer) renderProse(reply, t.answer);
   else reply.append(el("p", "run-foot", `Ended: ${t.outcome}`));
@@ -484,7 +496,7 @@ function el(tag, className, text) {
   return node;
 }
 const fromTemplate = (id) => $(id).content.firstElementChild.cloneNode(true);
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const money = (usd) => `$${usd.toFixed(5)}`;
 const argText = (args) =>
   Object.entries(args ?? {})
@@ -744,6 +756,25 @@ function onEvent(ev, turn) {
       ],
       raw: d,
     });
+  } else if (ev.type === "plan_updated") {
+    // One To-Do card per task, redrawn on every update (S11).
+    if (!turn.todo) {
+      turn.todo = el("li", "act part-plan todo-row");
+      turn.activity.append(turn.todo);
+    }
+    turn.todo.replaceChildren(todoCard(d.items));
+  } else if (ev.type === "verify_finished") {
+    (turn.rounds ??= []).push(d);
+    if (!turn.checksRow) {
+      turn.checksRow = el("li", "act part-verify checks-row");
+      turn.activity.append(turn.checksRow);
+    }
+    turn.checksRow.replaceChildren(checksCard(turn.rounds));
+    turn.checksRow.scrollIntoView({ block: "nearest" });
+  } else if (ev.type === "tool_started" && d.name === "update_plan") {
+    turn.tools.set(d.call_id, { plan: true }); // the To-Do card shows it
+  } else if (ev.type === "tool_finished" && turn.tools.get(d.call_id)?.plan) {
+    if (d.is_error) addActivity(turn, { text: `Plan not saved · ${d.output}`, part: "plan", state: "error", raw: d });
   } else if (ev.type === "tool_started") {
     const args = argText(d.arguments);
     const part = d.name === "delegate_task" ? "sub-agent" : d.part === "context" ? "context" : "tool";
@@ -831,6 +862,63 @@ function onEvent(ev, turn) {
     announce(`${note || "Run complete"}. ${numbers.join(", ")}`);
     turn.meta.scrollIntoView({ block: "nearest" });
   }
+}
+
+// The agent's to-do list for this task (S11): ✓ done, ▸ doing, – skipped with its reason.
+const BOX = { open: "○", doing: "▸", done: "✓", skipped: "–" };
+function todoCard(items) {
+  const finished = items.filter((i) => i.status === "done" || i.status === "skipped").length;
+  const card = el("div", "todo-card");
+  const head = el("div", "card-head");
+  head.append(el("span", "card-title", "To-Do"), el("span", "card-count", `${finished} of ${items.length} done`));
+  const list = el("ul", "todo-list");
+  for (const i of items) {
+    const li = el("li", `todo-item is-${i.status}`);
+    li.append(el("span", "todo-box", BOX[i.status] ?? "○"), el("span", "todo-text", i.text));
+    if (i.note) li.append(el("span", "todo-note", i.note));
+    list.append(li);
+  }
+  card.append(head, list);
+  return card;
+}
+
+// What VERIFY found (S11): the last round's checks, and earlier drafts folded away.
+// ``total`` is the number of rounds when only the last one was saved (an old conversation).
+function checksCard(rounds, total = rounds.length) {
+  const last = rounds.at(-1);
+  const counted = last.results.filter((r) => r.status !== "error");
+  const ok = counted.filter((r) => r.status === "passed").length;
+  const firstFailed = rounds[0].results.filter((r) => r.status === "failed").length;
+  let verdict, state;
+  if (last.passed) {
+    [verdict, state] = total > 1 ? [`${firstFailed || "A"} Failed → Retried → Passed`, "fixed"] : [`${ok}/${counted.length} Passed`, "passed"];
+  } else if (last.retrying) {
+    [verdict, state] = [`${counted.length - ok} Failed → Sent Back`, "retrying"];
+  } else {
+    [verdict, state] = ["Not Verified", "failed"];
+  }
+  const card = el("div", `checks-card is-${state}`);
+  const head = el("div", "card-head");
+  head.append(el("span", "card-title", "Checks"), el("span", "card-count", verdict));
+  const list = el("ul", "checks-list");
+  for (const r of last.results) {
+    const li = el("li", `check-item is-${r.status}`);
+    li.append(el("span", "check-mark", { passed: "✓", failed: "✗", error: "!" }[r.status]), el("span", "check-label", r.label), el("span", "check-msg", r.status === "error" ? `The check itself broke (not sent back): ${r.message}` : r.message));
+    list.append(li);
+  }
+  card.append(head, list);
+  for (const [n, r] of rounds.entries()) {
+    if (!r.draft) continue;
+    const fold = el("details", "check-draft");
+    const failedHere = r.results.filter((x) => x.status === "failed").map((x) => x.label).join(", ");
+    fold.append(el("summary", null, `Draft ${n + 1} · sent back for ${failedHere}`));
+    const body = el("div", "draft-text");
+    renderProse(body, r.draft);
+    fold.append(body);
+    card.append(fold);
+  }
+  if (state === "failed") card.append(el("p", "checks-warn", "This answer failed a check twice. Read the failures above before you rely on it."));
+  return card;
 }
 
 // The run summary under the final answer: four numbers that count up, and where the
@@ -1098,9 +1186,9 @@ const PANE_OPEN = "pane-open";
 function readOff() {
   try {
     const saved = JSON.parse(localStorage.getItem(offKey()) ?? "{}");
-    return { tools: saved.tools ?? [], skills: saved.skills ?? [], subagents: saved.subagents ?? [] };
+    return { tools: saved.tools ?? [], skills: saved.skills ?? [], subagents: saved.subagents ?? [], checks: saved.checks ?? [] };
   } catch {
-    return { tools: [], skills: [], subagents: [] };
+    return { tools: [], skills: [], subagents: [], checks: [] };
   }
 }
 
@@ -1114,17 +1202,18 @@ function saveOff(off) {
 
 // Only names this profile actually has: an old saved name never reaches the server.
 function currentOff() {
-  if (!paneInfo) return { tools: [], skills: [], subagents: [] };
+  if (!paneInfo) return { tools: [], skills: [], subagents: [], checks: [] };
   const off = readOff();
   const has = {
-    tools: paneInfo.tools.map((t) => t.name),
+    tools: [...paneInfo.tools.map((t) => t.name), ...(paneInfo.verify?.plan_on ? ["update_plan"] : [])],
+    checks: (paneInfo.verify?.checks ?? []).map((c) => c.name),
     skills: paneInfo.skills.map((s) => s.name),
     subagents: paneInfo.subagents.map((a) => a.name),
   };
   return Object.fromEntries(Object.entries(off).map(([kind, names]) => [kind, names.filter((n) => has[kind].includes(n))]));
 }
 
-const offCount = (off) => off.tools.length + off.skills.length + off.subagents.length;
+const offCount = (off) => off.tools.length + off.skills.length + off.subagents.length + off.checks.length;
 
 function setPaneOpen(open, remember = true) {
   $("harness-pane").hidden = !open;
@@ -1185,14 +1274,14 @@ function switchFor(kind, name) {
 }
 
 // A line you can open: name and tags on top, the details below.
-function paneItem({ kind, name, tags = [], detail, off, locked = false }) {
+function paneItem({ kind, name, id, tags = [], detail, off, locked = false }) {
   const li = el("li", `pane-item${locked ? " is-locked" : off ? " is-off" : ""}`);
   const details = el("details");
   const summary = el("summary");
   summary.append(el("span", "item-name", name), ...tags, fromTemplate("tpl-chevron"));
   details.append(summary, detail);
   // A locked item is a permission (S05), not a switch: nothing to turn on here.
-  li.append(kind && !locked ? switchFor(kind, name) : el("span", "switch-spacer"));
+  li.append(kind && !locked ? switchFor(kind, id ?? name) : el("span", "switch-spacer"));
   li.append(details);
   return li;
 }
@@ -1405,17 +1494,55 @@ function renderPane() {
     ]),
   ]);
 
+  // Plan & Verify (S11): the to-do list, and the checks an answer passes before you see it.
+  const v = info.verify ?? { plan_on: false, checks: [], retries: 0 };
+  const planList = el("ul", "pane-list");
+  if (v.plan_on) {
+    planList.append(
+      paneItem({
+        kind: "tools",
+        name: "update_plan",
+        tags: [el("span", "pane-tag", "built-in")],
+        off: off.tools.includes("update_plan"),
+        detail: facts([
+          ["When", "The agent decides: tasks with 3 or more distinct parts get a to-do list; a simple question gets a direct answer"],
+          ["Stop rule", "It can't finish with items open: one reminder, then the answer shows the list incomplete"],
+          ["Kept", "In the run and the conversation file; the newest list is never trimmed"],
+        ]),
+      }),
+    );
+  }
+  const checkList = el("ul", "pane-list check-names");
+  checkList.append(
+    ...v.checks.map((c) =>
+      paneItem({
+        kind: "checks",
+        name: c.label,
+        id: c.name,
+        tags: c.source === "built-in" ? [el("span", "pane-tag", "built-in")] : [],
+        off: off.checks.includes(c.name),
+        detail: facts([["Passes when", c.description], ["Kind", "Plain code: free, exact, the same every time"]]),
+      }),
+    ),
+  );
+  const verifySection = paneSection("verify", "Plan & Verify", `${v.plan_on ? "plans · " : ""}${plural(v.checks.length, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+    ...(v.plan_on ? [subhead("Plan", "the agent decides when"), planList] : []),
+    subhead("Checks", "before you see an answer"),
+    checkList,
+    facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`]]),
+  ]);
+
   // Keep which sections you had open across re-renders.
   const wasOpen = new Map([...$("pane-body").querySelectorAll(".pane-part")].map((d) => [d.className, d.open]));
   // The order of one run, and of the docs: the loop is the core; context and tools are
   // what it works with; guardrails gate the tools; memory is kept at the end (D-67).
-  const sections = [loopSection, context, toolsSection, guard, memory];
+  const sections = [loopSection, ...(v.plan_on || v.checks.length ? [verifySection] : []), context, toolsSection, guard, memory];
   for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
   $("pane-body").replaceChildren(...sections);
 }
 
 function resetOff() {
-  saveOff({ tools: [], skills: [], subagents: [] });
+  saveOff({ tools: [], skills: [], subagents: [], checks: [] });
   renderPane();
 }
 

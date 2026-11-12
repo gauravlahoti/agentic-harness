@@ -12,10 +12,10 @@ CLOUDCO = ROOT / "evals" / "cases" / "cloudco.toml"
 
 def test_s10_ac1_cloudco_has_16_valid_cases() -> None:
     suite = load_suite(CLOUDCO)
-    assert len(suite.cases) == 16
+    assert len(suite.cases) == 18
     assert suite.workspace == (ROOT / "workspaces" / "cloudco").resolve()
     ids = [c.id for c in suite.cases]
-    assert len(set(ids)) == 16
+    assert len(set(ids)) == 18
     multi = [c.id for c in suite.cases if c.multi_turn]
     assert len(multi) == 5
     assert "follow-up-in-scope" in multi
@@ -116,7 +116,7 @@ def test_s10_ac1_pick_cases_by_id() -> None:
         "off-topic",
         "find-changes",
     ]
-    assert len(suite.pick(None)) == 16
+    assert len(suite.pick(None)) == 18
     with pytest.raises(CaseError, match="no-such"):
         suite.pick(["no-such"])
 

@@ -26,6 +26,7 @@
   --part-guard: light-dark(#b7791f, #e0b84a);
   --part-block: light-dark(#b42318, #ff8a80);
   --part-memory: light-dark(#6d3fc0, #b69cff);
+  --part-verify: light-dark(#0b7a75, #4fd1c5); /* Plan & Verify (S11) */
   --claude: light-dark(#b85a33, #e8956a); /* Claude's warm orange: paid */
 
   /* Agent view surfaces. */
@@ -914,6 +915,7 @@ body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane
 .pane-part.part-tools { --part: var(--part-actions); }
 .pane-part.part-memory { --part: var(--part-memory); }
 .pane-part.part-guard { --part: var(--part-guard); }
+.pane-part.part-verify { --part: var(--part-verify); }
 .pane-part > summary {
   display: flex;
   align-items: center;
@@ -1852,3 +1854,40 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .golden-chip.bad { color: var(--fail); background: color-mix(in srgb, var(--fail) 9%, transparent); }
 .golden-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .golden-card, .golden-filter button { transition: none; } }
+
+/* ── Plan & Verify (S11): the To-Do and Checks cards in a run's Activity ── */
+.part-plan .act-text, .part-verify .act-text { color: var(--part-verify); }
+.todo-row, .checks-row { list-style: none; }
+.past-cards { margin: 0 0 8px; padding: 0; }
+.todo-card, .checks-card {
+  margin: 4px 0 10px 31px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--part-verify) 40%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--part-verify) 5%, var(--surface));
+  font-size: 13.5px;
+}
+.card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.card-title { font-weight: 600; color: var(--part-verify); }
+.card-count { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.todo-list, .checks-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.todo-item, .check-item { display: grid; grid-template-columns: 1.2em 1fr; column-gap: 6px; }
+.todo-note, .check-msg { grid-column: 2; color: var(--text-soft); font-size: 12.5px; overflow-wrap: anywhere; }
+.todo-box, .check-mark { text-align: center; }
+.todo-item.is-done .todo-box, .check-item.is-passed .check-mark { color: var(--pass); }
+.todo-item.is-done .todo-text { color: var(--text-soft); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-soft) 50%, transparent); }
+.todo-item.is-doing .todo-box, .todo-item.is-doing .todo-text { color: var(--part-verify); font-weight: 600; }
+.todo-item.is-skipped .todo-box { color: var(--skip); }
+.check-item.is-failed .check-mark { color: var(--fail); }
+.check-item.is-error .check-mark { color: var(--skip); }
+.check-label { font-weight: 600; }
+.checks-card.is-passed .card-count, .checks-card.is-fixed .card-count { color: var(--pass); }
+.checks-card.is-retrying .card-count { color: var(--skip); }
+.checks-card.is-failed { border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); background: color-mix(in srgb, var(--fail) 5%, var(--surface)); }
+.checks-card.is-failed .card-count, .checks-card.is-failed .card-title { color: var(--fail); }
+.check-draft { margin-top: 8px; font-size: 12.5px; color: var(--text-soft); }
+.check-draft summary { cursor: pointer; }
+.draft-text { margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--line); }
+.checks-warn { margin: 8px 0 0; color: var(--fail); font-size: 12.5px; }
+@media (max-width: 600px) { .todo-card, .checks-card { margin-left: 0; } }
+.check-names .item-name { font-family: inherit; } /* names, not code */

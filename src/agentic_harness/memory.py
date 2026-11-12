@@ -61,6 +61,8 @@ class Turn:
     seconds: float
     run_id: str
     at: float = field(default_factory=time.time)
+    plan: list[dict[str, str]] | None = None  # the task's last plan, if it made one (S11)
+    checks: dict[str, Any] | None = None  # the last VERIFY round, if any check applied (S11)
 
 
 @dataclass(slots=True)
@@ -172,6 +174,8 @@ def _turn(row: dict[str, Any]) -> Turn:
         seconds=float(row.get("seconds", 0.0)),
         run_id=str(row.get("run_id", "")),
         at=float(row.get("at", 0.0)),
+        plan=row.get("plan") if isinstance(row.get("plan"), list) else None,
+        checks=row.get("checks") if isinstance(row.get("checks"), dict) else None,
     )
 
 

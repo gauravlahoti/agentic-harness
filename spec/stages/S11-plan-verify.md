@@ -14,11 +14,11 @@ steps = [user_input(task)]
 while no limit is exceeded:
     reply = model.create(system, steps, tools)     # may call update_plan with other tools
     if reply has tool calls: run them; continue
-    # the model drafted an answer
-    if plan has open items and not reminded:  send one reminder; continue      (stop rule)
-    failures = run the workspace's checks on (answer, this run's tool calls)    (VERIFY)
-    if failures and retries left:             send the failures back; continue
-    finish(answer, checks)                    # a second failure → "Not verified"
+    # the model drafted an answer: VERIFY
+    failures = run the checks on (answer, this run's tool calls, the plan)
+               # "Plan Complete" (the stop rule) is one of them
+    if failures and retries left:  send the failures back as a [Harness check] note; continue
+    finish(answer, checks)         # a second failure → "Not verified"
 ```
 
 - **Where the plan lives:** in run state while running (`plan_updated` events), and as ordinary steps (`update_plan` call + result) in the conversation file. Resume, replay, the trace and evals get it for free. Not in long-term memory: a plan belongs to one task.
@@ -78,3 +78,8 @@ Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, 
 4. Verification vs. guardrails: which question does each answer?
 
 ## Changes
+
+- 2026-11-12 · Built: the stop rule and VERIFY are one mechanism. "Plan Complete" is a check, so the one reminder is that check's one retry; same behaviour (D-124), one thing to explain instead of two.
+- 2026-11-12 · Built: the note sent back is a normal `user_input` step whose text starts with `[Harness check]`, not a mark outside the step (D-127 updated). Simpler, and the model can see the harness is speaking; the scope check skips it.
+- 2026-11-12 · Built: No False "Sent" also fails when a send worked but the answer doesn't say so (the D-120 bug).
+- 2026-11-12 · Golden set 16 → 18, not 19: `wrong-approver-caught` is an offline test (`test_s11_ac7_wrong_approver_is_caught_and_corrected`), because a live agent can't be made to get it wrong on cue.

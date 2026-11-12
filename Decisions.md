@@ -999,7 +999,7 @@
 
 ### D-127 · A failed check gets one retry, then the answer shows the failure
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Chose:** failures go back to the model once as a harness note (marked outside the step, so Gemini sees a normal step); a second failure → the answer goes out with a "Not verified" card
+- **Chose:** failures go back to the model once as a harness note: a normal `user_input` whose text starts with `[Harness check]` (changed while building, 2026-11-12: a mark outside the step was more code for nothing; the model should know the harness is speaking, and the scope check skips such notes); a second failure → the answer goes out with a "Not verified" card
 - **Instead of:** showing failures only; retrying until it passes
 - **Because:** you always get an answer, and know when to doubt it
 - **Cost:** one more round on a failure

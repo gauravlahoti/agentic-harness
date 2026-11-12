@@ -23,6 +23,7 @@
 | Effort is `generation_config.thinking_level`: `minimal`, `low`, `medium`, `high`. Defaults: `medium` on 3.5 / 3.6 Flash, `minimal` on 3.5 Flash-Lite. `minimal` is missing on 3.7 / 3.8 Flash and Pro, so the page offers low / medium / high. Never mix with the old `thinking_budget` (400) | 📄 thinking · what's new in 3.5 (checked 2026-11-10) | D-85 |
 | Signature validation covers the model's steps in the *current* turn (since the last user message that is not a function result); older turns: send consistently, all of it or none. So trimming may stub old tool results and summarize whole earlier turns, but never edits model steps | 📄 thought signatures (checked 2026-11-10) | D-95 |
 | Models listed include `gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-4-argon` | 📄 API reference | D-07 |
+| Function parameters may nest: an `array` whose `items` is an `object` with `properties` and a string `enum`. Not supported: `default`, `optional`, `maximum`, `oneOf`; avoid `minItems`/`maxItems` (they blow up the schema). Interactions API uses standard JSON Schema (`$defs`, `$ref`) | 📄 function-calling (checked 2026-11-12) | `update_plan` (S11) |
 
 ## Seen in live calls 🔴 · 2026-11-10
 

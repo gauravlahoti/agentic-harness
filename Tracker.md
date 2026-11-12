@@ -1,6 +1,6 @@
 # Tracker
 
-> **Now:** S11 · Plan and Verify: building · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
+> **Now:** S11 · Plan and Verify built (11/12 🟨), waiting for your check; AC12 is live · S10 verified (AC11 live 16 × 3 still open) · S07 built, waiting for your check (AC10 live waits for quota) · S06 verified except AC12 (live: waits for Gemini quota) · S04-AC10 and S03-AC11 live re-check waits for quota too · next: S07 brief
 > **Updated:** 2026-11-10 · **Checks:** 70 built · 43 verified · 113 total
 
 Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 📝 drafted · 🟦 approved · 🟨 built · ✅ verified · ⛔ blocked
@@ -31,7 +31,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S08](spec/stages/S08-demo.md) | Proof and demo | 📝 | 0/11 | 0/11 | 3 |
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
-| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟦 building | 0/12 | 0/12 | 1 |
+| [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 11/12 | 0/12 | 1 |
 
 ## Checks
 
@@ -233,17 +233,17 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 
 | ID | Check | How | Status | Evidence |
 |---|---|---|---|---|
-| AC1 | `update_plan` stores the list in run state and emits `plan_updated`; helpers don't get it | 🧪 | 🟦 |  |
-| AC2 | The plan is saved as steps; Resume and replay rebuild it | 🧪 | 🟦 |  |
-| AC3 | Trimming never stubs the newest plan result | 🧪 | 🟦 |  |
-| AC4 | An answer with open items gets one reminder; the second time it finishes, the plan shown incomplete | 🧪 | 🟦 |  |
-| AC5 | Skipped needs a note, or the tool returns an error | 🧪 | 🟦 |  |
-| AC6 | VERIFY runs the workspace's checks after the draft, before `run_finished` | 🧪 | 🟦 |  |
-| AC7 | A failed check sends the failures back once; a second failure → the answer plus "Not verified" | 🧪 | 🟦 |  |
-| AC8 | CloudCo's four checks, each with a pass and a fail case | 🧪 | 🟦 |  |
-| AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 | 🟦 |  |
-| AC10 | Pane: Plan & Verify section with check switches; a switched-off check doesn't run | 🧪 👀 | 🟦 |  |
-| AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 | 🟦 |  |
+| AC1 | `update_plan` stores the list in run state and emits `plan_updated`; helpers don't get it | 🧪 | 🟨 | `test_plan_verify.py::test_s11_ac1_*` (2): list kept, `plan_updated`, whole list sent back; schema without bounds/defaults · `test_cloudco_checks.py::test_s11_ac1_ac10_*`: helpers don't get it |
+| AC2 | The plan is saved as steps; Resume and replay rebuild it | 🧪 | 🟨 | `test_s11_ac2_*` (2): rebuilt from saved steps; a rejected update is not the plan. (Resume itself is S09-AC4, not built: it will use `latest_plan`.) |
+| AC3 | Trimming never stubs the newest plan result | 🧪 | 🟨 | `test_s11_ac3_trimming_never_stubs_the_newest_plan` |
+| AC4 | An answer with open items gets one reminder; the second time it finishes, the plan shown incomplete | 🧪 | 🟨 | `test_s11_ac4_*` (2): one reminder then finish, plan shown open; a light question makes no plan and runs no check |
+| AC5 | Skipped needs a note, or the tool returns an error | 🧪 | 🟨 | `test_s11_ac5_*` (2): a skip without a note is refused; bad items are named |
+| AC6 | VERIFY runs the workspace's checks after the draft, before `run_finished` | 🧪 | 🟨 | `test_s11_ac6_*` (3): checks after the draft, before `run_finished`; the record holds a helper's calls; a broken check is shown, never sent back |
+| AC7 | A failed check sends the failures back once; a second failure → the answer plus "Not verified" | 🧪 | 🟨 | `test_s11_ac7_*` (3) + `test_cloudco_checks.py::test_s11_ac7_wrong_approver_is_caught_and_corrected` (the demo: Finance → CFO) |
+| AC8 | CloudCo's four checks, each with a pass and a fail case | 🧪 | 🟨 | `test_cloudco_checks.py::test_s11_ac8_*` (5): each check passes and fails on CloudCo's real tool outputs |
+| AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 | 🟨 | `tests/architecture/test_generic_harness.py` passes: no domain word in `planning.py` / `verify.py` |
+| AC10 | Pane: Plan & Verify section with check switches; a switched-off check doesn't run | 🧪 👀 | 🟨 | `test_s11_ac1_ac10_wiring_*`: a switched-off check doesn't run; pane data lists 5 checks · Chrome 2026-11-12: Plan & Verify section with switches |
+| AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 | 🟨 | `test_s11_ac11_a_saved_turn_keeps_its_plan_and_checks` · Chrome 2026-11-12 with sample events (no model): To-Do card, "2 Failed → Retried → Passed" with draft folded, red Not Verified |
 | AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 | 🟦 |  |
 
 ## Product goals
@@ -329,3 +329,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your report: Fable says task decomposition and self-verification are missing. You approved the S11 · Plan and Verify brief (model decides when to plan; pane + chat; code checks only). S11-AC1–AC12 → 🟦. Choices D-121–D-128. Build waits on S10: verify or waive it. |
 | 2026-11-12 | You verified S10 ("S10 is good, build S11"): S10-AC1–AC10 → ✅; AC11 (live 16 × 3) stays 🟦. S11 build started. |
 | 2026-11-12 | S11 harness core built (tests first): `planning.py` (update_plan), `verify.py` (checks, Plan Complete, one retry), loop VERIFY step, trimming pins the newest plan, gate opens update_plan. `tests/unit/test_plan_verify.py` 15/15; 399 offline tests pass. Not yet: wiring in `create_harness`/workspace, CloudCo `checks.py`, pane and chat cards, eval cases. S11 checks stay 🟦 until the rest is in. |
+| 2026-11-12 | S11-AC1–AC11 → 🟨: `make check` 407 tests, coverage 91.2%; pane and cards checked in Chrome with sample events. Golden set 16 → 18 (`light-question-no-plan`, `review-and-send-plans`). Changed while building (spec Changes): Plan Complete is a check (one mechanism), the note is a `[Harness check]` text, No False "Sent" checks both ways. AC12 (live) stays 🟦. Walkthrough in `docs/stage-11.md`. |

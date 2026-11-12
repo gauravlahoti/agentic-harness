@@ -112,7 +112,8 @@ def plan_complete(answer: str, record: Record) -> Verdict | None:
         return None  # no plan: a light task (D-121)
     left = unfinished(record.plan)
     if not left:
-        return passed(f"All {len(record.plan)} items finished.")
+        n = len(record.plan)
+        return passed(f"{n} item{'s' if n > 1 else ''}, all finished.")
     names = "; ".join(i.text for i in left)
     return failed(
         f"{len(left)} plan item{'s' if len(left) > 1 else ''} still open: {names}. "

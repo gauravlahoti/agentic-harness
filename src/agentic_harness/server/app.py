@@ -219,6 +219,8 @@ def create_app(
                     "outcome": t.outcome,
                     "usd": t.usd,
                     "seconds": t.seconds,
+                    "plan": t.plan,
+                    "checks": t.checks,
                 }
                 for t in session.turns
             ],
@@ -526,6 +528,8 @@ def create_app(
                         float(data.get("usd", 0.0)),
                         float(data.get("seconds", 0.0)),
                         event.run_id,
+                        plan=data.get("plan"),
+                        checks=data.get("checks"),
                     ),
                 )
 

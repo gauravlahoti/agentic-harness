@@ -388,3 +388,23 @@ async def test_s11_ac7_the_harness_note_is_not_read_as_the_persons_question() ->
         {"type": "model_output", "content": [{"type": "text", "text": "Ada."}]},
     ]
     assert "Person: Who owns acme?" in last_exchange(history)
+
+
+def test_s11_ac11_a_saved_turn_keeps_its_plan_and_checks(tmp_path: Path) -> None:
+    from agentic_harness.memory import SessionStore, Turn
+
+    store = SessionStore(tmp_path, "ws")
+    session = store.create("sales")
+    checks = {"passed": True, "rounds": 2, "results": []}
+    plan_rows = [{"text": "Look up", "status": "done", "note": ""}]
+    store.finish_turn(
+        session.id,
+        "sales",
+        Turn("t", "a", "completed", 0.0, 1.0, "r", plan=plan_rows, checks=checks),
+    )
+    store.finish_turn(session.id, "sales", Turn("light", "b", "completed", 0.0, 1.0, "r2"))
+    first, second = store.load(session.id, "sales").turns
+    assert first.plan == plan_rows
+    assert first.checks == checks
+    assert second.plan is None
+    assert second.checks is None
