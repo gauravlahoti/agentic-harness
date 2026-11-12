@@ -2315,6 +2315,8 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-guide.is-tucked .guide-orb { width: 40px; height: 40px; margin: 0; }
 .tour-mode .dock:has(.tour-guide.is-tucked) { padding-top: 10px; }
 .tour-show[hidden] { display: none; }
+/* Room below the newest line, so the tour can scroll it up to the middle of the screen. */
+.tour-mode .thread { padding-bottom: 50vh; }
 /* Both side panels stay bright (your review): the spotlight dims the chat column only. */
 .tour-mode #harness-pane, .tour-mode #sidebar { z-index: 50; }
 /* With the pane hidden, its show button must stay above the dim too, or it can't be found. */

@@ -9,6 +9,9 @@ const $ = (id) => document.getElementById(id);
 // records your voice. tour.js plays it through this file's own onEvent() (D-171).
 let TOUR = new URLSearchParams(location.search).get("tour") !== null; // the sidebar button turns it on
 const TOUR_RECORD = new URLSearchParams(location.search).get("tour") === "record";
+// Bring a new line into view. In the tour the player scrolls instead: it centres whatever
+// the spotlight frames, so the page never jumps to its bottom edge (your review).
+const reveal = (node, how) => TOUR || node.scrollIntoView(how);
 
 // ── Health: smoke row + what the Agent view can offer ───────────────────────
 let health = null;
@@ -623,7 +626,7 @@ function newTurn(task) {
 
   turn.append(you, agent);
   $("thread").append(turn);
-  turn.scrollIntoView({ block: "end" });
+  reveal(turn, { block: "end" });
   return { activity, reply, files, foot, meta, stats, split: { input: 0, output: 0, thinking: 0 }, cached: 0, window: null, lastInput: 0, model: null, tools: new Map(), tokens: 0, lanes: new Map(), approvals: new Map() };
 }
 
@@ -650,7 +653,7 @@ function addActivity(turn, { text, part = "loop", risk, state = "working", facts
   turn.activity.append(li);
   const row = { li, dot, label, factList, pre };
   setActivity(row, { state, facts, raw });
-  li.scrollIntoView({ block: "nearest" });
+  reveal(li, { block: "nearest" });
   return row;
 }
 
@@ -1028,7 +1031,7 @@ function onEvent(ev, turn) {
     inline.open = false; // folded here; the email shows open under the answer
     row.append(inline);
     turn.activity.append(row);
-    row.scrollIntoView({ block: "nearest" });
+    reveal(row, { block: "nearest" });
     // An email, sent or drafted, shows open with the answer that reports it (D-164).
     if (inline.classList.contains("email-card")) (turn.mail ??= []).push(d);
   } else if (ev.type === "online_evals_started") {
@@ -1060,7 +1063,7 @@ function onEvent(ev, turn) {
     turn.foot.textContent = note;
     turn.foot.className = `run-foot ${d.outcome}${unverified.length ? " unverified" : ""}`;
     announce(`${note || "Run complete"}. ${numbers.join(", ")}`);
-    turn.meta.scrollIntoView({ block: "nearest" });
+    reveal(turn.meta, { block: "nearest" });
   }
 }
 
@@ -1099,7 +1102,7 @@ function startCheck(turn, round, checks) {
   card.append(head, list);
   li.append(card);
   turn.activity.append(li);
-  li.scrollIntoView({ block: "nearest" });
+  reveal(li, { block: "nearest" });
   return { card, title, count, list, rows, since: performance.now() };
 }
 
@@ -1476,7 +1479,7 @@ function approvalCard(turn, d) {
   // to its top hid the buttons. Centre the buttons, or the "Switch to" box, after refresh().
   const showActions = () => {
     const target = asking || buttons.hidden === false ? buttons : hand;
-    requestAnimationFrame(() => target.scrollIntoView({ block: "center", behavior: "smooth" }));
+    requestAnimationFrame(() => reveal(target, { block: "center", behavior: "smooth" }));
   };
   announce(asking ? "The agent has a question for you" : `${d.name} is waiting for ${role}`);
 

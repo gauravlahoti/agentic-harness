@@ -277,6 +277,6 @@ def test_approval_card_header_terms_and_buttons_in_view() -> None:
     card = JS.split("function approvalCard")[1].split("\nfunction ")[0]
     assert "(d.context ?? []).filter((r) => r.fact)" in card
     assert 'owner.get(k) ?? "Within limits"' in card
-    assert 'scrollIntoView({ block: "center"' in card
+    assert 'reveal(target, { block: "center"' in card  # reveal() = scrollIntoView outside the tour
     assert "card.scrollIntoView" not in card
     assert ".approval-mail-line { display: contents; }" in CSS

@@ -1382,3 +1382,11 @@
 - **Options:** hide everything (no way back but a key) · fold to the orb with a Show Guide button · make the strip smaller only.
 - **Chose:** a **Hide Guide** button (chevron) next to Mute. The subtitles and controls fold away; the orb (still moving with the voice) and a **Show Guide** button stay. The voice and the replay carry on. The page gains ~86 px and the spotlight uses it. Exit Tour reloads the page, so the guide always starts shown.
 - **Cost:** while hidden there are no subtitles and no Pause or Next; Show Guide is one click back.
+
+## D-187 · The spotlight sits mid-screen; step 9 drops its last line (2026-11-12)
+- **Your review:** "things happening at the bottom are hardly visible; they should happen in the middle of the screen, with space below, so it looks seamless"; "remove the line about how this tour works, it's obvious".
+- **Scrolling:**
+  - **Options:** keep the chat's own jump to the newest line · scroll to the spotlight from the player.
+  - **Chose:** the player. In tour mode the chat's own scroll calls (`reveal()`) stand down. The page scrolls smoothly so the framed lines sit in the middle of the space above the guide. A frame too tall to fit shows its end at 80% of that space. The chat gets 50vh of room below its newest line. It scrolls only when the frame moves on or grows by 40 px or more, so you can still scroll by hand in between.
+  - **Cost:** the first lines of a fresh run still sit near the top: the page can't scroll above its start.
+- **Step 9:** "Every step you saw was saved as a trace, and that's how this tour plays it back." is gone, from the script and the clip. The clip was cut inside the pause before that sentence (13.8 s → 9.1 s, 0.15 s fade), not re-voiced: no credits.

@@ -26,6 +26,7 @@ const tour = {
   scene: "jar",
   spot: [], // the elements in the spotlight
   answer: null, // a finished run's turn, framed once its answer is drawn
+  centred: { spot: null, height: 0 }, // what the page last scrolled to
   audio: new Audio(),
   analyser: null,
 };
@@ -476,6 +477,7 @@ function placeSpot() {
     const bottom = Math.max(...rects.map((r) => r.bottom));
     // Never under the guide: the frame stops above its floor.
     const floor = document.querySelector(".dock").getBoundingClientRect().top + 24;
+    centre(top, bottom, floor - 24);
     box = { left: left - pad, top: top - pad, width: right - left + pad * 2, height: Math.max(0, Math.min(bottom + pad, floor) - (top - pad)) };
   } else {
     // Nothing to frame: the whole page dims behind the scene.
@@ -483,6 +485,18 @@ function placeSpot() {
   }
   spot.classList.toggle("is-empty", !target);
   place(spot, box);
+}
+
+// Scroll the page so the framed lines sit in the middle of the space above the guide, with
+// room below them (your review). Only when the frame moves on or grows, so you can still
+// scroll freely in between. Too tall to fit: show its end, where the newest line is.
+function centre(top, bottom, floor) {
+  const height = bottom - top;
+  const last = tour.centred;
+  if (last.spot === tour.spot && Math.abs(height - last.height) < 40) return;
+  tour.centred = { spot: tour.spot, height };
+  const delta = height <= floor * 0.8 ? (top + bottom) / 2 - floor / 2 : bottom - floor * 0.8;
+  if (Math.abs(delta) > 24) scrollBy({ top: delta, behavior: lessMotion() ? "auto" : "smooth" });
 }
 
 const bins = new Uint8Array(64);

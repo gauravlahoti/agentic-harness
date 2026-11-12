@@ -119,3 +119,4 @@ The card's text lives in `tour.toml` (a `card` field, Markdown); the player only
 - 2026-11-12 · Your review: pop marks (`{pop:part}`) pop each diagram part as step 2's voice names it; the finished run's answer and cost line are framed once drawn (D-184). AC5 and AC6 → re-check.
 - 2026-11-12 · Your review: step 1 = agenda + the model alone; step 2 builds the harness part by part as the voice names each (new `build` scene, `{scene:…}` marks); step 1 re-voiced (D-185). AC5, AC6 → re-check.
 - 2026-11-12 · Your review: the toured Harness part only opens (no tint or coloured edge); Hide Guide folds the strip to the orb, Show Guide brings it back (D-186). AC5 → re-check.
+- 2026-11-12 · Your review: the spotlight is scrolled to the middle of the screen with room below; step 9's last line removed (D-187). AC5 → re-check.

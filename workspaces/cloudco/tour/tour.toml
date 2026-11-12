@@ -107,7 +107,7 @@ title = "The Answer"
 show = "loop"
 until = "end"
 say = """
-{run_finished#2} Here's the answer, checked again, with what the run cost: model calls, tokens, dollars and seconds. About a cent, on a small model. Every step you saw was saved as a trace, and that's how this tour plays it back.
+{run_finished#2} Here's the answer, checked again, with what the run cost: model calls, tokens, dollars and seconds. About a cent, on a small model.
 """
 
 [[steps]]
