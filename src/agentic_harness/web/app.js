@@ -401,9 +401,8 @@ function pastTurn(t) {
     // The finished line of a live run, chips included; addActivity only needs a list to add to.
     const r = { ...t.checks, retrying: false, round: t.checks.rounds };
     const check = startCheck({ activity: shown }, r.round, r.results);
-    for (const x of r.results) settleChip(check.chips.get(x.name), x.status);
-    finishChips(check, r.results);
-    setActivity(check.row, verifyLine(r, { past: true }));
+    for (const x of r.results) settleRow(check.rows.get(x.name), x.status);
+    finishCheck(check, r, { past: true });
   }
   if (shown.children.length) agent.append(shown);
   const reply = el("div", "reply");
@@ -796,7 +795,6 @@ function onEvent(ev, turn) {
     // One line per round, in run order: draft → checked → rewrote → checked. It opens to
     // each check's reason, what the agent was told, and the draft.
     if (d.retrying && turn.model) setActivity(turn.model, { text: "Model wrote a draft" });
-    const first = !turn.rounds?.length;
     (turn.rounds ??= []).push(d);
     const check = turn.check ?? startCheck(turn, d.round, d.results); // an old trace: no start event
     turn.check = null;
@@ -808,10 +806,9 @@ function onEvent(ev, turn) {
     const shown = d.results.filter((r) => r.status !== "skipped");
     turn.holding = true;
     turn.queue ??= [];
-    shown.forEach((r, i) => setTimeout(() => settleChip(check.chips.get(r.name), r.status), wait + i * step));
+    shown.forEach((r, i) => setTimeout(() => settleRow(check.rows.get(r.name), r.status), wait + i * step));
     setTimeout(() => {
-      finishChips(check, d.results);
-      setActivity(check.row, verifyLine(d, { first }));
+      finishCheck(check, d);
       turn.holding = false;
       for (const e of turn.queue.splice(0)) onEvent(e, turn);
     }, wait + shown.length * step);
@@ -903,7 +900,7 @@ function onEvent(ev, turn) {
     const unverified = d.checks?.passed === false ? d.checks.results.filter((r) => r.status === "failed").map((r) => r.label) : [];
     const note =
       { stopped: `■ Stopped: ${reason}`, failed: `✗ Failed: ${reason}` }[d.outcome] ??
-      (unverified.length ? `⚠ Not verified: ${unverified.join(", ")} still failing. Open the check line above for why.` : "");
+      (unverified.length ? `⚠ Not verified: ${unverified.join(", ")} still failing. See the Checks card above for why.` : "");
     turn.foot.textContent = note;
     turn.foot.className = `run-foot ${d.outcome}${unverified.length ? " unverified" : ""}`;
     announce(`${note || "Run complete"}. ${numbers.join(", ")}`);
@@ -929,65 +926,76 @@ function todoCard(items) {
   return card;
 }
 
-// A check round's line with its checks as chips under it, all pending (○) at first (S11).
-// ``checks``: [{name, label}] (results work too). Returns what verify_finished fills in.
+// A check round as a card, built like the To-Do card (S11, your request): a title, a count,
+// one row per check. Rows start pending (○) and tick to ✓ or ✗; a failure's reason sits under
+// its row. ``checks``: [{name, label}] (results work too). Returns what verify_finished fills.
 function startCheck(turn, round, checks) {
-  const row = addActivity(turn, { text: round > 1 ? "Checking the new answer…" : "Checking the answer…", part: "verify" });
-  const box = el("div", "vchips");
-  const chips = new Map();
+  const li = el("li", "act part-verify todo-row");
+  const card = el("div", "todo-card check-card is-checking");
+  const head = el("div", "card-head");
+  const title = el("span", "card-title", round > 1 ? "Checking the new answer…" : "Checking the answer…");
+  const count = el("span", "card-count", `${checks.length} checks`);
+  head.append(title, count);
+  head.title = "Before you see an answer, the harness checks it with the workspace's rules: plain code, not a model. A failure goes back to the agent once.";
+  const list = el("ul", "todo-list");
+  const rows = new Map();
   for (const c of checks) {
-    const chip = el("span", "vchip is-pending");
-    chip.append(el("span", "vmark", "○"), c.label);
-    box.append(chip);
-    chips.set(c.name, chip);
+    const row = el("li", "todo-item is-pending");
+    row.append(el("span", "todo-box", "○"), el("span", "todo-text", c.label));
+    list.append(row);
+    rows.set(c.name, row);
   }
-  const wrap = el("div", "vwrap");
-  wrap.append(box);
-  row.li.append(wrap);
-  return { row, box, wrap, chips, since: performance.now() };
+  card.append(head, list);
+  li.append(card);
+  turn.activity.append(li);
+  li.scrollIntoView({ block: "nearest" });
+  return { card, title, count, list, rows, since: performance.now() };
 }
 
-function settleChip(chip, status) {
-  if (!chip) return;
-  chip.className = `vchip is-${status}`;
-  chip.firstChild.textContent = { passed: "✓", failed: "✗", error: "!", skipped: "–" }[status] ?? "○";
+function settleRow(row, status) {
+  if (!row) return;
+  row.className = `todo-item is-${status}`;
+  row.firstChild.textContent = { passed: "✓", failed: "✗", error: "!", skipped: "–" }[status] ?? "○";
 }
 
-// Checks that didn't apply fold into one quiet note; each failure's reason sits under the chips.
-function finishChips(check, results) {
-  const skipped = results.filter((r) => r.status === "skipped");
-  for (const r of skipped) check.chips.get(r.name)?.remove();
-  if (skipped.length) check.box.append(el("span", "vchip-note", `${skipped.length} didn't apply`));
-  for (const r of results.filter((x) => x.status === "failed")) {
-    const p = el("p", "vreason");
-    p.append(el("strong", null, `${r.label}: `), r.message);
-    check.wrap.append(p);
-  }
-}
-
-// One VERIFY round (S11) as an activity line: a short verdict on top, each check inside.
-// ``r``: {round, passed, retrying, results, draft, note}. ``past``: an old conversation keeps
-// only the last round. ``first``: say once what checking is.
-function verifyLine(r, { first = false, past = false } = {}) {
+// The round's verdict on the card: its title, count and colour; failures' reasons under their
+// rows; checks that didn't apply folded into one quiet row; on a retry, what the agent was told.
+function finishCheck(check, r, { past = false } = {}) {
   const applied = r.results.filter((x) => x.status === "passed" || x.status === "failed");
-  const failed = applied.filter((x) => x.status === "failed").map((x) => x.label);
-  const all = `${applied.length - failed.length} of ${applied.length} passed`;
-  let text, state;
-  if (r.passed === null) [text, state] = ["Checked the answer · nothing to check", "done"];
-  else if (r.passed && r.round > 1) [text, state] = [past ? `Checked the answer · ${all} · fixed on retry` : `Checked the new answer · ${all}`, "done"];
-  else if (r.passed) [text, state] = [`Checked the answer · ${all}`, "done"];
-  else if (r.retrying) [text, state] = [`Checked the draft · ${failed.join(", ")} failed → sent back to fix`, "error"];
-  else [text, state] = [`Not verified · ${failed.join(", ")} still failing`, "error"];
-  const mark = { passed: "✓", failed: "✗", error: "!", skipped: "–" };
-  const order = { failed: 0, error: 1, passed: 2, skipped: 3 };
-  const why = (x) => ({ skipped: `Didn't apply: ${x.message}`, error: `The check itself broke (not sent back): ${x.message}` })[x.status] ?? x.message;
-  const facts = [
-    ...(first ? [["What this is", "Before you see an answer, the harness checks it with the workspace's rules: plain code, not a model. A failure goes back to the agent once."]] : []),
-    ...[...r.results].sort((a, b) => order[a.status] - order[b.status]).map((x) => [`${mark[x.status]} ${x.label}`, why(x)]),
-    ...(r.note ? [["Told the agent", r.note.replace(/^\[Harness check\]\s*/, "")]] : []),
-    ...(r.draft ? [["The draft", r.draft]] : []),
-  ];
-  return { text, state, facts };
+  const failed = applied.filter((x) => x.status === "failed");
+  const n = `${applied.length - failed.length} of ${applied.length} passed`;
+  let title, count, state;
+  if (r.passed === null) [title, count, state] = ["Checked the answer", "nothing to check", "skipped"];
+  else if (r.passed && r.round > 1) [title, count, state] = [past ? "Checked the answer" : "Checked the new answer", `${n} · fixed on retry`, "passed"];
+  else if (r.passed) [title, count, state] = ["Checked the answer", n, "passed"];
+  else if (r.retrying) [title, count, state] = ["Checked the draft", `${failed.length} failed · sent back to fix`, "retrying"];
+  else [title, count, state] = ["Not verified", `${failed.length} still failing`, "failed"];
+  check.title.textContent = title;
+  check.count.textContent = count;
+  check.card.className = `todo-card check-card is-${state}`;
+  for (const x of r.results) {
+    const row = check.rows.get(x.name);
+    if (!row) continue;
+    if (x.status === "skipped") row.remove();
+    else if (x.status !== "passed") row.append(el("span", "todo-note", x.status === "error" ? `The check itself broke (not sent back): ${x.message}` : x.message));
+    else row.title = x.message; // a pass says why on hover
+  }
+  const skipped = r.results.filter((x) => x.status === "skipped");
+  if (skipped.length) {
+    const row = el("li", "todo-item is-skipped");
+    row.append(el("span", "todo-box", "–"), el("span", "todo-text", `${skipped.length} didn't apply`));
+    row.title = skipped.map((x) => `${x.label}: ${x.message}`).join("\n");
+    check.list.append(row);
+  }
+  if (r.note || r.draft) {
+    const fold = el("details", "check-fold");
+    fold.append(el("summary", null, "What the agent was told, and its draft"));
+    const facts = el("dl", "facts");
+    if (r.note) facts.append(el("dt", null, "Told the agent"), el("dd", null, r.note.replace(/^\[Harness check\]\s*/, "")));
+    if (r.draft) facts.append(el("dt", null, "The draft"), el("dd", null, r.draft));
+    fold.append(facts);
+    check.card.append(fold);
+  }
 }
 
 // The run summary under the final answer: four numbers that count up, and where the

@@ -1017,6 +1017,7 @@
 - **Cost:** one more pane section
 - **Changed 2026-11-12, your review** ("taking too much space, cluttered"): each check round is one activity line, like every other step ("Checked the draft · Every Change Covered failed → sent back to fix"), opening to each check, what the agent was told and the draft. A failed final answer gets one small red line under it. The To-Do card stays a card.
 - **Changed again 2026-11-12, your request** ("circle while verification is in progress, tick when passed"): the harness sends `verify_started`; the line shows a spinning circle and each check as a chip (○), which tick to ✓ or ✗ one by one, with a failure's reason under them. The circle holds at least 0.4 s and the answer waits for the ticks: page only, the run is not slowed.
+- **Changed again 2026-11-12, your request** ("a pane very similar to the To-Do pane"): the round is a card built like the To-Do card (title, count, one row per check), not a line with chips.
 
 ### D-129 · Answer format: rules always in the prompt, not a skill or a tool
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
