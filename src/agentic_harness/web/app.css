@@ -2256,7 +2256,8 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-spot.is-empty { box-shadow: 0 0 0 200vmax light-dark(rgb(245 247 246 / 0.82), rgb(1 4 4 / 0.86)); }
 .tour-spot[hidden] { display: none; }
 .tour-mode .dock { z-index: 55; background: none; }
-.tour-mode #harness-pane { z-index: 50; } /* stays bright: the part being explained */
+/* Both side panels stay bright (your review): the spotlight dims the chat column only. */
+.tour-mode #harness-pane, .tour-mode #sidebar { z-index: 50; }
 .tour-mode .lane-handle { z-index: 50; }
 
 /* A new step: its name flashes in the label line, never over the content (your review). */
