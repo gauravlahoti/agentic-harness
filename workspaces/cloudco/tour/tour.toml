@@ -22,7 +22,7 @@ id = "01-jar"
 title = "Brain in a Jar"
 scene = "jar"
 say = """
-AI models are very good at reasoning and writing. But on their own, they can't take actions. Think of a brain in a jar: capable, but trapped. It can tell you how to send a proposal; it can't send it. This tour shows what we build around the model so it can do the work. Everything here is a real recorded run of an agent I built from scratch. The company and its data are made up.
+Welcome. In the next five minutes, I'll show you what turns an AI model into an AI agent: the harness. A harness has four primary parts: an agentic loop, context and memory, tools, and guardrails. You'll see each one at work in a real recorded run of an agent I built from scratch. The company and its data are made up. First, the model on its own. AI models are very good at reasoning and writing. But on their own, they can't take actions. Think of a brain in a jar: capable, but trapped. It can tell you how to send a proposal; it can't send it.
 """
 
 [[steps]]
@@ -113,5 +113,5 @@ title = "Why the Harness Matters"
 show = "pane"
 scene = "finale"
 say = """
-So that's the harness: a loop to pursue the goal, context and memory to stay grounded, tools to act, and guardrails to stay in control. How well you build it matters as much as which model you pick. And this agent is just a folder: its instructions, tools and skills. Point the same harness at another folder, and you have another agent.
+So that's the harness: a loop to pursue the goal, context and memory to stay grounded, tools to act, and guardrails to stay in control. How well you build it matters as much as which model you pick. What you saw is the core. A production-grade harness needs more: breaking big tasks into smaller ones, deeper verification, routing each task to a model that matches its complexity, stronger protection against attacks, evals and observability, and more. And this agent is just a folder: its instructions, tools and skills. Point the same harness at another folder, and you have another agent.
 """

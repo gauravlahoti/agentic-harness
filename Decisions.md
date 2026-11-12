@@ -1350,3 +1350,11 @@
 - **Chose:** none by default (`DEFAULT_PAUSE = 0`); a workspace can still set `pause = N` in `tour.toml`. The clips' own trailing silence and the clip load give a natural ~0.3 s breath (measured 285 ms, step 9 → 10).
 - **Changes D-180** (3 s) and D-178 (the countdown): no "Next in N s" unless a pause is set.
 - **Cost:** no time to look at a card after the voice ends; Pause is there for that.
+
+## D-183 · The tour opens with a map and ends with what production needs (2026-11-12)
+- **Your review:** "the intro is missing; it starts with 'AI models'. It should say the harness has four primary components. At the end: production grade needs many things: task decomposition, verification, model routing, complexity matching, protection against attacks, and more."
+- **Options:** a new welcome step (11 steps) · the welcome at the start of step 1. For the ending: your list as given · merged and sharpened.
+- **Chose:**
+  - The welcome opens step 1 (10 steps; ids and the jar scene unchanged). It names the four parts as a map; step 2 still shows them.
+  - The ending merges routing with complexity matching ("routing each task to a model that matches its complexity"). It says "deeper" verification and "stronger" attack protection, since steps 6 and 7 show the basics. It adds "evals and observability" (built, not toured). "Just a folder" stays the last line.
+- **Cost:** steps 1 and 10 re-voiced (~2,280 credits, 2 takes each); the tour grows by ~30 s.
