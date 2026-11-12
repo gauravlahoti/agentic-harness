@@ -57,6 +57,11 @@
 | AC8 | The sender can give the "any message" sign-off; the CFO card needs the CFO | 🧪 |
 | AC9 | The outbox and trace record the person and the role | 🧪 |
 | AC10 | Live: a 25% discount send waits for Dana (CFO); Priya can't approve it | 🔑 👀 |
+| AC11 | `draft_reply` saves a mail-shaped file to the run's task folder, addressed to the customer's contact; never the outbox | 🧪 |
+| AC12 | The picked person reaches the run: the context says who the agent helps; an unknown person is refused | 🧪 |
+| AC13 | A task file with mail headers shows as a **Draft** email card under the answer; `>` lines show as a quote | 🧪 👀 |
+| AC14 | Sales prompts: concerns vs policy first, then a question; a draft only after agreement, then "send it to <contact>?" (golden cases `review-then-confirm`, `agree-then-draft`) | 🧪 🔑 👀 |
 
 ## Changes
 - 2026-11-12 · Part B built as planned, except D-138: no per-rule "sender may" flag; a person's role must equal the card's role, which already lets Sales give the "send" sign-off.
+- 2026-11-12 · Your report on a live run: no email card, a vague reply with placeholders, and no discussion before the draft. Added AC11–AC14 (D-164–D-166). D-163's "review and draft, then ask" became "concerns, agree, draft, then offer to send".

@@ -129,6 +129,7 @@ class RunRequest(BaseModel):
     profile: str | None = Field(default=None, max_length=50)  # must be one of the workspace's
     effort: Literal["low", "medium", "high"] | None = None  # Gemini's thinking_level; None: default
     session: str | None = Field(default=None, max_length=60)  # continue this conversation
+    person: str | None = Field(default=None, max_length=50)  # who picked "You Are" (D-166)
     off: OffRequest = Field(default_factory=OffRequest)
 
 
@@ -506,6 +507,9 @@ def create_app(
             profile = workspace.check_profile(body.profile)
         except WorkspaceError as error:
             raise HTTPException(400, str(error)) from None
+        person = next((p for p in workspace.people if p.id == body.person), None)
+        if body.person and person is None:
+            raise HTTPException(400, f"No person {body.person!r} in workspace.toml [[people]].")
         name = body.model or settings.model
         claude = name.startswith(CLAUDE_PREFIX)
         if claude and not settings.has_anthropic_key:
@@ -540,6 +544,7 @@ def create_app(
                 approver=approvals.ask,  # the page's ⏸ card answers (D-79)
                 memory_dir=memory_root,
                 small_model=small,
+                person=person,  # the model knows who it's talking to (D-166)
             )
         except (WorkspaceError, PriceNotFoundError) as error:
             raise HTTPException(400, str(error)) from None

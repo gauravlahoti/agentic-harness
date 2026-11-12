@@ -35,7 +35,7 @@ def test_d133_the_sales_prompt_says_sending_starts_the_approvals() -> None:
     ).system
     assert "Sending starts the approvals" in system
     assert "Don't ask the person's permission again" in system
-    assert "Review first, then ask." in system  # D-163: a review-and-send shows the review first
+    assert "Concerns first" in system  # D-165 (was D-163): concerns before any draft or send
     assert "Nothing is sent to a customer without a person approving it first" not in system
 
 

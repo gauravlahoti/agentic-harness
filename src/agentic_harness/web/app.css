@@ -1954,6 +1954,11 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .email-date { align-self: start; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .email-body { padding: 14px 0 6px; font-size: 14.5px; line-height: 1.65; }
 .email-body p { margin: 0 0 12px; white-space: pre-line; } /* keep a sign-off on its own lines */
+/* A draft isn't sent: an accent badge, not the green "Sent" one (D-164). */
+.email-badge.is-draft { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+/* A "> " quote in model text, e.g. a reply it suggests (D-164). */
+.prose-quote { margin: 8px 0; padding: 4px 0 4px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.prose-quote p { margin: 0 0 4px; }
 .email-body ul, .email-body ol { margin: 0 0 12px; padding-left: 22px; }
 .email-foot { display: grid; gap: 8px; margin: 4px -18px 0; padding: 12px 18px; border-top: 1px dashed var(--line); background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
 .email-record { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }

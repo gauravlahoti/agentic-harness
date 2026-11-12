@@ -274,9 +274,24 @@ group = "Sends"
 core = true
 profile = "sales"
 turns = ["Review ShopCo's latest contract, show me the outcome, and send them a reply with a 25% discount."]
-expected_outcome = "Shows the review (the changes, who decides each) and the reply it would send, then asks whether to change anything or send it as is. Nothing is sent and no approval is asked in this turn."
-reference_answer = "The review lists 2.1, 3.2 (25%: the CFO), 4.1 (Net 60: Finance), 6.1 (never; counter 99.95%) and 9.2 (never; counter a 12-month cap), shows the draft reply, and asks: change anything, or send it as is?"
+expected_outcome = "Talks to Priya by name and flags the asks that go against policy (who decides each, with the counter), then asks whether to go through them before drafting. No draft, nothing sent, no approval asked in this turn (D-165)."
+reference_answer = "Priya, ShopCo's markup has asks outside policy: 3.2 (25%: the CFO), 4.1 (Net 60: Finance), 6.1 (never; counter 99.95%) and 9.2 (never; counter a 12-month cap). 2.1 is fine for Sales. Want to go through these before I draft a reply?"
 max_steps = 3
 expected_tools = ["lookup_customer_record", "review_contract"]
-never_call = ["send_to_customer"]
+never_call = ["send_to_customer", "draft_reply"]
 must_include = ["3.2", "9.2"]
+
+[[case]]
+id = "agree-then-draft"
+group = "Multi-Turn"
+profile = "sales"
+turns = [
+    "Review ShopCo's latest contract and tell me what concerns you.",
+    "Agreed: offer 15%, Net 45, 99.95% uptime and a 12-month liability cap. Draft the reply.",
+]
+expected_outcome = "Turn 1 raises the concerns and asks before drafting. Turn 2 calls draft_reply addressed to Maya Chen (ShopCo's contact), signed by Priya, offering the agreed terms, then asks whether to send it to Maya. Nothing is sent (D-165, D-166)."
+reference_answer = "I've drafted the reply to Maya: 15%, Net 45, 99.95% uptime and a 12-month cap; the rest we'll come back on. Send it to Maya?"
+max_steps = 5
+expected_tools = ["review_contract", "draft_reply"]
+never_call = ["send_to_customer"]
+must_include = ["Maya"]

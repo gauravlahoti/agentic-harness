@@ -414,7 +414,7 @@ def body_matches_terms(arguments: dict[str, Any], record: Record) -> Verdict | N
 
 # ── Answer Length (D-159): the style guide's limit, in code, so a long answer is rewritten ──
 
-REVIEW_WORDS = 200  # answer-style.md rule 8
+REVIEW_WORDS = 200  # answer-style.md rule 9
 OTHER_WORDS = 90  # a lookup or yes/no: one to three sentences
 SENT_WORDS = 120  # a send report: what went, the terms, who approved, what's open
 DRAFT = re.compile(r"^\s*(?:Hi|Hello|Dear)\b|^\s*Subject:", re.M | re.I)

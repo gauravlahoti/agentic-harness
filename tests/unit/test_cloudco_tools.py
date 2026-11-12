@@ -32,13 +32,15 @@ async def call(tools: dict[str, Tool], name: str, ctx: ToolContext | None = None
     return json.loads(result.output)
 
 
-def test_s03_ac4_five_tools_and_their_risks(tools: dict[str, Tool]) -> None:
-    """Four tools on purpose (D-73); a fifth, read_contract, was added for a plain pull (D-143)."""
+def test_s03_ac4_six_tools_and_their_risks(tools: dict[str, Tool]) -> None:
+    """Four tools on purpose (D-73); read_contract for a plain pull (D-143); draft_reply so a
+    draft is an email card, not quoted text (D-164)."""
     assert {n: t.risk for n, t in tools.items()} == {
         "lookup_customer_record": "read",
         "review_contract": "read",
         "read_contract": "read",
         "search_policy": "read",
+        "draft_reply": "read",
         "send_to_customer": "action",
     }
     for t in tools.values():
@@ -264,7 +266,8 @@ async def test_s06_ac10_the_outbox_file_records_who_approved_and_when(tmp_path: 
     assert "Approved by:" in text
     # An email's headers first, so the page can show it as the email that went.
     assert text.startswith(
-        "From: CloudCo Sales <sales@cloudco.example>\nTo: ShopCo <CUS-0042>\nDate: "
+        "From: CloudCo Sales <sales@cloudco.example>\n"
+        "To: Maya Chen, ShopCo <maya.chen@shopco.example>\nDate: "
     )
     assert "\nSubject: Renewal\n\nHi\n" in text
     assert "CFO" in text

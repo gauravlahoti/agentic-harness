@@ -673,7 +673,19 @@ function renderProse(container, text) {
     }
     para = [];
   };
+  let quote = null; // an open <blockquote>, for "> " lines (D-164)
   for (const line of text.split("\n")) {
+    const quoted = line.match(/^\s*>\s?(.*)$/);
+    if (quoted) {
+      flush();
+      lists = [];
+      if (!quote) container.append((quote = el("blockquote", "prose-quote")));
+      const p = el("p");
+      appendInline(p, quoted[1]);
+      if (quoted[1].trim()) quote.append(p);
+      continue;
+    }
+    quote = null;
     const heading = line.match(/^\s*(#{1,4})\s+(.*)$/);
     const item = line.match(/^(\s*)(?:[-*•]|(\d+)[.)])\s+(.*)$/);
     if (heading) {
@@ -1011,7 +1023,8 @@ function onEvent(ev, turn) {
     row.append(inline);
     turn.activity.append(row);
     row.scrollIntoView({ block: "nearest" });
-    if (d.folder === "outbox") (turn.sent ??= []).push(d);
+    // An email, sent or drafted, shows open with the answer that reports it (D-164).
+    if (inline.classList.contains("email-card")) (turn.mail ??= []).push(d);
   } else if (ev.type === "online_evals_started") {
     // After the answer (D-148): its quality, scored while you read. Never sent back.
     turn.quality = qualityCard(d.metrics.length, d.judge);
@@ -1031,8 +1044,8 @@ function onEvent(ev, turn) {
     const numbers = [plural(d.model_calls, "call"), `${turn.tokens} tokens`, money(d.usd), `${d.seconds.toFixed(1)} s`];
     turn.meta.replaceChildren(receipt(turn, d));
     if (d.answer) renderProse(turn.reply, d.answer);
-    // What went out, with the answer that reports it (your request, 2026-11-12).
-    for (const mail of turn.sent ?? []) turn.files.append(fileCard(mail));
+    // What went out or was drafted, with the answer that reports it (your request, 2026-11-12).
+    for (const mail of turn.mail ?? []) turn.files.append(fileCard(mail));
     const reason = REASONS[d.reason] ?? d.reason;
     const unverified = d.checks?.passed === false ? d.checks.results.filter((r) => r.status === "failed").map((r) => r.label) : [];
     const note =
@@ -1572,11 +1585,12 @@ function mailPerson(value) {
 }
 
 function emailCard(d, mail) {
-  const card = el("details", "file-card email-card folder-outbox");
+  const sent = d.folder === "outbox"; // the outbox is what went; a task file is a draft (D-164)
+  const card = el("details", `file-card email-card folder-${d.folder}`);
   card.open = true; // the email is the outcome: show it
   const to = mailPerson(mail.headers.to);
   const summary = el("summary");
-  summary.append(el("span", "email-badge", "✉ Sent"), el("span", "file-name", mail.headers.subject), el("span", "file-where", `to ${to.name}`), fromTemplate("tpl-chevron"));
+  summary.append(el("span", `email-badge${sent ? "" : " is-draft"}`, sent ? "✉ Sent" : "✎ Draft"), el("span", "file-name", mail.headers.subject), el("span", "file-where", `to ${to.name}`), fromTemplate("tpl-chevron"));
   const head = el("div", "email-head");
   const from = mailPerson(mail.headers.from ?? "");
   const avatar = el("span", "email-avatar", (from.name || "?").trim().charAt(0).toUpperCase());
@@ -1608,13 +1622,14 @@ function emailCard(d, mail) {
   }
   const sheet = el("div", "email-sheet");
   sheet.append(...parts);
-  const where = el("p", "email-where", `Saved as ${d.path}`);
+  const where = el("p", "email-where", sent ? `Saved as ${d.path}` : `Draft, not sent · ${d.path}`);
   card.append(summary, sheet, where);
   return card;
 }
 
 function fileCard(d) {
-  const mail = d.folder === "outbox" ? parseEmail(d.text) : null;
+  // Mail headers in the outbox or a task file: an email card, sent or draft (D-164).
+  const mail = d.folder === "outbox" || d.folder === "tasks" ? parseEmail(d.text) : null;
   if (mail) return emailCard(d, mail);
   const card = el("details", `file-card folder-${d.folder}`);
   const summary = el("summary");
@@ -1650,7 +1665,7 @@ async function runTask(event) {
     const response = await fetch("/api/run", {
       method: "POST",
       headers: { ...PAGE_HEADER, "Content-Type": "application/json" },
-      body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), off: currentOff(), session: currentSession }),
+      body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), person: currentPerson()?.id ?? null, off: currentOff(), session: currentSession }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) {

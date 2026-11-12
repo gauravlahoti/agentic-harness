@@ -185,9 +185,9 @@ def test_d141_an_approval_card_shows_where_each_term_started() -> None:
 
 
 def test_the_sent_email_shows_under_the_answer() -> None:
-    """Your request (2026-11-12): the email that went is shown with the final answer."""
-    assert "turn.sent" in JS
-    assert "for (const mail of turn.sent ?? []) turn.files.append(fileCard(mail));" in JS
+    """Your request (2026-11-12): the email that went is shown with the final answer.
+    A draft email shows there too (D-164)."""
+    assert "for (const mail of turn.mail ?? []) turn.files.append(fileCard(mail));" in JS
 
 
 def test_s12_ac7_the_page_has_you_are_and_the_switch_on_a_card_you_cant_answer() -> None:

@@ -434,8 +434,9 @@ def test_d163_right_approver_credits_the_approvals_a_send_recorded() -> None:
 
 def test_d163_the_review_is_shown_before_a_send_and_the_reviewer_checks_policy() -> None:
     sales = (ROOT / "teams" / "sales.md").read_text()
-    assert "Review first, then ask." in sales
-    assert "Change anything, or send it as is?" in sales
+    # D-165 replaced D-163's "review and draft, then ask": concerns first, a draft only after.
+    assert "Concerns first, then agree, then draft, then send" in sales
+    assert "Want to go through these before I draft a reply?" in sales
     reviewer = (ROOT / "agents" / "clause-reviewer.md").read_text()
     assert "Check every change that matters against CloudCo's policy" in reviewer
     skill = (ROOT / "skills" / "sales" / "reply-to-customer" / "SKILL.md").read_text()

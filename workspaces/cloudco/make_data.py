@@ -228,6 +228,12 @@ def build() -> dict[str, str]:
                     "stores": 120,
                     "customer_since": "2023-03-01",
                     "account_owner": "Priya Raman (Sales)",
+                    # Who we write to there: drafts are addressed to them (D-166).
+                    "contact": {
+                        "name": "Maya Chen",
+                        "role": "Head of Procurement",
+                        "email": "maya.chen@shopco.example",
+                    },
                 },
                 {
                     "id": "CUS-0017",
@@ -236,6 +242,11 @@ def build() -> dict[str, str]:
                     "stores": 45,
                     "customer_since": "2021-06-15",
                     "account_owner": "Tom Okafor (Sales)",
+                    "contact": {
+                        "name": "Luis Ortega",
+                        "role": "IT Director",
+                        "email": "luis.ortega@freshmart.example",
+                    },
                 },
                 {
                     "id": "CUS-0063",
@@ -244,6 +255,11 @@ def build() -> dict[str, str]:
                     "stores": 18,
                     "customer_since": "2025-01-20",
                     "account_owner": "Priya Raman (Sales)",
+                    "contact": {
+                        "name": "Ingrid Holm",
+                        "role": "Operations Lead",
+                        "email": "ingrid.holm@northwind.example",
+                    },
                 },
             ]
         ),

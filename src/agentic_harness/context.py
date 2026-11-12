@@ -22,7 +22,7 @@ from agentic_harness.loop import SYSTEM_PROMPT
 from agentic_harness.scope import scope_prompt
 from agentic_harness.skills import Skill
 from agentic_harness.verify import ActionCheck, Check
-from agentic_harness.workspace import MemoryFile, Workspace
+from agentic_harness.workspace import MemoryFile, Person, Workspace
 
 CHECKS_HEADER = (
     "## Before your answer reaches the person\n\n"
@@ -78,6 +78,7 @@ def build_context(
     not_allowed: str = "",
     checks: Collection[Check] = (),
     action_checks: Collection[ActionCheck] = (),
+    person: Person | None = None,
 ) -> Context:
     files = workspace.memory_files(profile)
     # A switched-off skill is not even listed: the model can't ask for it (D-70).
@@ -86,6 +87,10 @@ def build_context(
     parts = [SYSTEM_PROMPT]
     if workspace.scope:
         parts.append(scope_prompt(workspace.scope))  # what the agent is for (D-81)
+    if person is not None:
+        # Who picked "You Are" on the page (D-166): without it the model wrote
+        # "Hi [contact first name]" and signed as nobody.
+        parts.append(person_prompt(person))
     if not_allowed.strip():
         parts.append(not_allowed.strip())  # what this profile can't do, and what to say (D-105)
     parts += [f"## From {f.path}\n\n{f.text.strip()}" for f in files]
@@ -114,3 +119,13 @@ def build_context(
     prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
     facts = tuple(line.strip() for line in notes.splitlines() if line.strip())
     return Context(profile, system, prompt_id, tuple(files), tuple(skills), warnings, facts)
+
+
+def person_prompt(person: Person) -> str:
+    """One line: who the agent is talking to, so it can address them and sign as them."""
+    first = person.name.split()[0]
+    return (
+        f"## Who you are helping\n\nYou are helping {person.name} ({person.role}). "
+        f"Talk to them by first name ({first}). Anything you draft for them is signed as "
+        f"{person.name}. Never write placeholders like [name]: look the fact up or ask."
+    )

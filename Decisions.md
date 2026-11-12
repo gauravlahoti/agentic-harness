@@ -1238,3 +1238,21 @@
   3. **Clause Reviewer:** checking each change against the policy's limits is now an explicit step (OK, needs whom, or never, with the section; "no policy covers this" rather than a guess).
   4. **Right Approver:** after a real send, the approvals the run recorded count, and a person's name counts as their role.
 - **Golden case `review-then-confirm`** (core). Live, with Haiku: it showed the review and the draft, offered a 12-month cap, asked, and didn't send. 11 of 12 metrics passed.
+
+## D-164 · A draft reply is a card, not quoted text (2026-11-12)
+- **Found live (your report):** the reply came out as `> Subject: … > Hi [contact first name]` squashed into one paragraph. There was no draft tool, so the draft could only be answer text, and the page has no blockquote support.
+- **Options:** (a) a `draft_reply` workspace tool saving a mail-shaped file to the run's task folder; (b) the page guesses emails from the answer text; (c) blockquotes only.
+- **Chose:** (a), plus (c) as a fallback. The page already knows mail's shape (`parseEmail`, D-136). A task file with mail headers now shows as an email card marked **Draft**, open under the answer; an outbox file stays **✉ Sent**. The harness gains no domain: it's the same generic header rule, applied to the task folder too.
+- **Cost:** one more read tool for Sales; the model must choose to call it.
+
+## D-165 · Concerns first, then agree, then draft, then send (2026-11-12)
+- **Your point:** the agent should flag what breaks policy and talk it through first. Only once you agree should it draft, then ask whether to send to the customer.
+- **Options:** (a) end the turn with a question (normal multi-turn chat); (b) `ask_human` pauses mid-run.
+- **Chose:** (a) for discussing concerns and for "send it to <contact>?". `ask_human` stays for a missing fact. Talking positions through takes back-and-forth, which a single pause-box can't hold. The send already has real approval cards, so a yes/no box would double-ask.
+- **Replaces** D-163's "show the review and the draft, then ask". Golden case `review-then-confirm` now expects concerns plus a question, with no draft and no send. A new multi-turn case, `agree-then-draft`, covers the draft.
+- **Cost:** one more turn before a draft.
+
+## D-166 · The agent knows who it is helping (2026-11-12)
+- **Found live:** "Hi [contact first name]" and a generic sign-off. The "You Are" picker (D-137) only checked approvals; the model was never told the person. ShopCo's record had no contact.
+- **Chose:** the page sends the picked person with each run. The server checks them against `[[people]]`, and the harness adds one line to the context: "You are helping Priya Raman (Sales)…". It's generic: the names live in `workspace.toml`. Each made-up customer record gets a `contact` (name, email), and drafts are addressed to it.
+- **Cost:** a few prompt tokens; a run with no person picked works as before.

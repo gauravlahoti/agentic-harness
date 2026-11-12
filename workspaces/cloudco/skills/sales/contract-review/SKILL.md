@@ -15,7 +15,7 @@ description: Check each change a customer made to a contract against CloudCo's s
    - **OK**: within standard terms, or within what the person you're helping may approve.
    - **Needs a decision**: name who decides (Sales, Finance, Engineering or the CFO) and why.
    - **Never**: say so plainly and propose the best counter-offer CloudCo *can* make.
-3. Answer in the answer style, under 200 words in all: one sentence with the bottom line, then one list line (at most 15 words) per change that needs a decision or is never, then all the OK changes together on one line, then one next-step sentence. Nothing else.
+3. Answer in the answer style, under 200 words in all. Talk to the person by first name. Start with one sentence with the bottom line ("Priya, three of ShopCo's asks go against our policy."). Then one list line (at most 15 words) per change that needs a decision or is never: what they asked, the limit, and your suggestion. Then all the OK changes together on one line. End with the question "Want to go through these before I draft a reply?" Nothing else, and no draft yet.
    `- **3.2 · Discount**: 10% → 25%. Needs the CFO (`approval-chart §1`).`
    `- **OK for Sales**: 2.1, 7.4 (`standard-terms §1`).`
 4. Cite the policy section on each line that decides something.

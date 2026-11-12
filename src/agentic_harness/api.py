@@ -40,7 +40,7 @@ from agentic_harness.tools.builtin import builtin_tools
 from agentic_harness.trace import TraceWriter
 from agentic_harness.trimming import ModelSummarizer
 from agentic_harness.verify import PLAN_CHECK, Check
-from agentic_harness.workspace import Workspace, WorkspaceError
+from agentic_harness.workspace import Person, Workspace, WorkspaceError
 
 DEFAULT_MEMORY_DIR = Path(".agentic-harness")  # sessions and notes live under it (S07)
 DEFAULT_TRACE_DIR = Path(".agentic-harness") / "traces"  # git-ignored
@@ -81,6 +81,7 @@ def create_harness(
     approver: Approver | None = None,
     memory_dir: Path | None = DEFAULT_MEMORY_DIR,
     small_model: str | None = None,
+    person: Person | None = None,
 ) -> Harness:
     """A harness for this model, workspace and profile.
 
@@ -109,6 +110,7 @@ def create_harness(
         not_allowed=not_allowed_prompt(workspace, gate),
         checks=[c for c in all_checks(workspace) if c.name not in off.checks],  # D-132
         action_checks=[c for c in workspace.action_checks if c.name not in off.checks],
+        person=person,  # who picked "You Are" on the page (D-166)
     )
 
     # The workspace's own tools, then the built-ins it asked for (D-45), minus switched off.

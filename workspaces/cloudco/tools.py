@@ -312,6 +312,35 @@ def search_policy(
     return [section for _, section in scored[:5]]
 
 
+def _mail_headers(row: dict[str, Any], subject: str) -> str:
+    """Email headers first, so the page shows the text as an email (your request; D-164).
+    Addressed to the customer's contact by name, never "[contact first name]" (D-166)."""
+    contact = row["contact"]
+    return (
+        f"From: CloudCo Sales <sales@cloudco.example>\n"
+        f"To: {contact['name']}, {row['name']} <{contact['email']}>\n"
+        f"Date: {time.strftime('%Y-%m-%d %H:%M')}\nSubject: {subject}\n\n"
+    )
+
+
+@tool(risk="read")
+def draft_reply(
+    customer_id: Annotated[str, "The customer's ID, e.g. 'CUS-0042'"],
+    subject: str,
+    body: Annotated[str, "The full message: greet the contact by name, sign as the person"],
+    ctx: ToolContext,
+) -> dict[str, str]:
+    """Write a draft reply to a customer, for the person to read before anything is sent.
+    Use it once the person has agreed what to offer. It sends nothing: the page shows it as
+    a draft email. Then ask whether to send it; only send_to_customer sends."""
+    row = _customer(customer_id)
+    note = "(Draft: not sent. Fictional.)"
+    saved = ctx.save_task_file(
+        f"draft-to-{row['id']}.md", _mail_headers(row, subject) + f"{body}\n\n{note}\n"
+    )
+    return {"status": "drafted, not sent", "to": row["contact"]["name"], "file": saved}
+
+
 @tool(risk="action")
 def send_to_customer(
     customer_id: Annotated[str, "The customer's ID, e.g. 'CUS-0042'"],
@@ -353,10 +382,7 @@ def send_to_customer(
         or "- none recorded"
     )
     text = (
-        # Email headers first, so the page shows it as the email that went (your request).
-        f"From: CloudCo Sales <sales@cloudco.example>\nTo: {row['name']} <{row['id']}>\n"
-        f"Date: {time.strftime('%Y-%m-%d %H:%M')}\nSubject: {subject}\n\n"
-        f"{body}\n\nOffered terms:\n{terms}\n\n"
+        _mail_headers(row, subject) + f"{body}\n\nOffered terms:\n{terms}\n\n"
         f"Approved by:\n{signed}\n\n{footer}\n"
     )
     saved = ctx.save_outbox_file(f"{ctx.run_id}-to-{row['id']}.md", text)
@@ -428,4 +454,11 @@ def contract_terms(arguments: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 APPROVAL_CONTEXT = [contract_terms]
-TOOLS = [lookup_customer_record, review_contract, read_contract, search_policy, send_to_customer]
+TOOLS = [
+    lookup_customer_record,
+    review_contract,
+    read_contract,
+    search_policy,
+    draft_reply,
+    send_to_customer,
+]

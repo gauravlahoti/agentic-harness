@@ -32,7 +32,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
-| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 9/10 | 0/10 | 1 |
+| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 13/14 | 0/14 | 1 |
 
 ## Checks
 
@@ -264,6 +264,10 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC8 | The sender can give the "any message" sign-off; the CFO card needs the CFO | 🧪 | 🟨 | `test_identity.py::test_s12_ac8_ac9_*`: Priya signs off the send, Elena and Dana answer their own cards · the role rule itself: `test_s12_ac6_the_approvals_object_refuses_a_wrong_role` |
 | AC9 | The outbox and trace record the person and the role | 🧪 | 🟨 | `test_identity.py::test_s12_ac8_ac9_*`: the outbox and the send tool's result name each person; `approval_decided` carries `person` |
 | AC10 | Live: a 25% discount send waits for Dana (CFO); Priya can't approve it | 🔑 👀 | 🟦 |  |
+| AC11 | `draft_reply` saves a mail-shaped file to the run's task folder, addressed to the customer's contact; never the outbox | 🧪 | 🟨 | `test_drafts_and_person.py::test_s12_ac11_*` (3): a task file "To: Maya Chen, ShopCo", no outbox; every customer has a contact; Sales may draft, Engineering may not |
+| AC12 | The picked person reaches the run: the context says who the agent helps; an unknown person is refused | 🧪 | 🟨 | `test_drafts_and_person.py::test_s12_ac12_*` (4): context line, harness wiring, server 400 on an unknown person, the page sends the person |
+| AC13 | A task file with mail headers shows as a **Draft** email card under the answer; `>` lines show as a quote | 🧪 👀 | 🟨 | `test_drafts_and_person.py::test_s12_ac13_*` (2) · 👀 waits for your run |
+| AC14 | Sales prompts: concerns vs policy first, then a question; a draft only after agreement, then "send it to <contact>?" | 🧪 🔑 👀 | 🟨 | `test_drafts_and_person.py::test_s12_ac14_*` (2): prompts and golden cases · 🔑 live behaviour waits for your run |
 
 ## Product goals
 
@@ -378,3 +382,5 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | Your review: more checks is not the answer. Three layers (D-148): Verification keeps only the harm gates (Plan Complete, Every Change Covered, Right Approver, No False Sent, Body Matches Terms); **Online Evals** score every answer after you see it (Groundedness, Hallucination, Context Relevancy, Answer Relevancy, Citations, Style & Format: 2 Code, 4 LLM as Judge in one call, D-149); "Evals" is now **Offline Evals** with a Graded By column and an Answer Quality group (D-151). Records Match and Sections Are Real deleted; Citations and Answer Format became metrics (D-150). S11-AC8, AC14 → 📝. 499 offline tests; live Flash-Lite judge scored all 6 ($0.0010); checked in Chrome on a real pull. Your check waits. |
 | 2026-11-12 | Your requests (D-152): Threshold column on both metrics tables; the pane is now **Agent** = Model box (synced model menu) + Harness box holding every part; Online Evals and Offline Evals (with Golden Dataset) under a folded **Observability** sidebar group; Checks link removed. Fixed: sidebar groups after Acting As never folded. 501 offline tests; checked in Chrome. |
 | 2026-11-12 | Your request: debug the failing evals, one change at a time, $3 cap. Rounds 0–5 (D-154–D-157, `docs/eval-debug.md`): online judge sees failed calls, Plan Adherence grades the written plan, bookkeeping hidden from the judge, a concrete length rule. 1 → 2 of 7 passed. Paused at $1.43: one run per case is too noisy to measure single changes. |
+| 2026-11-12 | Your report on a live run: no email card for the draft, a vague reply with placeholders, no talking through the concerns. You approved the fix plan: S12-AC11–AC14 → 🟦 (D-164–D-166). |
+| 2026-11-12 | S12-AC11–AC14 built → 🟨 (529 offline tests, coverage 89%): `draft_reply` writes a Draft email card addressed to the contact, the picked person reaches the prompt, concerns before any draft, golden cases updated (`review-then-confirm`) and added (`agree-then-draft`). Five older tests now check D-165 instead of D-163. Live run and page look wait for you. |
