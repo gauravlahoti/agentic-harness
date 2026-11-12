@@ -18,6 +18,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from agentic_harness.planning import PLAN_TOOL
 from agentic_harness.tools import Tool
 
 NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")  # Agent Skills format: lowercase-hyphen
@@ -93,15 +94,25 @@ def find_skills(folders: Iterable[Path], root: Path) -> list[Skill]:
     return skills
 
 
-def load_skill_tool(skills: Sequence[Skill]) -> Tool:
-    """The built-in tool that hands the model a skill's full steps (D-36)."""
+# Added after a skill's steps when the agent can keep a plan (S11). Found live: Sonnet and
+# Haiku both followed the skill and never planned; the skill is the recipe, the plan the progress.
+PLAN_HINT = (
+    f"\n\n---\nBefore you start, write these steps as your plan with {PLAN_TOOL}, then mark "
+    "each one done as you finish it."
+)
+
+
+def load_skill_tool(skills: Sequence[Skill], *, plan: bool = False) -> Tool:
+    """The built-in tool that hands the model a skill's full steps (D-36). With ``plan``, it
+    also asks the agent to copy the steps into its plan (D-121 changed)."""
     by_name = {skill.name: skill for skill in skills}
 
     def load_skill(name: str) -> str:
         skill = by_name.get(name)
         if skill is None:
             raise SkillError(f"No skill named {name!r} for this profile.")
-        return f"# Skill: {skill.name}\nSource: {skill.source}\n\n{skill.body}"
+        text = f"# Skill: {skill.name}\nSource: {skill.source}\n\n{skill.body}"
+        return text + (PLAN_HINT if plan else "")
 
     return Tool(
         name="load_skill",

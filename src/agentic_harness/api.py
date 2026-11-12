@@ -116,7 +116,9 @@ def create_harness(
     # While someone can delegate, the delegate-only tools belong to the helpers (D-59).
     tools = [t for t in available.values() if not (helpers and t.name in workspace.delegate_only)]
     if context.skills:
-        tools.append(load_skill_tool(context.skills))  # built in: reads a skill on demand
+        # Built in: reads a skill on demand; asks for a plan from its steps when planning is on.
+        plans = workspace.plan and PLAN_TOOL not in off.tools
+        tools.append(load_skill_tool(context.skills, plan=plans))
     if notes_file is not None and "save_note" not in off.tools:  # off: reads, saves nothing
         tools.append(save_note_tool(notes_file))  # the agent keeps notes for next time (D-92)
     if workspace.ask_human and "ask_human" not in off.tools:

@@ -1874,9 +1874,9 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 
 /* ── Plan & Verify (S11): the To-Do and Checks cards in a run's Activity ── */
 .part-plan .act-text, .part-verify .act-text { color: var(--part-verify); }
-.todo-row, .checks-row { list-style: none; }
+.todo-row { list-style: none; }
 .past-cards { margin: 0 0 8px; padding: 0; }
-.todo-card, .checks-card {
+.todo-card {
   margin: 4px 0 10px 31px;
   padding: 10px 14px;
   border: 1px solid color-mix(in srgb, var(--part-verify) 40%, var(--line));
@@ -1887,27 +1887,15 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 .card-title { font-weight: 600; color: var(--part-verify); }
 .card-count { color: var(--text-soft); font-variant-numeric: tabular-nums; }
-.todo-list, .checks-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.todo-item, .check-item { display: grid; grid-template-columns: 1.2em 1fr; column-gap: 6px; }
-.todo-note, .check-msg { grid-column: 2; color: var(--text-soft); font-size: 12.5px; overflow-wrap: anywhere; }
-.todo-box, .check-mark { text-align: center; }
-.todo-item.is-done .todo-box, .check-item.is-passed .check-mark { color: var(--pass); }
+.todo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.todo-item { display: grid; grid-template-columns: 1.2em 1fr; column-gap: 6px; }
+.todo-note { grid-column: 2; color: var(--text-soft); font-size: 12.5px; overflow-wrap: anywhere; }
+.todo-box { text-align: center; }
+.todo-item.is-done .todo-box { color: var(--pass); }
 .todo-item.is-done .todo-text { color: var(--text-soft); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-soft) 50%, transparent); }
 .todo-item.is-doing .todo-box, .todo-item.is-doing .todo-text { color: var(--part-verify); font-weight: 600; }
 .todo-item.is-skipped .todo-box { color: var(--skip); }
-.check-item.is-failed .check-mark { color: var(--fail); }
-.check-item.is-error .check-mark { color: var(--skip); }
-.check-label { font-weight: 600; }
-.checks-card.is-passed .card-count, .checks-card.is-fixed .card-count { color: var(--pass); }
-.checks-card.is-retrying .card-count { color: var(--skip); }
-.checks-card.is-failed { border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); background: color-mix(in srgb, var(--fail) 5%, var(--surface)); }
-.checks-card.is-failed .card-count, .checks-card.is-failed .card-title { color: var(--fail); }
-.check-draft { margin-top: 8px; font-size: 12.5px; color: var(--text-soft); }
-.check-draft summary { cursor: pointer; }
-.draft-text { margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--line); }
-.checks-warn { margin: 8px 0 0; color: var(--fail); font-size: 12.5px; }
-@media (max-width: 600px) { .todo-card, .checks-card { margin-left: 0; } }
-.check-names .item-name { font-family: inherit; } /* names, not code */
+@media (max-width: 600px) { .todo-card { margin-left: 0; } }
 
 /* The run summary's columns: thin dividers between them, a single line each where it fits. */
 .receipt-grid { flex-wrap: nowrap; white-space: nowrap; }
@@ -1921,12 +1909,5 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
   .receipt-grid { flex-wrap: wrap; }
   .receipt-tokens, .receipt-fill { padding-left: 0; border-left: 0; }
 }
-.checks-card.is-retrying { border-color: color-mix(in srgb, var(--skip) 50%, var(--line)); background: color-mix(in srgb, var(--skip) 6%, var(--surface)); }
-.checks-card.is-retrying .card-title { color: var(--skip); }
-.checks-intro { margin: 0 0 8px; color: var(--text-soft); font-size: 12.5px; }
-.checks-next { margin: 8px 0 0; color: var(--skip); font-size: 12.5px; font-weight: 600; }
-.check-note { margin: 4px 0 0; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, var(--text) 5%, transparent); white-space: pre-wrap; font-size: 12px; }
-.check-item.is-skipped { opacity: 0.7; }
-.check-item.is-skipped .check-mark, .check-item.is-skipped .check-label { color: var(--muted); font-weight: 500; }
-.checks-card.is-skipped { border-color: var(--line); background: var(--surface); }
-.checks-card.is-skipped .card-title { color: var(--muted); }
+.run-foot.unverified { color: var(--fail); } /* the answer failed a check twice (S11) */
+.check-names .item-name { font-family: inherit; } /* the pane's check names: names, not code */

@@ -962,6 +962,7 @@
 - **Instead of:** a classifier call before the loop; a skill that declares `plan: true`
 - **Because:** no extra call on every run; the same rule Claude Code's todo list uses
 - **Cost:** a small model may plan a light question; the eval case `light-question-no-plan` catches it
+- **Changed 2026-11-12, two live runs** (Sonnet, then Haiku: neither planned; they followed the loaded skill): when planning is on, `load_skill` ends the skill's text with one harness line: "Before you start, write these steps as your plan with write_plan". The model still decides for tasks no skill covers. *Cost:* every skill-led task now plans (one or two more tool calls, often in the same reply).
 
 ### D-122 · One plan tool that rewrites the whole list
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
@@ -1005,6 +1006,7 @@
 - **Instead of:** showing failures only; retrying until it passes
 - **Because:** you always get an answer, and know when to doubt it
 - **Cost:** one more round on a failure
+- **Changed 2026-11-12, live run:** the note said "use your tools if you need to" and the agent re-ran the reviewer just to fill one gap. It now says: fix with what you already have; call a tool only for a fact you don't have yet.
 
 ### D-128 · Plan and Verify on the pane and in the chat
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
@@ -1013,6 +1015,7 @@
 - **Instead of:** the pane only; two rows under Agentic Loop
 - **Because:** the pane says what the harness will do; the chat shows what it did
 - **Cost:** one more pane section
+- **Changed 2026-11-12, your review** ("taking too much space, cluttered"): each check round is one activity line, like every other step ("Checked the draft · Every Change Covered failed → sent back to fix"), opening to each check, what the agent was told and the draft. A failed final answer gets one small red line under it. The To-Do card stays a card.
 
 ### D-129 · Answer format: rules always in the prompt, not a skill or a tool
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")
@@ -1027,6 +1030,7 @@
 - **Instead of:** trusting the prompt alone
 - **Because:** the prompt guides, VERIFY enforces (S11); the same one-retry rule
 - **Cost:** a retry when the format slips
+- **Changed 2026-11-12, live run** (Haiku answered in paragraphs and the check passed it): three or more clauses written as paragraphs now fail ("put each on its own list line"). Right Approver now reads sentence by sentence, because a paragraph mixed terms and people and gave a false failure.
 
 ### D-131 · The page does the styling
 ✅ Accepted · S11 · your request ("a skill for output format… loaded during final output generation; skill or tool?"), approved ("go ahead")

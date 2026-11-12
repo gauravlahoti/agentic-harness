@@ -143,7 +143,15 @@ def _where(line: str) -> str:
     if found:
         return f"Line {found[1]}"
     words = re.sub(r"[`*]", "", line).split()
-    return f'The line "{" ".join(words[:6])}…"'
+    return f'The sentence "{" ".join(words[:6])}…"'
+
+
+def _sentences(answer: str) -> list[str]:
+    """Each line, cut into sentences. A list line is usually one sentence already."""
+    out = []
+    for line in answer.splitlines():
+        out += [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z*`(])", line) if s.strip()]
+    return out
 
 
 def _crosses(rule: dict[str, Any], arg: str, value: float | bool) -> bool:
@@ -167,7 +175,9 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
     approvals, rules = tables.get("approvals", []), tables.get("rules", [])
     roles = {a["approver"] for a in approvals}
     problems, checked = [], 0
-    for line in (x.strip() for x in answer.splitlines()):
+    # Per sentence, not per line: a prose paragraph is one "line" and mixes terms and people
+    # (found live 2026-11-12: a paragraph named Engineering for a counter in another sentence).
+    for line in _sentences(answer):
         terms = list(dict.fromkeys(_terms(line)))  # once each, in order
         if not terms:
             continue
@@ -194,7 +204,9 @@ def right_approver(answer: str, record: Record) -> Verdict | None:
         return skipped("The answer names no discount, payment, uptime or liability term.")
     if problems:
         return failed(". ".join(problems) + ". See approval-chart §1.")
-    return passed(f"The deciders on {checked} line{'s' if checked > 1 else ''} match the chart.")
+    return passed(
+        f"Who decides, in {checked} sentence{'s' if checked > 1 else ''}, matches the chart."
+    )
 
 
 # ── No False "Sent" ──────────────────────────────────────────────────────────────────────
@@ -246,6 +258,13 @@ def answer_format(answer: str, record: Record) -> Verdict | None:
     if LIST_OR_HEADING.match(lines[0]):
         problems.append("it starts with a list or a heading; begin with one sentence that answers")
     bare = [m[1] for x in lines if (m := ITEM.match(x)) and not SOURCE.search(x)]
+    # Several clauses in paragraphs instead of one line each (found live 2026-11-12).
+    clauses = set(re.findall(r"(?<![\w.])(?:[A-Z]|\d+)\.\d+(?![\d%])", answer))
+    if len(clauses) >= 3 and not any(LIST_OR_HEADING.match(x) for x in lines):
+        problems.append(
+            f"it covers {len(clauses)} clauses in paragraphs; put each on its own list line, "
+            "starting with its ID in bold"
+        )
     if bare:
         problems.append(f"these item lines have no source in backticks: {', '.join(bare)}")
     if problems:

@@ -267,3 +267,40 @@ Next: ask the CFO about 3.2."""
     assert (
         verdict("answer_format", "Yes: Net 45 is standard (`standard-terms §3`).").applies is False
     )
+
+
+# Found live 2026-11-12 (Claude Haiku): the answer came as prose paragraphs.
+PROSE = (
+    "ShopCo's contract CT-2207 has six changed clauses that matter. Clause 3.2 (discount 10% to "
+    "25%) needs the CFO (`approval-chart §1`). Clause 4.1 (payment 30 to 60 days) needs Finance, "
+    "since Net 60 is Finance-only (`standard-terms §3`). Clause 6.1 (uptime 99.9% to 99.99%) is "
+    "never allowed (`standard-terms §4`). The counter is 99.95%, which Engineering would need to "
+    "approve. Clause 9.2 (unlimited liability) is never allowed; the CFO may raise the cap to 24 "
+    "months (`standard-terms §5`).\n\nClause 2.1 is fine for Sales.\n\nNext: take 3.2 to the CFO."
+)
+
+
+def test_s11_ac8_right_approver_reads_sentences_not_paragraphs() -> None:
+    assert verdict("right_approver", PROSE).ok  # Engineering is named for the counter: fine
+    wrong = verdict("right_approver", PROSE.replace("needs the CFO", "needs Finance"))
+    assert not wrong.ok
+    assert "Clause 3.2" in wrong.message or "3.2" in wrong.message
+
+
+def test_s11_ac14_answer_format_wants_a_list_for_several_clauses() -> None:
+    bad = verdict("answer_format", PROSE)
+    assert not bad.ok
+    assert "own list line" in bad.message
+
+
+def test_s11_a_loaded_skill_asks_for_a_plan_only_when_planning_is_on() -> None:
+    from agentic_harness.api import Off
+
+    def skill_text(off: Any = None) -> str:
+        h = create_harness(
+            Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
+        )
+        return str(h.tools["load_skill"].function(name="contract-review"))
+
+    assert "write_plan" in skill_text()
+    assert "write_plan" not in skill_text(Off(tools=("write_plan",)))

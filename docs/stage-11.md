@@ -7,7 +7,7 @@
 
 - **A to-do list, when the task needs one.** For a task with 3 or more parts ("review ShopCo's contract, then send a reply"), the agent writes a list with `write_plan` and ticks it off. A light question ("Is Net 60 OK?") gets a direct answer and no list. **The model decides**; the harness only holds it to the list.
 - **A check before every answer.** The harness runs CloudCo's four checks plus its own "Plan Complete" on the draft. A failure goes back to the agent **once**, with the reasons. If it fails again, you still get the answer, marked **Not Verified**.
-- **On the page.** In the Harness pane, planning is a **Plans** row in Agentic Loop and `write_plan` is under **Tools → Harness Tools** with the harness's other own tools, each with a switch. The checks have their own **Verification** section after Guardrails, in run order: verification happens last, on the drafted answer. A run's Activity shows a live **To-Do** card and a **Checks** card, with the first draft folded away when it was sent back. Old conversations show both.
+- **On the page.** In the Harness pane, planning is a **Plans** row in Agentic Loop and `write_plan` is under **Tools → Harness Tools** with the harness's other own tools, each with a switch. The checks have their own **Verification** section after Guardrails, in run order: verification happens last, on the drafted answer. A run's Activity shows a live **To-Do** card, and one **VERIFY** line per check round ("Checked the draft · … failed → sent back to fix", "Model rewrote the answer", "Checked the new answer · 5 of 5 passed"); open a line for each check, what the agent was told and the draft. Old conversations show both.
 
 ## How answers look (D-129 to D-131)
 

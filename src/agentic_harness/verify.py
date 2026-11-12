@@ -155,7 +155,8 @@ def feedback(failures: Sequence[Result]) -> str:
     lines = "\n".join(f"- {r.label}: {r.message}" for r in failures)
     return (
         f"{NOTE_PREFIX} Your answer did not pass these checks:\n{lines}\n"
-        "Fix them (use your tools if you need to), then give your full answer again."
+        "Fix them with what you already have; call a tool only if the fix needs a fact you "
+        "don't have yet. Then give your full answer again."
     )
 
 
