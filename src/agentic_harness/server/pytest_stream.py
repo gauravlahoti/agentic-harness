@@ -12,8 +12,8 @@ from typing import Any
 
 import pytest
 
-# Lines starting with this are ours; everything else pytest prints is ignored.
-PREFIX = "HARNESS-CHECK "
+# Lines starting with PREFIX are ours; everything else pytest prints is ignored.
+from agentic_harness.server.checks import PREFIX
 
 
 class Stream:

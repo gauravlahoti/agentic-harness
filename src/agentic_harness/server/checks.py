@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from agentic_harness.config import SECRET_ENV_NAMES
-from agentic_harness.server.pytest_stream import PREFIX
+
+# The plugin's lines start with this. It lives here, not in the plugin, so the server starts
+# without pytest installed: the hosted tour (D-189) ships no dev tools.
+PREFIX = "HARNESS-CHECK "
 
 CHECKS_COMMAND = (
     sys.executable,

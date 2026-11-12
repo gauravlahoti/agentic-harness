@@ -5,6 +5,8 @@ refuses every request that would change or run something, and never holds a key.
 Local mode (the default) stays exactly as it was: localhost only.
 """
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -191,3 +193,15 @@ def test_s14_ac5_health_reports_local_mode(tmp_path: Path) -> None:
 def test_s14_ac5_page_has_the_public_note(tmp_path: Path) -> None:
     page = public_client(tmp_path).get("/").text
     assert 'id="public-note"' in page
+
+
+def test_s14_ac6_the_server_starts_without_dev_tools() -> None:
+    """The hosted image ships no pytest or DeepEval; importing the app must not need them."""
+    code = (
+        "import sys, agentic_harness.server.app, agentic_harness.cli; "
+        "print(sorted(m for m in ('pytest', 'deepeval', 'httpx') if m in sys.modules))"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=ROOT
+    )
+    assert out.stdout.strip() == "[]"
