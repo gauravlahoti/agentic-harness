@@ -32,7 +32,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S09](spec/stages/S09-production.md) | Production readiness | 🟨 | 5/14 | 0/14 | 1 |
 | [S10](spec/stages/S10-evals.md) | Evals | 🟨 | 10/11 | 10/11 | 1 |
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
-| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 Part A | 4/10 | 0/10 | 1 |
+| [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 Part A | 5/10 | 0/10 | 1 |
 
 ## Checks
 
@@ -257,7 +257,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC1 | An action check runs after the hard limits and before anyone is asked; a failure returns "Not sent: …" and no one is asked | 🧪 | 🟨 | `test_action_checks.py::test_s12_ac1_*` (3): a failed check stops the call before anyone is asked; a pass is shown, then people; a blocked call never reaches it |
 | AC2 | Body Matches Terms passes the real outbox emails and fails a body saying 20% when the argument says 15%; a refusal in the body isn't an offer | 🧪 | 🟨 | `test_body_matches_terms.py::test_s12_ac2_*` (8): six real outbox emails labelled by hand (one real catch: a 24-month cap the CFO never saw), a 20%/15% mismatch, a refusal isn't an offer |
 | AC3 | A hard-limits step shows each rule with its value and line, before the approval card | 🧪 👀 | 🟨 | `test_gate_loop.py::test_s05_ac12_approved_actions_run` (limits_checked before the approval, each rule's value and line) · `test_action_checks.py::test_s12_ac1_a_blocked_call_*` · page: `test_s12_ac3_ac4_ac5_*` |
-| AC4 | The email card appears under its send step, in run order | 👀 | 🟦 |  |
+| AC4 | The email card appears under its send step, in run order | 👀 | 🟨 | Chrome 2026-11-12 with replayed events: memory read → send → hard limits held → checked before sending → the email inside the run's steps |
 | AC5 | The injection step names the response; the memory step lists the facts read | 🧪 👀 | 🟨 | `test_cloudco_checks.py::test_s12_ac5_the_context_says_which_facts_it_read` · page: `test_s12_ac3_ac4_ac5_*` (injection wording, memory step) |
 | AC6 | Personas from `workspace.toml`; the server refuses an approval from the wrong role | 🧪 | 🟦 |  |
 | AC7 | The card offers "Switch to <persona>"; the run keeps waiting; the thread stays | 👀 | 🟦 |  |
@@ -364,3 +364,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-12 | External feedback reviewed against the code (4 of 5 points true, self-approval partly by design) plus your note that the email appears before verification. You approved S12 · Guarded actions and identity (personas on the page; two parts). S12-AC1–AC10 → 🟦. D-134–D-139. Part A building. |
 | 2026-11-12 | S12 Part A built: action checks run after the hard limits and before anyone is asked (CloudCo's Body Matches Terms, tested on six real emails), hard limits shown when they hold, the email under its send step, injection response and memory read stated. AC1, AC2, AC3, AC5 → 🟨 (454 offline tests); AC4 waits for the Chrome check. |
 | 2026-11-12 | Your request: Claude Opus 5.5 selectable for the agent and in Evals (agent and judge), priced from the claude-api reference ($4 / $20). D-140. Committed and pushed S12 Part A first, as you asked. |
+| 2026-11-12 | S12-AC4 → 🟨 (checked in Chrome). Part A (AC1–AC5) built and waiting for your check; Part B (identity) starts after. |
