@@ -925,11 +925,12 @@ function checksCard(rounds, total = rounds.length) {
 // tokens went (read from the prompt, written as the answer, or spent thinking).
 function receipt(turn, d) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Short labels keep the summary on one line; "$" and "s" say what they are.
   const cells = [
-    [d.model_calls === 1 ? "model call" : "model calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
-    ["tokens in total", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
-    ["cost", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
-    ["elapsed", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
+    [d.model_calls === 1 ? "call" : "calls", d.model_calls, (n) => String(Math.round(n)), "calls"],
+    ["tokens", turn.tokens, (n) => Math.round(n).toLocaleString(), "tokens"],
+    ["", d.usd, (n) => `$${n.toFixed(5)}`, "cost"],
+    ["", d.seconds, (n) => `${n.toFixed(1)} s`, "time"],
   ];
   const card = el("div", "receipt");
   const grid = el("div", "receipt-grid");
@@ -971,7 +972,9 @@ function receipt(turn, d) {
       item.append(el("i"), `Cached ${turn.cached.toLocaleString()}`);
       legend.append(item);
     }
-    card.append(bar, legend);
+    const tokens = el("div", "receipt-tokens"); // one column: the bar, its legend under it
+    tokens.append(bar, legend);
+    card.append(tokens);
   }
   if (turn.window && turn.lastInput) {
     // How full the working window was on the last call: green, amber past 50%, red past 70%.
@@ -1394,16 +1397,32 @@ function renderPane() {
       }),
     ),
   );
+  // The harness's own tools (S11): the model sees them like any other. Only update_plan
+  // has a switch; the others are how the agent works at all.
+  const own = el("ul", "pane-list");
+  own.append(
+    ...(info.harness_tools ?? []).map((t) =>
+      paneItem({
+        kind: t.switchable ? "tools" : null,
+        name: t.name,
+        tags: [el("span", `act-risk risk-${t.risk}`, t.risk), el("span", "pane-tag", "built-in")],
+        off: off.tools.includes(t.name),
+        detail: facts([["Description", t.description.replace(/\s*\n\s*/g, " ")], ["Switch", t.switchable ? "Off: no to-do lists this run" : "Always on: the harness needs it"]]),
+      }),
+    ),
+  );
   // Local: functions running inside the harness. Remote: tools on other servers (MCP).
   const remote = info.remote_tools ?? [];
   const toolBody = [
     subhead("Local tools", "run inside the harness"),
     tools,
+    ...(own.children.length ? [subhead("Harness tools", "added by the harness")] : []),
+    ...(own.children.length ? [own] : []),
     subhead("Remote tools", "MCP"),
     remote.length ? el("p", "pane-note", remote.join(", ")) : el("p", "pane-note", "None connected"),
   ];
   if (info.subagents.length) toolBody.push(subhead("Sub-agents", "own context · read-only"), helpers);
-  const toolsSection = paneSection("tools", "Tools", `${plural(info.tools.length, "tool")}${info.subagents.length ? ` · ${plural(info.subagents.length, "sub-agent")}` : ""}`, toolBody);
+  const toolsSection = paneSection("tools", "Tools", `${plural(info.tools.length, "tool")}${own.children.length ? ` + ${own.children.length} harness` : ""}${info.subagents.length ? ` · ${plural(info.subagents.length, "sub-agent")}` : ""}`, toolBody);
 
   // Memory (S07): short-term is the conversation; long-term is facts kept across them.
   const m = info.memory;
@@ -1488,30 +1507,19 @@ function renderPane() {
       ["Thinks with", modelLabel($("model").value || health.model)],
       ["Stops", `When it has an answer, or after ${l.max_steps} steps, $${l.max_usd} or ${time}, whichever comes first`],
       ["Helpers get", `Up to ${share(l.helper_slice.time)} the time left and ${share(l.helper_slice.money)} of the budget`],
+      // Planning (S11): part of the loop, not a step before it.
+      ...(info.verify?.plan_on
+        ? [["Plans", off.tools.includes("update_plan") ? "Switched off: no to-do lists this run" : "For a task with 3 or more parts the agent keeps a to-do list (update_plan) and can't finish with items open; a simple question gets a direct answer"]]
+        : []),
       // A fixed prompt keeps every request's start identical, which is what Gemini's
       // caching needs; cached input is billed at a lower price (pricing.toml).
       ["Prompt caching", "The prompt stays fixed for the whole run, so Gemini can cache it and charge less"],
     ]),
   ]);
 
-  // Plan & Verify (S11): the to-do list, and the checks an answer passes before you see it.
+  // Verification (S11): the checks an answer passes before you see it, run once the agent
+  // has drafted its answer. Planning lives in the loop and its tool under Tools.
   const v = info.verify ?? { plan_on: false, checks: [], retries: 0 };
-  const planList = el("ul", "pane-list");
-  if (v.plan_on) {
-    planList.append(
-      paneItem({
-        kind: "tools",
-        name: "update_plan",
-        tags: [el("span", "pane-tag", "built-in")],
-        off: off.tools.includes("update_plan"),
-        detail: facts([
-          ["When", "The agent decides: tasks with 3 or more distinct parts get a to-do list; a simple question gets a direct answer"],
-          ["Stop rule", "It can't finish with items open: one reminder, then the answer shows the list incomplete"],
-          ["Kept", "In the run and the conversation file; the newest list is never trimmed"],
-        ]),
-      }),
-    );
-  }
   const checkList = el("ul", "pane-list check-names");
   checkList.append(
     ...v.checks.map((c) =>
@@ -1525,9 +1533,8 @@ function renderPane() {
       }),
     ),
   );
-  const verifySection = paneSection("verify", "Plan & Verify", `${v.plan_on ? "plans · " : ""}${plural(v.checks.length, "check")} · ${plural(v.retries, "retry", "retries")}`, [
-    ...(v.plan_on ? [subhead("Plan", "the agent decides when"), planList] : []),
-    subhead("Checks", "before you see an answer"),
+  const verifySection = paneSection("verify", "Verification", `${plural(v.checks.length, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+    subhead("Checks", "after the draft, before you see it"),
     checkList,
     facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`]]),
   ]);
@@ -1536,7 +1543,9 @@ function renderPane() {
   const wasOpen = new Map([...$("pane-body").querySelectorAll(".pane-part")].map((d) => [d.className, d.open]));
   // The order of one run, and of the docs: the loop is the core; context and tools are
   // what it works with; guardrails gate the tools; memory is kept at the end (D-67).
-  const sections = [loopSection, ...(v.plan_on || v.checks.length ? [verifySection] : []), context, toolsSection, guard, memory];
+  // Run order (D-67): the loop, what it works with, what gates the tools, the check on the
+  // answer at the end (S11), then what is kept.
+  const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), memory];
   for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
   $("pane-body").replaceChildren(...sections);
 }

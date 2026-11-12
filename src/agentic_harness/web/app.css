@@ -472,13 +472,17 @@ details[open] > summary .chev { rotate: 180deg; }
 .run-meta { margin: 10px 0 0; }
 .run-meta:empty { display: none; }
 /* ── Run summary under the final answer: one quiet line ─────────────────────── */
+/* One horizontal band (your request, 2026-11-12): the numbers · where the tokens went ·
+   how full the context was. It stacks only when the column is narrow. */
+.run-meta { container-type: inline-size; }
 .receipt {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 7px;
-  min-width: 280px;
-  max-width: 100%;
-  padding: 9px 13px 10px;
+  display: grid;
+  grid-template-columns: auto minmax(190px, 1fr) auto;
+  align-items: center;
+  gap: 8px 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -1891,3 +1895,16 @@ main:has(> #view-golden:not([hidden])) { max-width: 1120px; }
 .checks-warn { margin: 8px 0 0; color: var(--fail); font-size: 12.5px; }
 @media (max-width: 600px) { .todo-card, .checks-card { margin-left: 0; } }
 .check-names .item-name { font-family: inherit; } /* names, not code */
+
+/* The run summary's columns: thin dividers between them, a single line each where it fits. */
+.receipt-grid { flex-wrap: nowrap; white-space: nowrap; }
+.receipt-tokens, .receipt-fill { display: grid; gap: 5px; padding-left: 18px; border-left: 1px solid var(--line); min-width: 0; }
+.receipt-legend { gap: 2px 10px; }
+.fill-label { white-space: nowrap; }
+.receipt-fill { min-width: 130px; }
+.receipt-fill { align-content: center; }
+@container (max-width: 680px) {
+  .receipt { grid-template-columns: 1fr; }
+  .receipt-grid { flex-wrap: wrap; }
+  .receipt-tokens, .receipt-fill { padding-left: 0; border-left: 0; }
+}

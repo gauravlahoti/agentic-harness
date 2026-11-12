@@ -37,7 +37,7 @@ while no limit is exceeded:
 
 ## Page
 
-- **Harness pane:** a **Plan & Verify** section after Agentic Loop: when the agent plans, the stop rule, each check with an on/off switch, retries: 1.
+- **Harness pane:** a **Plans** row in Agentic Loop; `update_plan` under **Tools → Harness Tools** (with its switch); a **Verification** section after Guardrails: each check with an on/off switch, retries: 1.
 - **Chat:** a live **To-Do** card in Activity that ticks off; a **Checks** card before the answer ("4/4 Passed", "1 Failed → Retried → Passed" with the first draft folded, or "Not Verified: …"). Old conversations rebuild both from the saved steps.
 
 ## Done when
@@ -53,7 +53,7 @@ while no limit is exceeded:
 | S11-AC7 | A failed check sends the failures back once; a second failure → the answer plus "Not verified" | 🧪 |
 | S11-AC8 | CloudCo's four checks, each with a pass and a fail case | 🧪 |
 | S11-AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 |
-| S11-AC10 | Pane: Plan & Verify section with check switches; a switched-off check doesn't run | 🧪 👀 |
+| S11-AC10 | Pane: Plans row, `update_plan` under Harness Tools, Verification section with check switches; a switched-off check doesn't run | 🧪 👀 |
 | S11-AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 |
 | S11-AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 |
 
@@ -82,4 +82,5 @@ Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, 
 - 2026-11-12 · Built: the stop rule and VERIFY are one mechanism. "Plan Complete" is a check, so the one reminder is that check's one retry; same behaviour (D-124), one thing to explain instead of two.
 - 2026-11-12 · Built: the note sent back is a normal `user_input` step whose text starts with `[Harness check]`, not a mark outside the step (D-127 updated). Simpler, and the model can see the harness is speaking; the scope check skips it.
 - 2026-11-12 · Built: No False "Sent" also fails when a send worked but the answer doesn't say so (the D-120 bug).
+- 2026-11-12 · Your review: Plan and Verify split by when they happen (D-128 changed). Plans row in Agentic Loop; `update_plan` and the harness's other own tools listed under Tools → Harness Tools; Verification its own section after Guardrails. AC10 reworded; re-checked in Chrome.
 - 2026-11-12 · Golden set 16 → 18, not 19: `wrong-approver-caught` is an offline test (`test_s11_ac7_wrong_approver_is_caught_and_corrected`), because a live agent can't be made to get it wrong on cue.

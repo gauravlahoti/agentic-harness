@@ -171,3 +171,12 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
     assert pane["retries"] == 1
     assert [c["label"] for c in pane["checks"]][:2] == ["Plan Complete", "Every Change Covered"]
     assert pane["checks"][0]["source"] == "built-in"
+
+
+def test_s11_ac10_the_pane_lists_the_harness_tools_and_only_update_plan_switches() -> None:
+    from agentic_harness.api import describe_harness
+
+    own = describe_harness(WS, "sales")["harness_tools"]
+    assert [t["name"] for t in own] == ["load_skill", "save_note", "ask_human", "update_plan"]
+    assert [t["name"] for t in own if t["switchable"]] == ["update_plan"]
+    assert "3 or more" in own[-1]["description"]  # the same words the model reads

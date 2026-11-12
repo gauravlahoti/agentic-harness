@@ -1006,7 +1006,8 @@
 
 ### D-128 · Plan and Verify on the pane and in the chat
 ✅ Accepted · S11 · your approval of the S11 brief (2026-11-12)
-- **Chose:** a Plan & Verify section after Agentic Loop (rules, check switches, retries) plus live To-Do and Checks cards in the chat
+- **Changed 2026-11-12, your review** ("verify will happen at the last"; "update_plan is a tool, it should be under Tools"): planning and verifying happen at different times, so they are no longer one section. Planning is a **Plans** row in Agentic Loop and `update_plan` sits under **Tools → Harness Tools** (with `load_skill`, `save_note`, `ask_human`, which the pane never showed either). The checks have their own **Verification** section after Guardrails, in run order (D-67).
+- **Chose (first):** a Plan & Verify section after Agentic Loop (rules, check switches, retries) plus live To-Do and Checks cards in the chat
 - **Instead of:** the pane only; two rows under Agentic Loop
 - **Because:** the pane says what the harness will do; the chat shows what it did
 - **Cost:** one more pane section

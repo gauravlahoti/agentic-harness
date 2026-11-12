@@ -10,7 +10,7 @@ It also answers "what would a run get?" for the page's Harness pane
 Does not: read settings or files itself; the caller passes everything in.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,7 +25,7 @@ from agentic_harness.model import ModelClient
 from agentic_harness.planning import PLAN_TOOL, plan_tool
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.scope import scope_check
-from agentic_harness.skills import load_skill_tool
+from agentic_harness.skills import Skill, load_skill_tool
 from agentic_harness.subagents import (
     MAX_CHILD_STEPS,
     MONEY_SLICE,
@@ -262,6 +262,21 @@ def not_allowed_prompt(workspace: Workspace, gate: Gate) -> str:
     )
 
 
+def harness_tools(workspace: Workspace, skills: Sequence[Skill]) -> list[Tool]:
+    """The tools the harness itself adds for this workspace, as the model sees them.
+    Same conditions as ``create_harness``; ``delegate_task`` is shown with the helpers."""
+    found: list[Tool] = []
+    if skills:
+        found.append(load_skill_tool(skills))
+    if workspace.notes:
+        found.append(save_note_tool(Path("notes.md")))  # only its declaration is read
+    if workspace.ask_human:
+        found.append(ask_human_tool())
+    if workspace.plan:
+        found.append(plan_tool())
+    return found
+
+
 def describe_harness(
     workspace: Workspace,
     profile: str | None,
@@ -345,6 +360,17 @@ def describe_harness(
             "prompt_tokens": context.summary()["prompt_tokens"],
         },
         "skills": context.summary()["skills"],
+        # The harness's own tools (S11): the model sees them like any other (load_skill,
+        # save_note, ask_human, update_plan). Only update_plan can be switched off.
+        "harness_tools": [
+            {
+                "name": t.name,
+                "risk": t.risk,
+                "description": t.description,
+                "switchable": t.name == PLAN_TOOL,
+            }
+            for t in harness_tools(workspace, context.skills)
+        ],
         "tools": [
             {
                 "name": t.name,
