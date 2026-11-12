@@ -465,8 +465,11 @@ function markPart(part) {
       delete section.dataset.tourOpened;
     }
   }
+  // The whole harness: one cyan edge round the pane, not every part tinted (your review).
+  $("harness-pane").classList.toggle("tour-whole", part === "pane");
   if (!part) return;
   if (roomForPane()) setPaneOpen(true, false);
+  if (part === "pane") return;
   const sections = part === "pane" ? [...document.querySelectorAll("#pane-body .pane-part")] : [...document.querySelectorAll(`#pane-body .pane-part.part-${part}`)];
   for (const section of sections) {
     section.classList.add("tour-glow");
