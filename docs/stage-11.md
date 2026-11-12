@@ -7,7 +7,7 @@
 
 - **A to-do list, when the task needs one.** For a task with 3 or more parts ("review ShopCo's contract, then send a reply"), the agent writes a list with `update_plan` and ticks it off. A light question ("Is Net 60 OK?") gets a direct answer and no list. **The model decides**; the harness only holds it to the list.
 - **A check before every answer.** The harness runs CloudCo's four checks plus its own "Plan Complete" on the draft. A failure goes back to the agent **once**, with the reasons. If it fails again, you still get the answer, marked **Not Verified**.
-- **On the page.** In the Harness pane, planning is a **Plans** row in Agentic Loop and `update_plan` is under **Tools → Harness Tools** (with its switch). The checks have their own **Verification** section after Guardrails, in run order: verification happens last, on the drafted answer. A run's Activity shows a live **To-Do** card and a **Checks** card, with the first draft folded away when it was sent back. Old conversations show both.
+- **On the page.** In the Harness pane, planning is a **Plans** row in Agentic Loop and `update_plan` is under **Tools → Harness Tools** with the harness's other own tools, each with a switch. The checks have their own **Verification** section after Guardrails, in run order: verification happens last, on the drafted answer. A run's Activity shows a live **To-Do** card and a **Checks** card, with the first draft folded away when it was sent back. Old conversations show both.
 
 ## How one task goes
 
@@ -51,7 +51,7 @@ model replies
 ## Verify it yourself
 
 1. `make check`: everything passes.
-2. Open http://127.0.0.1:8000 → Harness pane: **Agentic Loop** has a Plans row; **Tools → Harness Tools** lists 4 tools (only `update_plan` switches); **Verification** lists 5 checks, each with a switch.
+2. Open http://127.0.0.1:8000 → Harness pane: **Agentic Loop** has a Plans row; **Tools → Harness Tools** lists 4 tools, each with a switch; **Verification** lists 5 checks, each with a switch.
 3. Ask (Sales): *"ShopCo asks for Net 45 payment terms. Is that OK?"* → no To-Do card; a Checks card only if a check applies.
 4. Ask: *"Review ShopCo's contract changes, then send ShopCo (CUS-0042) a short reply saying we'll come back with a counter-offer this week."* → a To-Do card that ticks off, a Sales approval card, then a Checks card.
 5. Switch off **Right Approver**, ask again: it isn't in the Checks card.

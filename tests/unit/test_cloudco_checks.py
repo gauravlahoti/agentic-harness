@@ -173,10 +173,27 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
     assert pane["checks"][0]["source"] == "built-in"
 
 
-def test_s11_ac10_the_pane_lists_the_harness_tools_and_only_update_plan_switches() -> None:
-    from agentic_harness.api import describe_harness
+def test_s11_ac10_the_pane_lists_the_harness_tools_and_each_can_be_switched_off() -> None:
+    from agentic_harness.api import Off, describe_harness
 
     own = describe_harness(WS, "sales")["harness_tools"]
     assert [t["name"] for t in own] == ["load_skill", "save_note", "ask_human", "update_plan"]
-    assert [t["name"] for t in own if t["switchable"]] == ["update_plan"]
+    assert all(t["when_off"] for t in own)
     assert "3 or more" in own[-1]["description"]  # the same words the model reads
+    off = Off(tools=("load_skill", "save_note", "ask_human", "update_plan"))
+    h = create_harness(
+        Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=tmp_dir(), off=off
+    )
+    assert not {"load_skill", "save_note", "ask_human", "update_plan"} & set(h.tools)
+    assert "contract-review" not in h.system  # load_skill off: no skills listed either
+    on = create_harness(
+        Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=tmp_dir()
+    )
+    assert {"load_skill", "save_note", "ask_human", "update_plan"} <= set(on.tools)
+    assert "contract-review" in on.system
+
+
+def tmp_dir() -> Path:
+    import tempfile
+
+    return Path(tempfile.mkdtemp())

@@ -100,7 +100,10 @@ def create_harness(
     context = build_context(
         workspace,
         profile,
-        skip_skills=off.skills,
+        # load_skill off means no skills at all: none listed in the prompt either (S11).
+        skip_skills=tuple(s.name for s in workspace.skills(profile))
+        if "load_skill" in off.tools
+        else off.skills,
         notes=notes,
         not_allowed=not_allowed_prompt(workspace, gate),
     )
@@ -114,9 +117,9 @@ def create_harness(
     tools = [t for t in available.values() if not (helpers and t.name in workspace.delegate_only)]
     if context.skills:
         tools.append(load_skill_tool(context.skills))  # built in: reads a skill on demand
-    if notes_file is not None:
+    if notes_file is not None and "save_note" not in off.tools:  # off: reads, saves nothing
         tools.append(save_note_tool(notes_file))  # the agent keeps notes for next time (D-92)
-    if workspace.ask_human:
+    if workspace.ask_human and "ask_human" not in off.tools:
         tools.append(ask_human_tool())  # the model may pause to ask a person (D-89)
     if workspace.plan and PLAN_TOOL not in off.tools:
         tools.append(plan_tool())  # the main agent may keep a to-do list; helpers don't (S11)
@@ -206,7 +209,7 @@ def _check_off(workspace: Workspace, profile: str | None, off: Off) -> Off:
     """Every name must exist for this profile: a switch can't invent anything (D-70)."""
     known = {
         "tool": {t.name for t in [*workspace.tools, *builtin_tools(workspace.builtins)]}
-        | ({PLAN_TOOL} if workspace.plan else set()),
+        | {t.name for t in harness_tools(workspace, workspace.skills(profile))},
         "skill": {s.name for s in workspace.skills(profile)},
         "sub-agent": {a.name for a in workspace.subagents},
         "check": {c.name for c in all_checks(workspace)},
@@ -260,6 +263,16 @@ def not_allowed_prompt(workspace: Workspace, gate: Gate) -> str:
         "If you are asked for one of these, reply with that one sentence and stop: no details "
         "of the work, no drafts, no workarounds.\n" + "\n".join(lines)
     )
+
+
+# What switching off each of the harness's own tools means for a run (S11). A switch only
+# takes something away (D-70); the run still works without any of these.
+WHEN_OFF = {
+    "load_skill": "No skills this run: none are listed in the prompt either",
+    "save_note": "It still reads the facts it has, but saves no new ones",
+    "ask_human": "It can't stop to ask you; it says what it still needs instead",
+    PLAN_TOOL: "No to-do lists this run",
+}
 
 
 def harness_tools(workspace: Workspace, skills: Sequence[Skill]) -> list[Tool]:
@@ -367,7 +380,7 @@ def describe_harness(
                 "name": t.name,
                 "risk": t.risk,
                 "description": t.description,
-                "switchable": t.name == PLAN_TOOL,
+                "when_off": WHEN_OFF[t.name],
             }
             for t in harness_tools(workspace, context.skills)
         ],

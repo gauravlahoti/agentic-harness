@@ -1208,7 +1208,7 @@ function currentOff() {
   if (!paneInfo) return { tools: [], skills: [], subagents: [], checks: [] };
   const off = readOff();
   const has = {
-    tools: [...paneInfo.tools.map((t) => t.name), ...(paneInfo.verify?.plan_on ? ["update_plan"] : [])],
+    tools: [...paneInfo.tools.map((t) => t.name), ...(paneInfo.harness_tools ?? []).map((t) => t.name)],
     checks: (paneInfo.verify?.checks ?? []).map((c) => c.name),
     skills: paneInfo.skills.map((s) => s.name),
     subagents: paneInfo.subagents.map((a) => a.name),
@@ -1397,17 +1397,17 @@ function renderPane() {
       }),
     ),
   );
-  // The harness's own tools (S11): the model sees them like any other. Only update_plan
-  // has a switch; the others are how the agent works at all.
+  // The harness's own tools (S11): the model sees them like any other, and each can be
+  // switched off for a run (each line says what that means).
   const own = el("ul", "pane-list");
   own.append(
     ...(info.harness_tools ?? []).map((t) =>
       paneItem({
-        kind: t.switchable ? "tools" : null,
+        kind: "tools",
         name: t.name,
         tags: [el("span", `act-risk risk-${t.risk}`, t.risk), el("span", "pane-tag", "built-in")],
         off: off.tools.includes(t.name),
-        detail: facts([["Description", t.description.replace(/\s*\n\s*/g, " ")], ["Switch", t.switchable ? "Off: no to-do lists this run" : "Always on: the harness needs it"]]),
+        detail: facts([["Description", t.description.replace(/\s*\n\s*/g, " ")], ["When off", t.when_off]]),
       }),
     ),
   );
