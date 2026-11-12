@@ -110,10 +110,10 @@ def test_s10_ac9_ac10_evals_view_on_the_page() -> None:
         "showModal",
     ):
         assert piece in JS, f"S10 piece missing from app.js: {piece}"
-    # one metrics table (Metric · What it checks · Score), case rows that open, past evals
+    # one metrics table (Metric · What it checks · Graded By · Score, D-151), case rows, past evals
     for piece in ('id="evals-metrics"', 'id="evals-cases"', 'id="evals-history"'):
         assert piece in HTML, f"S10 piece missing from index.html: {piece}"
-    assert '"Metric", "What It Checks", "Score"' in JS
+    assert '"Metric", "What It Checks", "Graded By", "Score"' in JS
     assert "agent_switched" in JS  # the live view says when Claude Haiku takes over (D-116)
     assert 'id="evals-core"' in HTML  # the dialog starts on the core set
     assert 'id="evals-judge"' in HTML  # the judge is picked too, in the same animated menu
@@ -202,3 +202,26 @@ def test_d147_the_page_says_when_the_model_works_without_a_plan() -> None:
     """Direct or To-Do: a missing plan reads as the model's choice (your request)."""
     assert "the model chose to work directly" in JS
     assert "rowFor(check, x)" in JS  # check rows appear with results, not as names first
+
+
+def test_d151_online_and_offline_evals_on_the_page() -> None:
+    """D-148, D-151: online evals on every answer and on their own page; "Evals" is now
+    "Offline Evals"; every metric says who grades it: Code or LLM as Judge."""
+    assert ">Online Evals</a>" in HTML
+    assert ">Offline Evals</a>" in HTML
+    assert ">Evals</a>" not in HTML
+    assert 'id="view-online"' in HTML
+    assert ">Offline Evals <span" in HTML  # the page's heading
+    for piece in (
+        "online_evals_started",
+        "online_evals_finished",
+        "function qualityCard",
+        "/api/online-evals",
+        'judge: "LLM as Judge"',
+        'code: "Code"',
+        'paneSection("online", "Online Evals"',
+        "never sent back to the agent",
+    ):
+        assert piece in JS, f"online evals piece missing from app.js: {piece}"
+    # The composer frees at the answer, not after the scores.
+    assert 'if (ev.type === "run_finished" && !ev.data.agent_id) free();' in JS

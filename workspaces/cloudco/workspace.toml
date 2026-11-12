@@ -183,3 +183,10 @@ because = "approval-chart §1: a liability cap up to 24 months needs the CFO"
 [verify]
 checks = "checks.py"
 retries = 1
+
+# After you see an answer, the harness scores its quality: never blocking (online evals, D-148).
+# Its own metrics (Groundedness, Hallucination, Context and Answer Relevancy, Style & Format)
+# plus METRICS from checks.py. One small judge call per answer.
+[online_evals]
+ids = '\b(?:CUS|CT|DL|UP|INV)-\d{4}(?:-\d{2})?\b'  # our record IDs, for Hallucination
+style = "answer-style.md"  # what Style & Format grades against

@@ -33,11 +33,12 @@ async function loadHealth() {
 
 // ── Views: Agent, Memory, Evals and Checks, chosen by the URL hash ─────────────────────────
 function showView() {
-  const view = { "#checks": "checks", "#memory": "memory", "#evals": "evals", "#golden": "golden" }[location.hash] ?? "agent";
-  for (const name of ["agent", "memory", "evals", "golden", "checks"]) {
+  const view = { "#checks": "checks", "#memory": "memory", "#online": "online", "#evals": "evals", "#golden": "golden" }[location.hash] ?? "agent";
+  for (const name of ["agent", "memory", "online", "evals", "golden", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }
   if (view === "memory") loadFacts();
+  if (view === "online") loadOnline();
   if (view === "evals") loadEvals();
   if (view === "golden") loadGolden();
   for (const link of document.querySelectorAll(".nav-item")) {
@@ -457,7 +458,13 @@ function pastTurn(t) {
   else reply.append(el("p", "run-foot", `Ended: ${t.outcome}`));
   const meta = el("div", "run-meta");
   meta.append(el("span", "past-meta", `${money(t.usd)} · ${t.seconds.toFixed(1)} s`));
-  agent.append(reply, meta);
+  agent.append(reply);
+  if (t.online) {
+    const q = qualityCard(0);
+    fillQuality(q, t.online);
+    agent.append(q.card);
+  }
+  agent.append(meta);
   turn.append(you, agent);
   return turn;
 }
@@ -483,6 +490,7 @@ function switchProfile() {
   $("empty-state").hidden = false;
   loadPane(); // each profile has its own context, tools and switches
   refreshWork();
+  if (!$("view-online").hidden) loadOnline();
   $("task").focus();
 }
 
@@ -997,6 +1005,17 @@ function onEvent(ev, turn) {
     turn.activity.append(row);
     row.scrollIntoView({ block: "nearest" });
     if (d.folder === "outbox") (turn.sent ??= []).push(d);
+  } else if (ev.type === "online_evals_started") {
+    // After the answer (D-148): its quality, scored while you read. Never sent back.
+    turn.quality = qualityCard(d.metrics.length, d.judge);
+    turn.meta.before(turn.quality.card);
+  } else if (ev.type === "online_evals_finished") {
+    if (!turn.quality) {
+      turn.quality = qualityCard(0);
+      turn.meta.before(turn.quality.card);
+    }
+    fillQuality(turn.quality, d);
+    announce(`Online evals: ${turn.quality.count.textContent}`);
   } else if (ev.type === "run_finished") {
     // A model call that never got its reply (time limit, error) is marked, not left spinning.
     if (turn.model?.li.classList.contains("working")) setActivity(turn.model, { state: "error" });
@@ -1113,6 +1132,57 @@ function finishCheck(check, r, { past = false } = {}) {
     fold.append(facts);
     check.card.append(fold);
   }
+}
+
+// ── Online Evals card (D-148): under the answer, filled when the scores arrive ──
+const GRADED = { code: "Code", judge: "LLM as Judge" };
+const gradeChip = (by) => el("span", `grade-chip grade-${by}`, GRADED[by] ?? by);
+const scoreText = (r) => (r.score == null ? "–" : r.score.toFixed(2));
+
+function qualityCard(n, judge) {
+  const card = el("div", "todo-card check-card quality-card is-checking");
+  const head = el("div", "card-head");
+  const title = el("span", "card-title", "Online Evals");
+  const count = el("span", "card-count", n ? `scoring ${plural(n, "metric")}…` : "");
+  head.append(el("span", "check-spin", ""), title, count);
+  head.title = `After you see the answer, the harness scores its quality: code metrics, and one LLM as Judge call${judge ? ` (${modelLabel(judge)})` : ""}. Never blocking, never sent back to the agent.`;
+  const list = el("ul", "todo-list");
+  card.append(head, list);
+  return { card, title, count, list };
+}
+
+function fillQuality(q, d) {
+  const results = d.results ?? [];
+  const scored = results.filter((r) => r.status === "passed" || r.status === "failed");
+  const passed = scored.filter((r) => r.status === "passed").length;
+  const state = !scored.length ? "skipped" : passed === scored.length ? "passed" : "mixed";
+  q.card.className = `todo-card check-card quality-card is-${state}`;
+  q.count.textContent = scored.length ? `${passed} of ${scored.length} passed` : d.error ? "not scored" : "nothing to score";
+  const rows = [];
+  for (const r of results) {
+    if (r.status === "skipped") continue;
+    const row = el("li", `todo-item quality-item is-${r.status}`);
+    const box = { passed: "✓", failed: "✗", not_scored: "?" }[r.status] ?? "○";
+    row.append(el("span", "todo-box", box), el("span", "todo-text", r.label), el("span", "q-score", scoreText(r)), gradeChip(r.graded_by));
+    const why = r.status === "not_scored" ? `Not scored: ${r.reason}` : r.reason;
+    const missing = r.unsupported?.length ? ` Not found: ${r.unsupported.join("; ")}` : "";
+    if (r.status !== "passed") row.append(el("span", "todo-note", why + missing));
+    else row.title = why;
+    rows.push(row);
+  }
+  const skipped = results.filter((r) => r.status === "skipped");
+  if (skipped.length) {
+    const row = el("li", "todo-item is-skipped");
+    row.append(el("span", "todo-box", "–"), el("span", "todo-text", `${skipped.length} didn't apply`));
+    row.title = skipped.map((r) => `${r.label}: ${r.reason}`).join("\n");
+    rows.push(row);
+  }
+  if (d.judge) {
+    const row = el("li", "todo-item quality-foot");
+    row.append(el("span", "todo-box", ""), el("span", "todo-note", `Judge: ${modelLabel(d.judge)} · ${money(d.usd ?? 0)} · never sent back to the agent`));
+    rows.push(row);
+  }
+  q.list.replaceChildren(...rows);
 }
 
 // The run summary under the final answer: four numbers that count up, and where the
@@ -1561,6 +1631,14 @@ async function runTask(event) {
   input.value = "";
   const turn = newTurn(task);
   announce("Working on it");
+  let freed = false;
+  const free = () => {
+    if (freed) return;
+    freed = true;
+    send.disabled = false;
+    input.focus();
+    refreshWork(); // task counts and times
+  };
   try {
     const response = await fetch("/api/run", {
       method: "POST",
@@ -1568,7 +1646,11 @@ async function runTask(event) {
       body: JSON.stringify({ task, model: $("model").value, effort: $("effort").value || null, profile: currentProfile(), off: currentOff(), session: currentSession }),
     });
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
-    for await (const ev of readLines(response)) onEvent(ev, turn);
+    for await (const ev of readLines(response)) {
+      onEvent(ev, turn);
+      // The answer is in: you may ask again while the online evals score it (D-148).
+      if (ev.type === "run_finished" && !ev.data.agent_id) free();
+    }
   } catch (error) {
     turn.stats.classList.remove("working");
     turn.stats.textContent = "";
@@ -1576,9 +1658,7 @@ async function runTask(event) {
     turn.foot.className = "run-foot failed";
     announce(`Failed: ${error.message}`);
   } finally {
-    send.disabled = false;
-    input.focus();
-    refreshWork(); // task counts and times
+    free();
     if (paneInfo) loadPane(); // a fact the agent just saved shows at once
   }
 }
@@ -1972,7 +2052,39 @@ function renderPane() {
   // what it works with; guardrails gate the tools; memory is kept at the end (D-67).
   // Run order (D-67): the loop, what it works with, what gates the tools, the check on the
   // answer at the end (S11), then what is kept.
-  const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), memory];
+  // Online Evals (D-148): quality scores after the answer, never blocking. Switched like checks.
+  const o = info.online_evals;
+  let onlineSection = null;
+  if (o) {
+    const claude = ($("model").value || "").startsWith("claude-") && health.claude_small_model;
+    const judge = claude ? modelLabel(health.claude_small_model) : o.judge ? modelLabel(o.judge) : "the run's model";
+    const list = el("ul", "pane-list check-names");
+    list.append(
+      ...o.metrics.map((m) =>
+        paneItem({
+          kind: "checks",
+          name: m.label,
+          id: m.name,
+          tags: [gradeChip(m.graded_by)],
+          off: off.checks.includes(m.name),
+          detail: facts([
+            ["Passes when", m.graded_by === "judge" ? `${m.description} (a score of ${o.pass_at} or more)` : m.description],
+            ["Graded By", m.graded_by === "code" ? "Code: exact, free, the same every time" : `LLM as Judge: ${judge}, in one call for every judged metric`],
+          ]),
+        }),
+      ),
+    );
+    onlineSection = paneSection("online", "Online Evals", `${plural(o.metrics.length, "metric")} · after the answer`, [
+      subhead("Metrics", "after you see the answer; never blocking"),
+      list,
+      facts([
+        ["On a failure", "Shown on the answer and on the Online Evals page; never sent back to the agent"],
+        ["Judge", `${judge}: one call per answer`],
+        ...(o.style ? [["Style guide", o.style]] : []),
+      ]),
+    ]);
+  }
+  const sections = [loopSection, context, toolsSection, guard, ...(v.checks.length ? [verifySection] : []), ...(onlineSection ? [onlineSection] : []), memory];
   for (const s of sections) if (wasOpen.has(s.className)) s.open = wasOpen.get(s.className);
   $("pane-body").replaceChildren(...sections);
 }
@@ -2096,6 +2208,105 @@ for (const [side, lane] of Object.entries(LANES)) {
 // "- 2026-11-10 · text" → the text; the date shows apart.
 const factText = (line) => line.replace(/^- \d{4}-\d{2}-\d{2} · /, "").replace(/^- /, "");
 const factDate = (line) => line.match(/^- (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+
+// ── Online Evals page (D-148): every scored answer of this profile, newest first ──
+async function loadOnline() {
+  const summary = $("online-summary");
+  const answers = $("online-answers");
+  let body;
+  try {
+    const response = await fetch(`/api/online-evals${withProfile()}`);
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    body = await response.json();
+  } catch (error) {
+    summary.replaceChildren(el("p", "memory-empty", `Couldn't load the online evals: ${error.message}`));
+    answers.replaceChildren();
+    return;
+  }
+  const rows = body.answers;
+  if (!rows.length) {
+    summary.replaceChildren(el("p", "memory-empty", "No scored answers yet for this profile. Ask the agent something: each answer is scored after you see it."));
+    answers.replaceChildren();
+    return;
+  }
+  // Per metric: the mean score and how often it passed, over the answers it applied to.
+  const metrics = new Map();
+  for (const a of rows) {
+    for (const r of a.results ?? []) {
+      const m = metrics.get(r.name) ?? { label: r.label, graded_by: r.graded_by, sum: 0, n: 0, passed: 0, scored: 0 };
+      if (r.status === "passed" || r.status === "failed") {
+        m.scored += 1;
+        m.passed += r.status === "passed" ? 1 : 0;
+        if (r.score != null) [m.sum, m.n] = [m.sum + r.score, m.n + 1];
+      }
+      metrics.set(r.name, m);
+    }
+  }
+  const table = el("table", "evals-metrics online-metrics");
+  const head = el("tr");
+  for (const name of ["Metric", "Graded By", "Average", "Passed"]) {
+    const th = el("th", null, name);
+    th.scope = "col";
+    head.append(th);
+  }
+  const thead = el("thead");
+  thead.append(head);
+  const tbody = el("tbody");
+  for (const m of metrics.values()) {
+    const tr = el("tr");
+    const name = el("th", "metric-name", m.label);
+    name.scope = "row";
+    const by = el("td", "metric-by");
+    by.append(gradeChip(m.graded_by));
+    const ok = m.scored && m.passed === m.scored;
+    tr.append(name, by, el("td", "q-score", m.n ? (m.sum / m.n).toFixed(2) : "–"), el("td", `q-rate ${m.scored ? (ok ? "pass" : "fail") : ""}`, m.scored ? `${m.passed} of ${m.scored}` : "didn't apply"));
+    tbody.append(tr);
+  }
+  table.append(thead, tbody);
+  summary.replaceChildren(table);
+
+  // One row per answer: the question, then each metric's score, coloured by its verdict.
+  const names = [...metrics.keys()];
+  const wrap = el("div", "online-scroll");
+  const list = el("table", "online-table");
+  const top = el("tr");
+  for (const name of ["Question", ...names.map((n) => metrics.get(n).label), "When"]) {
+    const th = el("th", null, name);
+    th.scope = "col";
+    top.append(th);
+  }
+  const lhead = el("thead");
+  lhead.append(top);
+  const lbody = el("tbody");
+  for (const a of rows) {
+    const tr = el("tr");
+    const ask = el("th", "online-ask");
+    ask.scope = "row";
+    const open = el("button", "online-open", a.task);
+    open.type = "button";
+    open.title = `Open the conversation "${a.title}"`;
+    open.addEventListener("click", () => {
+      location.hash = "#agent";
+      openSession(a.session);
+    });
+    ask.append(open);
+    tr.append(ask);
+    for (const n of names) {
+      const r = (a.results ?? []).find((x) => x.name === n);
+      const td = el("td");
+      if (r) {
+        td.append(el("span", `q-pill is-${r.status}`, r.status === "skipped" ? "–" : scoreText(r)));
+        td.title = `${r.label}: ${r.reason}`;
+      }
+      tr.append(td);
+    }
+    tr.append(el("td", "online-when", new Date(a.at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })));
+    lbody.append(tr);
+  }
+  list.append(lhead, lbody);
+  wrap.append(list);
+  answers.replaceChildren(wrap);
+}
 
 async function loadFacts() {
   const grid = $("memory-grid");
@@ -2517,7 +2728,7 @@ function renderMetrics() {
   const totals = metricTotals();
   const head = el("thead");
   const names = el("tr");
-  for (const name of ["Metric", "What It Checks", "Score"]) {
+  for (const name of ["Metric", "What It Checks", "Graded By", "Score"]) {
     const th = el("th", null, name);
     th.scope = "col";
     names.append(th);
@@ -2528,7 +2739,7 @@ function renderMetrics() {
     const title = el("tr", "metric-group");
     const th = el("th", null, `${group.title} · ${group.subtitle}`);
     th.scope = "colgroup";
-    th.colSpan = 3;
+    th.colSpan = 4;
     title.append(th);
     body.append(title);
     for (const row of group.rows) {
@@ -2537,8 +2748,10 @@ function renderMetrics() {
         const tr = el("tr");
         const name = el("th", "metric-name", info.name);
         name.scope = "row";
-        name.append(el("span", "metric-cat", `${row.name}${info.kind === "code" ? " · Code" : ""}`));
-        tr.append(name, el("td", "metric-does", info.measures ?? ""), scoreCell(info, totals[id]));
+        name.append(el("span", "metric-cat", row.name));
+        const by = el("td", "metric-by");
+        by.append(gradeChip(info.kind));
+        tr.append(name, el("td", "metric-does", info.measures ?? ""), by, scoreCell(info, totals[id]));
         body.append(tr);
       }
     }

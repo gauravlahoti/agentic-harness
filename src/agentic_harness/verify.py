@@ -211,8 +211,12 @@ def feedback(failures: Sequence[Result]) -> str:
     )
 
 
-def load_checks(file: Path) -> tuple[tuple[Check, ...], tuple[ActionCheck, ...]]:
-    """A workspace's ``CHECKS`` (on answers) and ``ACTION_CHECKS`` (on a tool's call, S12),
+Loaded = tuple[tuple[Check, ...], tuple[ActionCheck, ...], tuple[Check, ...]]
+
+
+def load_checks(file: Path) -> Loaded:
+    """A workspace's ``CHECKS`` (gates on answers), ``ACTION_CHECKS`` (on a tool's call, S12)
+    and ``METRICS`` (code metrics for the online evals, D-148: scored, never blocking),
     imported by path (workspaces are not packages)."""
     from agentic_harness.workspace import WorkspaceError  # here: workspace imports this file
 
@@ -231,7 +235,10 @@ def load_checks(file: Path) -> tuple[tuple[Check, ...], tuple[ActionCheck, ...]]
         isinstance(c, ActionCheck) for c in actions
     ):
         raise WorkspaceError(f"{file}: ACTION_CHECKS must be a list of @action_check functions.")
-    names = [c.name for c in [*checks, *actions]]
+    metrics = getattr(module, "METRICS", [])
+    if not isinstance(metrics, list | tuple) or not all(isinstance(c, Check) for c in metrics):
+        raise WorkspaceError(f"{file}: METRICS must be a list of @check functions.")
+    names = [c.name for c in [*checks, *actions, *metrics]]
     if PLAN_CHECK.name in names or len(set(names)) != len(names):
         raise WorkspaceError(f"{file}: check names must be unique (and not {PLAN_CHECK.name}).")
-    return tuple(checks), tuple(actions)
+    return tuple(checks), tuple(actions), tuple(metrics)

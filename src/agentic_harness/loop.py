@@ -32,6 +32,7 @@ from agentic_harness.events import Event, EventBus, Listener
 from agentic_harness.gate import ApprovalRequest, Gate
 from agentic_harness.limits import Budget, Limits
 from agentic_harness.model import ModelClient, ModelError, Step
+from agentic_harness.online_evals import OnlineEvals
 from agentic_harness.planning import PLAN_TOOL, Item, PlanError, read_items, show
 from agentic_harness.pricing import Prices
 from agentic_harness.scope import Scope, ScopeCheck
@@ -139,6 +140,7 @@ class Harness:
         retries: int = 1,
         action_checks: Sequence[ActionCheck] = (),
         approval_context: Sequence[ApprovalContext] = (),
+        online: OnlineEvals | None = None,
     ) -> None:
         self.model, self.limits, self.prices, self.system = model, limits, prices, system
         self.root, self.readable = root, tuple(readable)  # the workspace folder tools may use
@@ -151,6 +153,7 @@ class Harness:
         self.checks, self.retries = tuple(checks), retries  # VERIFY (S11, D-127)
         self.action_checks = tuple(action_checks)  # checks on a call, before it runs (S12)
         self.approval_context = tuple(approval_context)  # where each term started (D-141)
+        self.online = online  # quality scores after the answer, never blocking (D-148)
         self.context = context or {}  # what was loaded into the prompt, for the page (S02)
         # Same text on every call (S02-AC8); each call carries this ID to prove it.
         self.prompt_id = hashlib.sha256(system.encode()).hexdigest()[:12]
@@ -174,17 +177,65 @@ class Harness:
     ) -> RunResult:
         """Run one task. ``history`` is the conversation so far, resent whole (the harness is
         stateless: D-04). ``record`` is called with each new step as it happens, so a saved
-        conversation is complete up to the last line (S07, D-90)."""
+        conversation is complete up to the last line (S07, D-90).
+
+        A completed answer is then scored by the online evals (D-148): after ``run_finished``,
+        so the person already has the answer; nothing goes back to the model."""
         run = _Run(self._bus)
-        budget = Budget(self.limits)
-        declarations = [tool.declaration() for tool in self.visible_tools()]
-        steps: list[Step] = [*history, user_input(task)]
         # What tools returned in earlier turns, whole as saved: a check may count it (S11).
         earlier = tuple(
             "".join(p.get("text", "") for p in s.get("result", []) if isinstance(p, dict))
             for s in history
             if s.get("type") == "function_result" and not s.get("is_error")
         )
+        result = await self._run(run, earlier, task, history, record)
+        if self._scores(result):
+            await self._online_evals(run, earlier, task, history, result.answer)
+        return result
+
+    def _scores(self, result: RunResult) -> bool:
+        """Only a real answer is scored: not a refusal, a stop or a failure."""
+        return self.online is not None and result.outcome == "completed" and bool(result.answer)
+
+    async def _online_evals(
+        self,
+        run: "_Run",
+        earlier: tuple[str, ...],
+        task: str,
+        history: Sequence[Step],
+        answer: str,
+    ) -> None:
+        assert self.online is not None  # noqa: S101 (checked by _scores)
+        run.emit(
+            "online_evals_started",
+            metrics=[m.to_dict() for m in self.online.metrics()],
+            judge=self.online.judge.name,
+        )
+        try:
+            scored = await self.online.score(
+                task, answer, run.record(self.profile, earlier), last_exchange(history)
+            )
+            data: dict[str, Any] = {
+                "results": [r.to_dict() for r in scored.results],
+                "usd": scored.usd,
+                "judge": scored.judge,
+                "error": scored.error,
+            }
+        except Exception as error:  # a bug in a metric must not break the finished run
+            data = {"results": [], "usd": 0.0, "judge": "", "error": f"{error}"[:300]}
+        run.emit("online_evals_finished", **data)
+
+    async def _run(
+        self,
+        run: "_Run",
+        earlier: tuple[str, ...],
+        task: str,
+        history: Sequence[Step],
+        record: Callable[[list[Step]], None] | None,
+    ) -> RunResult:
+        budget = Budget(self.limits)
+        declarations = [tool.declaration() for tool in self.visible_tools()]
+        steps: list[Step] = [*history, user_input(task)]
         # A question with no reply is not kept: it would leave a dangling turn in the history.
         unsaved: list[Step] = [steps[-1]]
 
@@ -237,6 +288,8 @@ class Harness:
                 seconds=result.seconds,
                 plan=[i.to_dict() for i in run.plan] if run.plan is not None else None,
                 checks=checked,
+                # True: online evals follow, so the stream stays open for their scores (D-148).
+                online_evals=self.online is not None and outcome == "completed" and bool(answer),
             )
             return result
 

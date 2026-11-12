@@ -51,12 +51,12 @@ while no limit is exceeded:
 | S11-AC5 | Skipped needs a note, or the tool returns an error | 🧪 |
 | S11-AC6 | VERIFY runs the workspace's checks after the draft, before `run_finished` | 🧪 |
 | S11-AC7 | A failed check sends the failures back once; a second failure → the answer plus "Not verified" | 🧪 |
-| S11-AC8 | CloudCo's four checks, each with a pass and a fail case | 🧪 |
+| S11-AC8 | CloudCo's gates, each with a pass and a fail case (D-150: only mistakes that harm) | 🧪 |
 | S11-AC9 | `src/agentic_harness/` stays domain-free (existing test) | 🧪 |
 | S11-AC10 | Pane: Plans row, `write_plan` under Harness Tools, Verification section with check switches; a switched-off check doesn't run | 🧪 👀 |
 | S11-AC11 | Chat: live To-Do card and Checks card; old conversations show both | 👀 |
 | S11-AC13 | Answer style: `answer-style.md` is always in the prompt (no skill to load, no extra call); AGENTS.md no longer has its own "How to answer" | 🧪 |
-| S11-AC14 | Answer Format check: bottom line first; every item line cites a source; skipped for a short answer; pass and fail cases | 🧪 |
+| S11-AC14 | Answer style is scored by the online metric Style & Format (LLM as Judge), not a gate (D-150) | 🧪 |
 | S11-AC15 | The page renders headings, nested lists (indented) and sources as small badges; model text still can't inject HTML | 🧪 👀 |
 | S11-AC12 | Live: "Is Net 60 OK?" makes no plan; "review ShopCo's contract and send it" plans and finishes every item | 🔑 👀 |
 
@@ -99,3 +99,4 @@ Evals: golden set 16 → 19: `light-question-no-plan`, `review-and-send-plans`, 
 - 2026-11-12 · Your question ("no toggle for the harness tools, why"): every harness tool now has a switch, each saying what off means: `load_skill` off = no skills (none listed in the prompt either), `save_note` off = reads facts, saves none, `ask_human` off = can't stop to ask. Only `write_plan` had one before, for no good reason.
 - 2026-11-12 · Your review: Plan and Verify split by when they happen (D-128 changed). Plans row in Agentic Loop; `write_plan` and the harness's other own tools listed under Tools → Harness Tools; Verification its own section after Guardrails. AC10 reworded; re-checked in Chrome.
 - 2026-11-12 · Golden set 16 → 18, not 19: `wrong-approver-caught` is an offline test (`test_s11_ac7_wrong_approver_is_caught_and_corrected`), because a live agent can't be made to get it wrong on cue.
+- 2026-11-12 · Your review: "more checks is not a solution". Verification keeps only the gates for mistakes that harm; quality moves to the new Online Evals (D-148–D-151). Records Match and Sections Are Real (D-146) are deleted; Citations Exist and Answer Format became the online metrics Citations (Code) and Style & Format (LLM as Judge). AC8 and AC14 reworded, reset to 📝.

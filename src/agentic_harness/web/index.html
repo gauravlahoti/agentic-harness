@@ -62,7 +62,8 @@
             <span class="nav-thumb" aria-hidden="true"></span>
             <a class="nav-item" href="#agent" data-view="agent">Agent</a>
             <a class="nav-item" href="#memory" data-view="memory">Memory</a>
-            <a class="nav-item" href="#evals" data-view="evals">Evals</a>
+            <a class="nav-item" href="#online" data-view="online">Online Evals</a>
+            <a class="nav-item" href="#evals" data-view="evals">Offline Evals</a>
             <a class="nav-item" href="#golden" data-view="golden">Golden Dataset</a>
             <a class="nav-item" href="#checks" data-view="checks">Checks</a>
           </nav>
@@ -146,10 +147,22 @@
       <div class="memory-grid" id="memory-grid"></div>
     </section>
 
-    <!-- ── Evals view (S10): summary, metrics, cases, past evals, Run ── -->
+    <!-- ── Online Evals view (D-148): every live answer's quality scores, newest first ── -->
+    <section class="view view-online" id="view-online" aria-labelledby="online-heading" hidden>
+      <header class="page-header">
+        <h1 id="online-heading">Online Evals</h1>
+        <p class="memory-intro">Every live answer is scored after you see it: never blocking, never sent back to the agent. Code metrics are exact and free; LLM as Judge metrics come from one small judge call per answer. This profile's conversations, newest first.</p>
+      </header>
+      <h2 class="evals-sub" id="online-metrics-title">Metrics</h2>
+      <div class="online-summary" id="online-summary"></div>
+      <h2 class="evals-sub" id="online-answers-title">Answers</h2>
+      <div class="online-answers" id="online-answers"></div>
+    </section>
+
+    <!-- ── Offline Evals view (S10): summary, metrics, cases, past evals, Run ── -->
     <section class="view view-evals" id="view-evals" aria-labelledby="evals-heading" hidden>
       <header class="page-header evals-head">
-        <h1 id="evals-heading">Evals <span class="synthetic-tag" hidden>Synthetic Data</span></h1>
+        <h1 id="evals-heading">Offline Evals <span class="synthetic-tag" hidden>Synthetic Data</span></h1>
         <div class="evals-actions">
           <button type="button" id="evals-reset" class="evals-reset" title="Back to the ready card, the core set, and no eval open">Reset</button>
           <button type="button" id="evals-run" class="primary">Run Evals</button>

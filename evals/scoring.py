@@ -128,11 +128,62 @@ def combine(metric: str, turns: list[tuple[int, Score]], many: bool) -> Score:
     )
 
 
+# The online evals' metrics (D-148), read from each turn's trace: scored by the harness while
+# the agent ran, with the same code as a live answer (D-151).
+ANSWER_QUALITY = (
+    "groundedness",
+    "hallucination",
+    "context_relevancy",
+    "answer_relevancy",
+    "citations",
+    "style_format",
+)
+STATUS = {"passed": "scored", "failed": "scored", "skipped": "not_applicable"}
+
+
+def quality_scores(views: Sequence[RunView]) -> list[Score]:
+    """Each Answer Quality metric over the turns that were scored: the mean, passed only if
+    every scored turn passed. A metric no turn had is left out (switched off, say)."""
+    many = len(views) > 1
+    scores = []
+    for metric in ANSWER_QUALITY:
+        turns: list[tuple[int, Score]] = []
+        for n, view in enumerate(views, 1):
+            row = next((r for r in view.online if r.get("name") == metric), None)
+            if row is None:
+                continue
+            judged = row.get("graded_by") == "judge"
+            turns.append(
+                (
+                    n,
+                    Score(
+                        metric,
+                        row.get("score"),
+                        row.get("status") == "passed",
+                        str(row.get("reason", "")),
+                        [view.online_judge] if judged and view.online_judge else [],
+                        view.online_usd if judged else 0.0,  # the one call, on its first metric
+                        status=STATUS.get(str(row.get("status")), "not_scored"),
+                    ),
+                )
+            )
+        if turns:
+            scores.append(combine(metric, turns, many))
+    # The judge call is one per answer: count its cost once, on Groundedness's line.
+    paid = False
+    for score in scores:
+        if score.usd and not paid:
+            paid = True
+        else:
+            score.usd = 0.0
+    return scores
+
+
 def code_scores(case: Case, views: Sequence[RunView]) -> list[Score]:
     rules = (
         guardrails(case, views, "guardrails_turns") if case.multi_turn else guardrails(case, views)
     )
-    return [tool_correctness(case, views), rules]
+    return [tool_correctness(case, views), rules, *quality_scores(views)]
 
 
 Progress = Callable[[str, str, int, int], None]  # (started | finished, metric, index, of)

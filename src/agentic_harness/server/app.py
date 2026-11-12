@@ -92,6 +92,7 @@ class OffRequest(BaseModel):
     checks: list[Name] = Field(default_factory=list, max_length=100)
 
 
+ONLINE_ROWS = 100  # the Online Evals page lists this many answers, newest first (D-148)
 TITLE_WAIT_SECONDS = 3.0  # how long the end of a first turn waits for its topic title (D-91)
 
 
@@ -223,10 +224,33 @@ def create_app(
                     "seconds": t.seconds,
                     "plan": t.plan,
                     "checks": t.checks,
+                    "online": t.online,
                 }
                 for t in session.turns
             ],
         }
+
+    @app.get("/api/online-evals")
+    async def online_evals(profile: str | None = None) -> dict[str, object]:
+        """Every scored answer of the profile's conversations, newest first (D-148): the
+        Online Evals page. Read from the saved conversations, so it needs no other store."""
+        rows = []
+        for info in sessions.list(profile_of(profile)):
+            session = sessions.load(info.id, profile_of(profile))
+            for t in session.turns:
+                if t.online:
+                    rows.append(
+                        {
+                            "session": session.id,
+                            "title": session.title or "New Conversation",
+                            "task": t.task,
+                            "at": t.at,
+                            "run_id": t.run_id,
+                            **t.online,
+                        }
+                    )
+        rows.sort(key=lambda r: float(str(r["at"])), reverse=True)
+        return {"answers": rows[:ONLINE_ROWS]}
 
     @app.delete("/api/sessions/{session_id}")
     async def delete_session(
@@ -536,6 +560,8 @@ def create_app(
 
         def finished(event: Event) -> None:
             data = event.data
+            if event.type == "online_evals_finished" and not data.get("agent_id"):
+                sessions.save_scores(session_id, profile, event.run_id, dict(data))
             if event.type == "run_finished" and not data.get("agent_id"):
                 sessions.finish_turn(
                     session_id,
@@ -561,7 +587,12 @@ def create_app(
                 or (workspace.scope.model if workspace.scope and workspace.scope.model else name),
             )
         )
-        app.state.run_active = True
+        mine = object()  # this run's hold on the page; released when its answer is in
+        app.state.run_active = mine
+
+        def release() -> None:
+            if app.state.run_active is mine:  # a later run may already hold it
+                app.state.run_active = False
 
         def note(type_: str, **data: object) -> str:
             event = Event(type_, run_id="", seq=0, time=0.0, data=data)
@@ -578,6 +609,8 @@ def create_app(
                     record=lambda steps: sessions.append_steps(session_id, profile, steps),
                 ):
                     yield line
+                    if '"run_finished"' in line and not json.loads(line)["data"].get("agent_id"):
+                        release()  # the answer is in: online evals may still be scoring (D-148)
                 if titling is not None:
                     try:
                         title = await asyncio.wait_for(titling, TITLE_WAIT_SECONDS)
@@ -591,7 +624,7 @@ def create_app(
             finally:
                 if titling is not None and not titling.done():
                     titling.cancel()
-                app.state.run_active = False
+                release()
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")
 

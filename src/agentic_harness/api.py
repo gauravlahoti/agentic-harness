@@ -22,6 +22,7 @@ from agentic_harness.limits import Limits
 from agentic_harness.loop import Approver, Harness
 from agentic_harness.memory import SessionStore, load_notes, note_path, save_note_tool
 from agentic_harness.model import ModelClient
+from agentic_harness.online_evals import DEFAULT_IDS, PASS_AT, OnlineEvals, listed
 from agentic_harness.planning import PLAN_TOOL, plan_tool
 from agentic_harness.pricing import Prices, load_prices
 from agentic_harness.scope import scope_check
@@ -159,6 +160,27 @@ def create_harness(
             prices.for_model(wanted)
             check_model = model_factory(wanted)
         check = scope_check(workspace.scope, check_model, prices)
+    online = None
+    if workspace.online is not None:  # quality scores after every answer (D-148)
+        judge = model
+        wanted = (
+            small_model
+            or workspace.online.model
+            or (workspace.scope.model if workspace.scope else None)
+        )
+        if wanted and wanted != model.name and model_factory:
+            prices.for_model(wanted)
+            judge = model_factory(wanted)
+        online = OnlineEvals(
+            judge,
+            prices,
+            ids=workspace.online.ids or DEFAULT_IDS,
+            style=workspace.online.style,
+            workspace_metrics=workspace.metrics,
+            off=off.checks,  # a metric is switched off like a check (D-132)
+        )
+        if not online.metrics():
+            online = None
     summarizer = None
     if workspace.window is not None:  # one small call, only when pruning is not enough (D-93)
         small = model
@@ -188,6 +210,7 @@ def create_harness(
         retries=workspace.verify_retries,
         action_checks=[c for c in workspace.action_checks if c.name not in off.checks],  # S12
         approval_context=workspace.approval_context,  # where each term started (D-141)
+        online=online,
     )
     if trace_dir is not None:
         harness.subscribe(TraceWriter(trace_dir, secrets))
@@ -213,13 +236,17 @@ def _check_unique(tools: list[Tool]) -> None:
 
 def _check_off(workspace: Workspace, profile: str | None, off: Off) -> Off:
     """Every name must exist for this profile: a switch can't invent anything (D-70)."""
+    # Online eval metrics switch off the same way as checks (D-148).
+    online = workspace.online
+    metrics = {m.name for m in listed(workspace.metrics, bool(online.style))} if online else set()
     known = {
         "tool": {t.name for t in [*workspace.tools, *builtin_tools(workspace.builtins)]}
         | {t.name for t in harness_tools(workspace, workspace.skills(profile))},
         "skill": {s.name for s in workspace.skills(profile)},
         "sub-agent": {a.name for a in workspace.subagents},
         "check": {c.name for c in all_checks(workspace)}
-        | {c.name for c in workspace.action_checks},
+        | {c.name for c in workspace.action_checks}
+        | metrics,
     }
     for kind, names in (
         ("tool", off.tools),
@@ -378,6 +405,18 @@ def describe_harness(
                 "summarize_at": workspace.window.summarize_at,
                 "keep_recent": workspace.window.keep_recent,
             },
+        },
+        # Online evals (D-148): quality scores after every answer, never blocking.
+        "online_evals": None
+        if workspace.online is None
+        else {
+            "metrics": [
+                m.to_dict() for m in listed(workspace.metrics, bool(workspace.online.style))
+            ],
+            "judge": workspace.online.model
+            or (workspace.scope.model if workspace.scope and workspace.scope.model else ""),
+            "style": workspace.online.style_file,
+            "pass_at": PASS_AT,
         },
         # Plan and Verify (S11): what the harness does before an answer reaches the person.
         "verify": {

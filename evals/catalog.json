@@ -1,5 +1,5 @@
 {
-  "_note": "The 12 metrics we score, in DeepEval's own categories, and the ones we skip with the reason (S10, D-114). The runner and the Evals page both read this file.",
+  "_note": "The metrics we score, in DeepEval's own categories plus Answer Quality (the online evals' metrics, D-148), and the ones we skip with the reason (S10, D-114). kind says who grades it: code or judge (LLM as Judge). The runner and the Offline Evals page both read this file.",
   "tables": [
     {
       "id": "layers",
@@ -106,7 +106,7 @@
           "skipped": [
             {
               "deepeval": "TurnFaithfulnessMetric",
-              "why": "It grades answers against retrieved passages; our tools fetch records by ID, and its judge path crashed in the first full eval (D-118)."
+              "why": "Groundedness (Answer Quality) grades the same thing: each claim against what the tools returned, in one judge call (D-149)."
             },
             {
               "deepeval": "TurnContextualRelevancyMetric · PrecisionMetric · RecallMetric",
@@ -137,6 +137,48 @@
               "why": "Our two guardrail checks are custom metrics, shown under Safety and Behavioral compliance."
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "quality",
+      "title": "Answer Quality",
+      "subtitle": "Same as Online",
+      "columns": [
+        "Category",
+        "What it evaluates",
+        "Metrics"
+      ],
+      "rows": [
+        {
+          "id": "grounding",
+          "name": "Grounding",
+          "does": "The answer says only what the tools returned",
+          "metrics": [
+            "groundedness",
+            "hallucination",
+            "citations"
+          ],
+          "skipped": []
+        },
+        {
+          "id": "relevancy",
+          "name": "Relevancy",
+          "does": "The right context fetched, the whole question answered",
+          "metrics": [
+            "context_relevancy",
+            "answer_relevancy"
+          ],
+          "skipped": []
+        },
+        {
+          "id": "style",
+          "name": "Style",
+          "does": "The workspace's answer style",
+          "metrics": [
+            "style_format"
+          ],
+          "skipped": []
         }
       ]
     }
@@ -218,6 +260,48 @@
       "kind": "code",
       "threshold": 1.0,
       "measures": "Every turn holds the rules: no forbidden words, no unapproved send, the right approver asked again."
+    },
+    "groundedness": {
+      "name": "Groundedness",
+      "deepeval": "ours (online evals)",
+      "kind": "judge",
+      "threshold": "0.7",
+      "measures": "Is each claim in the answer supported by what the tools returned?"
+    },
+    "hallucination": {
+      "name": "Hallucination",
+      "deepeval": "ours (online evals)",
+      "kind": "code",
+      "threshold": "1.0",
+      "measures": "Does every ID, %, amount, date and number in the answer appear in what the tools returned or the question?"
+    },
+    "citations": {
+      "name": "Citations",
+      "deepeval": "ours (online evals)",
+      "kind": "code",
+      "threshold": "1.0",
+      "measures": "Was every source the answer cites read in this conversation? (the workspace's own metric)"
+    },
+    "context_relevancy": {
+      "name": "Context Relevancy",
+      "deepeval": "ours (online evals)",
+      "kind": "judge",
+      "threshold": "0.7",
+      "measures": "Was what the agent fetched relevant to the question, not off-topic or far too much?"
+    },
+    "answer_relevancy": {
+      "name": "Answer Relevancy",
+      "deepeval": "ours (online evals)",
+      "kind": "judge",
+      "threshold": "0.7",
+      "measures": "Does the answer address every part of the question, with the detail asked for?"
+    },
+    "style_format": {
+      "name": "Style & Format",
+      "deepeval": "ours (online evals)",
+      "kind": "judge",
+      "threshold": "0.7",
+      "measures": "Does the answer follow the workspace's style guide (answer-style.md)?"
     }
   }
 }

@@ -47,8 +47,14 @@ async def stream_run(
 
 def ends_stream(event: dict[str, Any]) -> bool:
     """Only the main agent's finish ends the stream. A helper's finish carries agent_id
-    (D-63); stopping on it would cancel the main run mid-call (seen live in S04)."""
-    return event["type"] == "run_finished" and not event["data"].get("agent_id")
+    (D-63); stopping on it would cancel the main run mid-call (seen live in S04). When
+    online evals follow (D-148), the stream ends with their scores instead."""
+    data = event["data"]
+    if data.get("agent_id"):
+        return False
+    if event["type"] == "run_finished":
+        return not data.get("online_evals")
+    return bool(event["type"] == "online_evals_finished")
 
 
 def _crash(error: Exception) -> dict[str, Any]:

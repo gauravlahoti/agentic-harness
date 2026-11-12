@@ -20,35 +20,35 @@ ROOT = Path(__file__).parents[2]
 ANSWERS = ROOT / "tests" / "fixtures" / "answers"
 CHECKS = {c.name: c for c in Workspace.load(ROOT / "workspaces" / "cloudco").checks}
 
-# Answer Format is for the review itself: in a run that reviewed a contract, it has a result.
+# A run that reviewed a contract (Answer Format, which needed it, became the online Style &
+# Format metric, D-150: its human verdicts are dropped here).
 REVIEWED = Record((Call("review_contract", {}, json.dumps({"edits": []}), False),))
 
-# answer → (reviewed in that run?, and passes: Right Approver, Answer Format, No False "Sent")
+# answer → (reviewed in that run?, and passes: Right Approver, No False "Sent")
 EXPECTED = {
     # Its counter-offer gives 99.95% uptime only the CFO; 99.95% needs Engineering.
-    # One paragraph per clause, no list (written before answer-style.md existed).
-    "sonnet-094743-draft": (True, False, False, True),
-    "sonnet-094743-final": (True, True, True, True),
-    # Every decider right; all paragraphs.
-    "haiku-100604-draft": (True, True, False, True),
-    "haiku-100604-final": (True, True, False, True),
+    "sonnet-094743-draft": (True, False, True),
+    "sonnet-094743-final": (True, True, True),
+    # Every decider right.
+    "haiku-100604-draft": (True, True, True),
+    "haiku-100604-final": (True, True, True),
     # "Clause 3.2 raises the discount… That needs the CFO.": right, across two sentences.
-    "haiku-101534-draft": (True, True, False, True),
-    # One list item per clause, all right; B.7 makes no decision, so needs no source.
-    "haiku-101534-final": (True, True, True, True),
-    # "Term 2.1 …", "Discount 3.2 …": each sentence starts a claim; all right; paragraphs.
-    "haiku-103134-draft": (True, True, False, True),
-    "haiku-103134-final": (True, True, True, True),
+    "haiku-101534-draft": (True, True, True),
+    # One list item per clause, all right.
+    "haiku-101534-final": (True, True, True),
+    # "Term 2.1 …", "Discount 3.2 …": each sentence starts a claim; all right.
+    "haiku-103134-draft": (True, True, True),
+    "haiku-103134-final": (True, True, True),
     # A follow-up ("send it asap"). Its plan: "with the 99.95% uptime and 24-month cap… held
     # for the CFO and Finance": Engineering, who approves 99.95%, is missing.
-    "haiku-103432-draft": (False, False, True, True),
-    "haiku-103432-final": (False, True, True, True),
+    "haiku-103432-draft": (False, False, True),
+    "haiku-103432-final": (False, True, True),
     # "I can't give approvals": who decides each, all right.
-    "haiku-103508-draft": (False, True, True, True),
-    "haiku-103508-final": (False, True, True, True),
+    "haiku-103508-draft": (False, True, True),
+    "haiku-103508-final": (False, True, True),
     # A customer email draft ([PENDING: CFO approval]) and "Nothing has been sent".
-    "haiku-103528-draft": (False, True, True, True),
-    "haiku-103528-final": (False, True, True, True),
+    "haiku-103528-draft": (False, True, True),
+    "haiku-103528-final": (False, True, True),
 }
 
 
@@ -57,9 +57,7 @@ def test_s11_ac8_ac14_checks_agree_with_a_person_on_real_answers(name: str) -> N
     text = (ANSWERS / f"{name}.md").read_text()
     reviewed, *verdicts = EXPECTED[name]
     record = REVIEWED if reviewed else Record()
-    for check, expected in zip(
-        ("right_approver", "answer_format", "no_false_sent"), verdicts, strict=True
-    ):
+    for check, expected in zip(("right_approver", "no_false_sent"), verdicts, strict=True):
         got = CHECKS[check].fn(text, record)
         assert got is not None
         assert got.ok is expected, f"{CHECKS[check].label} on {name}: {got.message}"

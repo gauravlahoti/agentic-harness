@@ -65,6 +65,10 @@ class RunView:
     tokens_in: int = 0
     tokens_out: int = 0  # thinking counts as output, as it is billed
     replies: int = 0
+    # The online evals' scores for this answer (D-148): the same metrics, offline (D-151).
+    online: tuple[dict[str, Any], ...] = ()
+    online_usd: float = 0.0
+    online_judge: str = ""
 
     @property
     def loop_ran(self) -> bool:
@@ -90,6 +94,7 @@ def read_run(path: Path) -> RunView:
     scope_in: bool | None = None
     scope_reason = ""
     finished: dict[str, Any] = {}
+    online: dict[str, Any] = {}
     tokens_in = tokens_out = replies = 0
 
     for event in events[1:]:
@@ -134,6 +139,8 @@ def read_run(path: Path) -> RunView:
             )
             tools.append(use)
             parent.children.append(Span("tool", use.name, use.arguments, use.output))
+        elif kind == "online_evals_finished" and not helper_id:
+            online = data
         elif kind == "approval_decided" and data.get("kind", "approval") == "approval":
             asked.append((str(data.get("approver", "")), bool(data.get("approved"))))
 
@@ -158,4 +165,7 @@ def read_run(path: Path) -> RunView:
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         replies=replies,
+        online=tuple(online.get("results") or ()),
+        online_usd=float(online.get("usd") or 0.0),
+        online_judge=str(online.get("judge") or ""),
     )

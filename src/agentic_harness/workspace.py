@@ -24,7 +24,7 @@ from agentic_harness.subagents import DEFAULT_MAX_WORDS, SubAgent
 from agentic_harness.tools import Tool
 from agentic_harness.tools.builtin import BUILTINS
 from agentic_harness.trimming import Window
-from agentic_harness.verify import ActionCheck, Check, load_checks
+from agentic_harness.verify import ActionCheck, Check, Loaded, load_checks
 
 PROFILE = "{profile}"
 NAME = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # sub-agent names, like skill names
@@ -56,6 +56,16 @@ class Person:
 class MemoryFile:
     path: str  # relative to the workspace, as shown on the page
     text: str
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSettings:
+    """``[online_evals]``: score every live answer after it is shown (D-148)."""
+
+    ids: str = ""  # the record-ID pattern Hallucination checks; "" = the harness default
+    style: str = ""  # the style guide's text, for Style & Format; "" = no such metric
+    style_file: str = ""
+    model: str = ""  # the judge; "" = the scope's small model, else the run's
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +103,8 @@ class Workspace:
     approval_context: tuple[ApprovalContext, ...] = ()  # where each term started (D-141)
     people: tuple[Person, ...] = ()  # who may answer an approval, by role (D-137)
     verify_retries: int = 1  # how often a failed answer goes back (D-127)
+    metrics: tuple[Check, ...] = ()  # the workspace's code metrics for online evals (D-148)
+    online: OnlineSettings | None = None  # [online_evals]: score every answer (D-148)
 
     @classmethod
     def load(cls, path: Path) -> "Workspace":
@@ -118,7 +130,7 @@ class Workspace:
             raise WorkspaceError(
                 f"workspace.toml: delegate_only lists {stray[0]!r}, no helper's tool."
             )
-        answer_checks, action_checks = _checks(path, config.get("verify", {}))
+        answer_checks, action_checks, metrics = _checks(path, config.get("verify", {}))
         return cls(
             path=path,
             name=path.name,
@@ -150,6 +162,8 @@ class Workspace:
                 config.get("people", []), _approvals(config.get("approvals", []), known_tools)
             ),
             verify_retries=_retries(config.get("verify", {})),
+            metrics=metrics,
+            online=_online(path, config.get("online_evals")),
             memory_budget_tokens=int(config.get("memory_budget_tokens", DEFAULT_BUDGET)),
             domain_words=_texts(config, "domain_words"),
             examples=_texts(config, "examples"),
@@ -436,13 +450,36 @@ def _flag(config: dict[str, Any], key: str) -> bool:
     return value
 
 
-def _checks(root: Path, table: Any) -> tuple[tuple[Check, ...], tuple[ActionCheck, ...]]:
+def _checks(root: Path, table: Any) -> Loaded:
     """``[verify] checks = "checks.py"``: the workspace's own checks, on answers (S11) and on
-    actions (S12)."""
+    actions (S12), and its code metrics for the online evals (D-148)."""
     if not isinstance(table, dict):
         raise WorkspaceError("workspace.toml: [verify] must be a table.")
     file = _text(table, "checks")
-    return load_checks(root / file) if file else ((), ())
+    return load_checks(root / file) if file else ((), (), ())
+
+
+def _online(root: Path, table: Any) -> OnlineSettings | None:
+    if table is None:
+        return None
+    if not isinstance(table, dict):
+        raise WorkspaceError("workspace.toml: [online_evals] must be a table.")
+    if not table.get("on", True):
+        return None
+    ids = _text(table, "ids")
+    if ids:
+        try:
+            re.compile(ids)
+        except re.error as error:
+            raise WorkspaceError(f"workspace.toml: [online_evals] ids: {error}") from None
+    style_file = _text(table, "style")
+    style = ""
+    if style_file:
+        file = root / style_file
+        if not file.is_file():
+            raise WorkspaceError(f"workspace.toml: [online_evals] style {style_file} not found.")
+        style = file.read_text(encoding="utf-8")
+    return OnlineSettings(ids, style, style_file, _text(table, "model"))
 
 
 def _retries(table: Any) -> int:

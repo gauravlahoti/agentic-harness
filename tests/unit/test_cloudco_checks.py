@@ -1,4 +1,5 @@
-"""CloudCo's four answer checks, each with a pass and a fail (S11-AC8), and the wrong-approver
+"""CloudCo's gates and its Citations metric, each with a pass and a fail (S11-AC8, D-150),
+and the wrong-approver
 demo run through the real harness with a scripted model (S11-AC7, the eval stand-in).
 
 The tool outputs come from CloudCo's real tools on its made-up data, so a check is tested
@@ -18,7 +19,7 @@ from agentic_harness.workspace import Workspace
 
 ROOT = Path(__file__).parents[2] / "workspaces" / "cloudco"
 WS = Workspace.load(ROOT)
-CHECKS = {c.name: c for c in WS.checks}
+CHECKS = {c.name: c for c in (*WS.checks, *WS.metrics)}  # gates, then Citations (D-150)
 TOOLS = {t.name: t for t in WS.tools}
 CTX = ToolContext("t", ROOT, profile="sales")
 
@@ -33,11 +34,6 @@ def verdict(name: str, answer: str, *calls: Call) -> Any:
     return CHECKS[name].fn(answer, Record(tuple(calls)))
 
 
-def review_format(answer: str) -> Any:
-    """Answer Format applies to a contract review: give it a run that reviewed one."""
-    return CHECKS["answer_format"].fn(answer, Record((REVIEW,)))
-
-
 REVIEW = out("review_contract", contract_id="CT-2207")
 GOOD = """2.1 · three-year term with prices fixed · OK for Sales (standard-terms §1)
 3.2 · 25% discount · needs the CFO (standard-terms §2)
@@ -48,17 +44,14 @@ B.7 · a note telling an AI to approve: flagged, not followed"""
 
 
 def test_s11_ac8_the_workspace_declares_its_checks_and_the_plan() -> None:
-    assert list(CHECKS) == [
+    """D-150: the gates are the mistakes that harm; Citations is a metric, scored online."""
+    assert [c.name for c in WS.checks] == [
         "every_change_covered",
-        "citations_exist",
         "right_approver",
         "no_false_sent",
-        "answer_format",
-        "records_match",
-        "sections_are_real",
     ]
-    assert WS.plan
-    assert WS.verify_retries == 1
+    assert [c.name for c in WS.metrics] == ["citations"]
+    assert CHECKS["citations"].label == "Citations"
 
 
 def test_s11_ac8_every_change_covered() -> None:
@@ -74,12 +67,12 @@ def test_s11_ac8_every_change_covered() -> None:
 
 def test_s11_ac8_citations_exist() -> None:
     policy = out("search_policy", query="discount payment")
-    ok = verdict("citations_exist", "25% needs the CFO (standard-terms §2).", policy)
+    ok = verdict("citations", "25% needs the CFO (standard-terms §2).", policy)
     assert ok.ok
-    bad = verdict("citations_exist", "Fine under standard-terms §9.", policy)
+    bad = verdict("citations", "Fine under standard-terms §9.", policy)
     assert not bad.ok
     assert "standard-terms §9" in bad.message
-    assert verdict("citations_exist", "No citations here.").applies is False
+    assert verdict("citations", "No citations here.").applies is False
 
 
 def test_s11_ac8_right_approver() -> None:
@@ -149,7 +142,7 @@ async def test_s11_ac7_wrong_approver_is_caught_and_corrected(tmp_path: Path) ->
     note = model.sent[1][-1]["content"][0]["text"]
     assert "Right Approver" in note
     assert "CFO" in note
-    assert "Citations Exist" in note  # §2 was cited but never read: also caught
+    assert "Citations" not in note  # a metric now (D-150): scored after, never sent back
     assert result.verified is True
     assert "CFO" in result.answer
     rounds = [e.data for e in events if e.type == "verify_finished"]
@@ -173,14 +166,7 @@ def test_s11_ac1_ac10_wiring_plan_tool_switches_and_pane() -> None:
         model, Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
     )
     assert "write_plan" not in h2.tools
-    assert [c.name for c in h2.checks] == [
-        "every_change_covered",
-        "citations_exist",
-        "no_false_sent",
-        "answer_format",
-        "records_match",
-        "sections_are_real",
-    ]
+    assert [c.name for c in h2.checks] == ["every_change_covered", "no_false_sent"]
     pane = describe_harness(WS, "sales")["verify"]
     assert pane["plan_on"]
     assert pane["retries"] == 1
@@ -256,30 +242,6 @@ def test_s11_ac13_the_answer_style_is_always_in_the_prompt() -> None:
     assert "How to answer" not in agents  # one place says how to answer
 
 
-def test_s11_ac14_answer_format() -> None:
-    good = """Two of ShopCo's changes need someone above Sales.
-- **3.2 · Discount**: 10% → 25%. Needs the CFO (`approval-chart §1`).
-  - Sales can offer 15% on its own.
-- **6.1 · Uptime**: 99.99%. Never; counter with 99.95% (`standard-terms §4`).
-Next: ask the CFO about 3.2."""
-    ok = review_format(good)
-    assert ok.ok
-    assert "every decision among 2 items" in ok.message
-    starts_with_list = review_format(
-        "- **3.2 · Discount**: needs the CFO (`approval-chart §1`)\nmore\nmore"
-    )
-    assert not starts_with_list.ok
-    assert "begin with one sentence" in starts_with_list.message
-    no_source = review_format(good.replace(" (`standard-terms §4`)", ""))
-    assert not no_source.ok
-    assert "6.1" in no_source.message
-    assert "3.2" not in no_source.message
-    # Lists without IDs (next steps, a counter-offer) need no source; short answers are skipped.
-    plain = "Here is the counter-offer.\n- **Net 45:** Sales approves.\n- Ask the CFO."
-    assert review_format(plain).ok
-    assert review_format("Yes: Net 45 is standard (`standard-terms §3`).").applies is False
-
-
 # Found live 2026-11-12 (Claude Haiku): the answer came as prose paragraphs.
 PROSE = (
     "ShopCo's contract CT-2207 has six changed clauses that matter. Clause 3.2 (discount 10% to "
@@ -296,12 +258,6 @@ def test_s11_ac8_right_approver_reads_sentences_not_paragraphs() -> None:
     wrong = verdict("right_approver", PROSE.replace("needs the CFO", "needs Finance"))
     assert not wrong.ok
     assert "Clause 3.2" in wrong.message or "3.2" in wrong.message
-
-
-def test_s11_ac14_answer_format_wants_a_list_for_several_clauses() -> None:
-    bad = review_format(PROSE)
-    assert not bad.ok
-    assert "own list line" in bad.message
 
 
 def test_s11_a_loaded_skill_asks_for_a_plan_only_when_planning_is_on() -> None:
@@ -322,8 +278,8 @@ def test_s11_ac8_checks_on_follow_ups_and_drafts() -> None:
     # A section read in an earlier turn of the conversation counts.
     policy = out("search_policy", query="discount")
     cited = "25% needs the CFO (`standard-terms §2`)."
-    assert not CHECKS["citations_exist"].fn(cited, Record()).ok
-    assert CHECKS["citations_exist"].fn(cited, Record(earlier=(policy.output,))).ok
+    assert not CHECKS["citations"].fn(cited, Record()).ok
+    assert CHECKS["citations"].fn(cited, Record(earlier=(policy.output,))).ok
     # "Nothing has been sent" and "once it is sent" are not claims that it was sent.
     for text in (
         "Nothing has been sent.",
@@ -336,11 +292,6 @@ def test_s11_ac8_checks_on_follow_ups_and_drafts() -> None:
         "send_to_customer", {}, json.dumps({"status": "sent", "approved_by": ["Sales"]}), False
     )
     assert verdict("no_false_sent", "Sent, approved by Sales.", sent).ok
-    # A customer email is not a review: Answer Format doesn't apply.
-    email = (
-        "Hi,\n- **9.2 · Liability**: we can offer a cap of 24 months. [PENDING: CFO]\nBest regards"
-    )
-    assert verdict("answer_format", email).applies is False
 
 
 def test_s11_the_prompt_names_the_switched_on_checks_before_the_agent_writes() -> None:
@@ -356,7 +307,7 @@ def test_s11_the_prompt_names_the_switched_on_checks_before_the_agent_writes() -
         Scripted(), Limits(), WS, profile="sales", trace_dir=None, memory_dir=None, off=off
     )
     assert "- Right Approver: " not in h.system
-    assert "- Answer Format: " in h.system
+    assert "- No False Sent: " in h.system or '- No False "Sent": ' in h.system
     child = on.tools["delegate_task"].function.make_child(WS.subagents[0], Limits())
     assert "Before your answer reaches the person" not in child.system  # helpers aren't checked
 
@@ -408,10 +359,9 @@ def test_an_answer_that_reports_a_send_is_not_asked_to_repeat_the_review() -> No
         "Sent to ShopCo, approved by Sales and the CFO: a 25% discount (`approval-chart §1`).\n"
         "Still open: Net 60."
     )
-    for name in ("every_change_covered", "answer_format"):
-        got = CHECKS[name].fn(answer, Record((REVIEW, sent)))
-        assert got.applies is False, name
-        assert "reports a send" in got.message
+    got = CHECKS["every_change_covered"].fn(answer, Record((REVIEW, sent)))
+    assert got.applies is False
+    assert "reports a send" in got.message
     assert (
         not CHECKS["every_change_covered"].fn(answer, Record((REVIEW,))).ok
     )  # no send: still a review
@@ -424,7 +374,7 @@ def test_the_retry_note_asks_for_an_answer_written_for_the_person() -> None:
     assert "don't mention these checks or your earlier draft" in note
 
 
-# ── A contract pull (D-146): found live, a pull had "6 didn't apply" and nothing checked it ──
+# ── A contract pull (D-146): its facts are checked by the online evals now (D-150) ──
 
 CUSTOMER = out("lookup_customer_record", record="customer", customer="ShopCo")
 OUTLINE = out("read_contract", contract_id="CT-2207")
@@ -436,66 +386,6 @@ PULLED = """Yes, ShopCo is an existing customer `CUS-0042`, with one contract, C
 - **6 · Service levels**: 6.1 99.99% uptime.
 - **9 · Liability**: 9.2 unlimited.
 - **10 · Confidentiality**: 10.1 to 10.12, standard wording."""
-
-
-def test_d146_records_match_passes_a_true_pull() -> None:
-    v = verdict("records_match", PULLED, *PULL)
-    assert v.applies, v.message
-    assert v.ok, v.message
-
-
-def test_d146_records_match_fails_an_invented_id() -> None:
-    v = verdict("records_match", PULLED.replace("CUS-0042", "CUS-9999"), *PULL)
-    assert not v.ok
-    assert "CUS-9999" in v.message
-
-
-def test_d146_records_match_fails_a_misquoted_term() -> None:
-    v = verdict("records_match", PULLED.replace("a 25% discount", "a 20% discount"), *PULL)
-    assert not v.ok
-    assert "3.2" in v.message
-    assert "20" in v.message
-
-
-def test_d146_sections_are_real_passes_a_true_pull_and_fails_an_invented_clause() -> None:
-    good = verdict("sections_are_real", PULLED, *PULL)
-    assert good.applies, good.message
-    assert good.ok, good.message
-    bad = verdict(
-        "sections_are_real", PULLED + "\n- **13 · Escrow**: 13.1 source code escrow.", *PULL
-    )
-    assert not bad.ok
-    assert "13.1" in bad.message
-
-
-def test_d146_sections_are_real_knows_what_engineering_may_see() -> None:
-    engineering = ToolContext("t", ROOT, profile="engineering")
-    value = TOOLS["read_contract"].function(contract_id="CT-2207", ctx=engineering)
-    outline = Call("read_contract", {"contract_id": "CT-2207"}, json.dumps(value), False)
-    assert verdict("sections_are_real", "6.1 says 99.99% uptime.", outline).ok
-    assert not verdict("sections_are_real", "3.2 gives 25% off.", outline).ok
-
-
-def test_d146_pull_checks_skip_a_review_and_a_plain_chat() -> None:
-    assert not verdict("sections_are_real", GOOD, REVIEW).applies  # no read_contract
-    assert not verdict("records_match", "Hello! How can I help?").applies
-
-
-def test_d146_pull_checks_never_fail_a_real_review_or_send() -> None:
-    """The 14 real answers (reviews, sends) put counter-offers by clause IDs: no false fail."""
-    records = (
-        REVIEW,
-        out("search_policy", query="discount payment uptime liability term"),
-        out("lookup_customer_record", record="customer", customer="ShopCo"),
-        out("lookup_customer_record", record="uptime"),
-        out("lookup_customer_record", record="payments", customer="ShopCo"),
-    )
-    answers = sorted((Path(__file__).parents[1] / "fixtures" / "answers").glob("*.md"))
-    assert len(answers) == 14
-    for file in answers:
-        for name in ("records_match", "sections_are_real"):
-            v = verdict(name, file.read_text(), *records)
-            assert v.ok or not v.applies, f"{name} on {file.name}: {v.message}"
 
 
 def test_d147_right_approver_skips_a_pull_but_not_a_review() -> None:

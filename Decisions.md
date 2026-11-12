@@ -1155,3 +1155,26 @@
 - **Found live:** Right Approver failed a plain pull ("25% needs the CFO, not named"), so the retry added approval verdicts nobody asked for; the check card listed every check name (Plan Complete included) and then dropped the ones that didn't apply, which read as a plan that vanished; and nothing said whether the model chose not to plan.
 - **Chose:** Right Approver skips when the run read the contract with `read_contract`, ran no review and sent nothing. The check card shows a spinner and the count while checking; a row appears only with its result. Planning stays the model's choice (D-121, you kept it), and the first tool call without a plan adds "No To-Do plan · the model chose to work directly"; it is removed if a plan follows.
 - **Cost:** none.
+
+## D-148 · Three layers check an answer: Verification, Online Evals, Offline Evals (2026-11-12)
+- **Your review:** adding a check per failure (Sections Are Real, Records Match) isn't a solution; check groundedness, context relevancy, citations, hallucination and style instead, some as online evals separate from verification.
+- **Chose:** one rule decides where a check lives. **Verification** (before the answer, blocks, code only) keeps mistakes that harm and that code decides exactly. **Online Evals** (new, after every live answer, never blocks, never sent back) score quality: Groundedness, Hallucination, Context Relevancy, Answer Relevancy, Citations, Style & Format. **Offline Evals** (the golden set) score the same six too.
+- **Promotion rule:** a metric may become a gate only after saved runs show it almost never fails a good answer (D-146's Records Match failed 13 of 14 good answers before its fix). Hallucination starts at 0 of 14.
+- **Domain-free:** `online_evals.py` holds the metric logic; `workspace.toml [online_evals]` gives the ID pattern and the style guide; workspace code metrics are `METRICS` in its checks file. Scores are saved with the conversation and listed on the Online Evals page.
+- **Cost:** one small judge call per answer ($0.001 to $0.005 on a paid key at Flash-Lite prices, $0 on the free tier); switchable per metric like a check.
+
+## D-149 · One judge call scores every judged metric (2026-11-12)
+- **Options:** (a) DeepEval's metrics (Faithfulness, Contextual Relevancy, Answer Relevancy): 3 to 10 calls each, 30 to 60 s per answer; (b) our own prompt, one call, one JSON reply with each metric's score, reason and (for Groundedness) the unsupported claims.
+- **Chose:** (b), Flash-Lite by default (the scope check's model). A score of 0.7 or more passes. A judge error or broken reply is Not Scored with the reason (as D-118); the code metrics still count. Found live: Flash-Lite once left an object open, nesting the next metric inside it; the parser finds metrics nested anywhere and reads each one on its own when the JSON is broken.
+- **Cost:** our prompt, not DeepEval's tested ones; the offline evals use the same scorer, so the two agree.
+
+## D-150 · Verification keeps the harm gates; quality checks become metrics (2026-11-12)
+- **Gates:** Plan Complete, Every Change Covered, Right Approver, No False Sent, and Body Matches Terms before a send.
+- **Moved:** Citations Exist → the metric Citations (code, CloudCo's own); Answer Format → Style & Format (LLM as Judge against `answer-style.md`).
+- **Deleted:** Records Match and Sections Are Real (D-146): Hallucination (code: every ID, %, amount, date and 2+ digit number appears in the tool results or the question) and Groundedness (judge) cover them for any question, not just pulls.
+- **Cost:** a bad citation or format no longer triggers a rewrite; it shows as a failed score. The human labels for Answer Format on the 14 real answers are dropped.
+
+## D-151 · Page names: Online Evals, Offline Evals, Graded By (2026-11-12)
+- **Chose:** sidebar Workspace: Agent · Memory · Online Evals · Offline Evals (was "Evals") · Golden Dataset · Checks. Each answer gets an Online Evals card under it; the Harness pane gets an Online Evals section with switches. The metrics tables say **Graded By: Code** or **LLM as Judge**.
+- **Also:** the composer frees as soon as the answer is in; the scores arrive a few seconds later on the same stream.
+- **Left as is:** the "Checks" view (the offline test suite) shares a word with verification's checks; rename it "Test Suite" only if you want.

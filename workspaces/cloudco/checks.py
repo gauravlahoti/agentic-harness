@@ -1,17 +1,20 @@
-"""CloudCo's answer checks: run by the harness's VERIFY step before you see an answer (S11-AC8).
+"""CloudCo's answer checks (VERIFY, S11-AC8) and its code metrics (online evals, D-148).
 
 Not part of the harness: ``workspace.toml`` names this file under ``[verify]``; the harness
 runs whatever ``CHECKS`` lists and knows none of these words. Each check is plain code
 (D-126): free, exact, the same every time. It returns passed, failed (with a reason the
 agent can act on) or skipped (with why there was nothing to check).
 
+Gates (``CHECKS``): a mistake here harms, so a failure goes back to the agent once.
 - Every Change Covered  each contract change that matters gets a line in the answer
-- Citations Exist       every policy section the answer cites came back from a tool
 - Right Approver        the decider named for a term matches CloudCo's approval tables
 - No False "Sent"       says sent only if a send worked, and says so when one did
-- Answer Format         bottom line first; every item line cites a source (answer-style.md)
-- Records Match         every record ID came back from a tool; a quoted key term matches its clause
-- Sections Are Real     every clause the answer names exists in the contract it read
+
+Before an action (``ACTION_CHECKS``): Body Matches Terms, on the email before anyone approves.
+
+Metrics (``METRICS``, D-148): scored after every answer by the online evals, never blocking.
+- Citations             every policy section the answer cites came back from a tool
+The harness adds its own metrics (Groundedness, Hallucination, Answer Relevancy, ...).
 
 All of CloudCo is made up.
 """
@@ -99,11 +102,11 @@ RETURNED = re.compile(r'"policy":\s*"([a-z-]+)",\s*"section":\s*"§(\d+)"')
 
 
 @check(
-    "Citations Exist",
-    "Every policy section you cite was read in this conversation (search_policy, a skill or "
-    "the reviewer)",
+    "Citations",
+    "Every policy section the answer cites was read in this conversation (search_policy, a "
+    "skill or the reviewer)",
 )
-def citations_exist(answer: str, record: Record) -> Verdict | None:
+def citations(answer: str, record: Record) -> Verdict | None:
     cited = {(p, n) for p, n in CITED.findall(answer)}
     if not cited:
         return skipped("The answer cites no policy section.")
@@ -328,68 +331,6 @@ def no_false_sent(answer: str, record: Record) -> Verdict | None:
     return passed("What the answer says about sending matches what happened.")
 
 
-# ── Answer Format ────────────────────────────────────────────────────────────────────────
-
-LIST_OR_HEADING = re.compile(r"^\s*(?:[-*•]\s|\d+[.)]\s|#)")
-# An item line: a top-level list line that starts with a bold ID ("- **3.2 · Discount**").
-ITEM = re.compile(
-    r"^[-*•]\s+\*\*\s*((?:[A-Z]?\d+|[A-Z])\.\d+|[A-Z]{2,}-\d+)\b(?!%)"
-)  # not "99.95%"
-# A source in backticks: a policy section, a record ID or a path (answer-style.md rule 3).
-SOURCE = re.compile(r"`[^`]*(?:§|[A-Z]{2,}-\d+|\.md)[^`]*`")
-HEADING = re.compile(r"^\s*(?:#|\*\*[^*]+\*\*\s*$)")  # "### Draft reply", "**Draft reply**"
-
-
-@check(
-    "Answer Format",
-    "A contract review starts with a one-sentence bottom line, then one list line per change "
-    "with its source (answer-style.md)",
-)
-def answer_format(answer: str, record: Record) -> Verdict | None:
-    # The one-line-per-change shape is for a review (D-130 changed): a customer email or a
-    # follow-up is prose by nature, and was failed for it (found live 2026-11-12).
-    if not record.outputs("review_contract"):
-        return skipped("Not a contract review: the line-per-change style is for reviews.")
-    if _sent(record):
-        return skipped("This answer reports a send; the review isn't repeated.")
-    lines = [x for x in answer.splitlines() if x.strip()]
-    if len(lines) < 3:
-        return skipped("A short answer: one or two lines need no format.")
-    problems = []
-    if LIST_OR_HEADING.match(lines[0]):
-        problems.append("it starts with a list or a heading; begin with one sentence that answers")
-    # The review's items, up to the next heading (a draft reply after it isn't the review).
-    review: list[str] = []
-    for x in lines:
-        if HEADING.match(x) and any(ITEM.match(r) for r in review):
-            break
-        review.append(x)
-    # Only an item that decides something must cite its rule: it names a term or a person.
-    # "B.7 · a note to an AI: I ignored it" decides nothing (found live 2026-11-12).
-    roles = {a["approver"] for a in _tables().get("approvals", [])}
-
-    def decides(line: str) -> bool:
-        return bool(_terms(line)) or any(re.search(rf"\b{re.escape(r)}\b", line) for r in roles)
-
-    bare = [m[1] for x in review if (m := ITEM.match(x)) and decides(x) and not SOURCE.search(x)]
-    # Several clauses in paragraphs instead of one line each (found live 2026-11-12).
-    clauses = set(re.findall(r"(?<![\w.])(?:[A-Z]|\d+)\.\d+(?![\d%])", answer))
-    if len(clauses) >= 3 and not any(LIST_OR_HEADING.match(x) for x in lines):
-        problems.append(
-            f"it covers {len(clauses)} clauses in paragraphs; put each on its own list line, "
-            "starting with its ID in bold"
-        )
-    if bare:
-        problems.append(f"these item lines have no source in backticks: {', '.join(bare)}")
-    if problems:
-        return failed("The answer doesn't follow the answer style: " + "; ".join(problems) + ".")
-    items = sum(bool(ITEM.match(x)) for x in lines)
-    return passed(
-        "Bottom line first"
-        + (f"; every decision among {items} items cites a source." if items else "; no items.")
-    )
-
-
 # ── Body Matches Terms: on the email, before anyone is asked (S12, D-134) ─────────────────
 
 TERM_ARGS = ("discount_pct", "payment_days", "uptime_pct", "liability_cap_months")
@@ -452,124 +393,7 @@ def body_matches_terms(arguments: dict[str, Any], record: Record) -> Verdict | N
 # ── Records Match / Sections Are Real (D-146): a pull of a record or a contract ──────────
 # Found live: "is ShopCo a customer? pull the contract" had "6 didn't apply", nothing checked.
 
-RECORD_ID = re.compile(r"\b(?:CUS|CT|DL|UP|INV)-\d{4}(?:-\d{2})?\b")
-# A clause ID like 3.2 or B.7, never part of a number like 99.99 or a range's "1.12" digits.
-CLAUSE_ID = re.compile(r"(?<![\w.$])((?:\d{1,2}|[A-Z])\.\d{1,2})(?![\d%.]|x\b)")
-TERM_NUMBER = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|years?|months?)|Net\s*(\d+)", re.I)
-
-
-def _outputs(record: Record) -> list[str]:
-    return [c.output for c in record.calls if not c.is_error] + list(record.earlier)
-
-
-def _contract_reads(record: Record) -> list[dict[str, Any]]:
-    """Every read_contract result in this run, parsed."""
-    found = []
-    for output in record.outputs("read_contract"):
-        try:
-            data, _ = json.JSONDecoder().raw_decode(output[output.find("{") :])
-        except ValueError:
-            continue
-        if isinstance(data, dict):
-            found.append(data)
-    return found
-
-
-def _clause_texts(record: Record) -> dict[str, str]:
-    """Clause ID → every text a tool returned for it (both versions, if both were read)."""
-    texts: dict[str, str] = {}
-
-    def add(cid: str, text: str) -> None:
-        texts[cid] = f"{texts.get(cid, '')} {text}"
-
-    for data in _contract_reads(record):
-        for section in data.get("sections", []):
-            for key in section.get("key_terms", []):
-                add(key["clause"], key["text"])
-        for clause in data.get("clauses", []):
-            add(clause["clause"], clause["text"])
-    for edit in _edits(record):
-        add(edit["clause"], f"{edit.get('removed', '')} {edit.get('added', '')}")
-    return texts
-
-
-@check(
-    "Records Match",
-    "Every record ID in the answer came back from a tool, and a key term quoted from a "
-    "contract clause matches that clause",
-)
-def records_match(answer: str, record: Record) -> Verdict | None:
-    ids = set(RECORD_ID.findall(answer))
-    texts = _clause_texts(record)
-    if not ids and not texts:
-        return skipped("The answer names no record and no contract was read.")
-    seen = " ".join(_outputs(record))
-    unknown = sorted(i for i in ids if i not in seen)
-    wrong = []
-    # Term quotes are checked only in a pull: a review's lines also carry counter-offers
-    # ("99.99% → counter with 99.95%"), which are ours, not the clause's (tested on 14 answers).
-    pull = bool(_contract_reads(record)) and not record.outputs("review_contract")
-    other = " ".join(c.output for c in record.calls if c.name != "read_contract")
-    for unit in _units(answer) if pull else []:
-        clauses = [c for c in CLAUSE_ID.findall(unit) if c in texts]
-        if len(clauses) != 1:
-            continue  # one clause per line, or the numbers can't be tied to it
-        cid = clauses[0]
-        clause_numbers = set(NUMBER.findall(texts[cid].replace("(", " ")))
-        words = {"three": "3", "one": "1", "twelve": "12", "two": "2"}
-        clause_numbers |= {n for w, n in words.items() if w in texts[cid].lower()}
-        clause_numbers |= set(NUMBER.findall(other))  # a record or policy the answer also cites
-        for match in TERM_NUMBER.finditer(unit):
-            number = match[1] or match[2]
-            if number not in clause_numbers:
-                wrong.append(f"{cid} says {match[0].strip()}, but the clause doesn't")
-    problems = [f"never returned by a tool: {', '.join(unknown)}"] if unknown else []
-    problems += wrong
-    if problems:
-        return failed("; ".join(problems) + ". Use only what the tools returned.")
-    parts = [f"{len(ids)} record ID{'s' if len(ids) != 1 else ''} found in tool results"]
-    if texts:
-        parts.append("quoted terms match their clauses")
-    return passed(", ".join(parts) + ".")
-
-
-@check(
-    "Sections Are Real",
-    "Every clause the answer names exists in the contract read_contract returned",
-)
-def sections_are_real(answer: str, record: Record) -> Verdict | None:
-    reads = _contract_reads(record)
-    if not reads:
-        return skipped("No contract was read with read_contract in this run.")
-    valid: set[str] = set()
-    for data in reads:
-        for section in data.get("sections", []):
-            first, _, last = section.get("clauses", "").partition(" to ")
-            if first and last:
-                head = first.split(".")[0]
-                lo, hi = int(first.split(".")[1]), int(last.split(".")[1])
-                valid |= {f"{head}.{n}" for n in range(lo, hi + 1)}
-        valid |= {c["clause"] for c in data.get("clauses", [])}
-    valid |= {e["clause"] for e in _edits(record)}
-    named = set(CLAUSE_ID.findall(answer))
-    invented = sorted(named - valid)
-    if invented:
-        return failed(
-            f"Not in the contract as read: {', '.join(invented)}. Name only clauses "
-            "read_contract returned."
-        )
-    return passed(
-        f"{len(named)} clause{'s' if len(named) != 1 else ''} named, all in the contract."
-    )
-
-
-CHECKS = [
-    every_change_covered,
-    citations_exist,
-    right_approver,
-    no_false_sent,
-    answer_format,
-    records_match,
-    sections_are_real,
-]
+CHECKS = [every_change_covered, right_approver, no_false_sent]  # gates: harm only (D-150)
 ACTION_CHECKS = [body_matches_terms]
+# Scored after every answer, never blocking (online evals, D-148): quality, not harm.
+METRICS = [citations]

@@ -29,7 +29,7 @@ import re
 import secrets
 import time
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -63,6 +63,7 @@ class Turn:
     at: float = field(default_factory=time.time)
     plan: list[dict[str, str]] | None = None  # the task's last plan, if it made one (S11)
     checks: dict[str, Any] | None = None  # the last VERIFY round, if any check applied (S11)
+    online: dict[str, Any] | None = None  # its online eval scores, saved after it (D-148)
 
 
 @dataclass(slots=True)
@@ -104,6 +105,12 @@ class SessionStore:
     def finish_turn(self, session_id: str, profile: str | None, turn: Turn) -> None:
         self._append(session_id, profile, {"kind": "turn", **asdict(turn)})
 
+    def save_scores(
+        self, session_id: str, profile: str | None, run_id: str, scores: dict[str, Any]
+    ) -> None:
+        """A turn's online eval scores: they come after the turn is saved (D-148)."""
+        self._append(session_id, profile, {"kind": "online_evals", "run_id": run_id, **scores})
+
     def set_title(self, session_id: str, profile: str | None, title: str) -> None:
         self._append(session_id, profile, {"kind": "title", "title": title})
 
@@ -124,6 +131,12 @@ class SessionStore:
                 session.title = str(row.get("title", ""))
             elif kind == "turn":
                 session.turns.append(_turn(row))
+            elif kind == "online_evals":
+                scores = {k: v for k, v in row.items() if k not in ("kind", "run_id")}
+                session.turns = [
+                    replace(t, online=scores) if t.run_id == row.get("run_id") else t
+                    for t in session.turns
+                ]
         session.repaired = _cancelled(session.steps)
         session.steps.extend(session.repaired)
         return session
