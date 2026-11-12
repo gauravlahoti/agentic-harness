@@ -333,15 +333,17 @@ function renderPeople() {
   const me = currentPerson();
   $("people-list").replaceChildren(
     ...all.map((p) => {
-      const b = el("button", `person${p.id === me?.id ? " is-me" : ""}`);
+      const b = el("button", `person${p.id === me?.id ? " is-me" : ""}`, p.name.charAt(0));
       b.type = "button";
+      b.title = roleOf(p);
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(p.id === me?.id));
-      b.append(el("span", "person-avatar", p.name.charAt(0)), el("span", "person-name", p.name), el("span", "person-role", p.role));
+      b.setAttribute("aria-label", roleOf(p));
       b.addEventListener("click", () => setPerson(p.id));
       return b;
     }),
   );
+  $("people-who").replaceChildren(el("strong", null, me?.name ?? ""), el("span", null, me?.role ?? ""));
 }
 
 function setUpPeople() {
