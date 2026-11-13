@@ -22,6 +22,13 @@ person = "priya"
 runs = ["runs/1-review.jsonl", "runs/2-send.jsonl"]  # recorded live, Flash-Lite, 2026-11-12
 skip = ["online_evals_started", "online_evals_finished"]  # Observability isn't in this tour
 
+# The hosted page after a visitor leaves the tour (D-206).
+[welcome]
+title = "Curious to see harness engineering in action?"
+line = "Watch a real AI agent review a contract, get four approvals and send the reply, step by step, in a five-minute voiced tour."
+start = "Start the Guided Tour"
+aside = "or explore the Harness pane on the right"
+
 [[steps]]
 id = "01-jar"
 title = "Brain in a Jar"

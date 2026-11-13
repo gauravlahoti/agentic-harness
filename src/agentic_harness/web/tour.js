@@ -807,6 +807,27 @@ async function startTour() {
   if (tour.data) playStep(0);
 }
 
+// Outside the tour a hosted visitor gets a welcome with one clear way in (D-204, D-206). The words
+// come from the workspace's tour (its [welcome]); these generic ones stand in when it has none.
+async function showWelcome() {
+  let words = {};
+  try {
+    const response = await fetch("/api/tour");
+    if (response.ok) words = (await response.json()).welcome ?? {};
+  } catch {
+    // The generic words below.
+  }
+  $("empty-title").textContent = words.title ?? "Watch the harness at work";
+  $("empty-hint").hidden = false;
+  $("empty-hint").textContent = words.line ?? "A voiced, step-by-step replay of a real agent run.";
+  const start = el("button", "welcome-cta");
+  start.type = "button";
+  start.append(el("span", "welcome-play", "▶"), words.start ?? "Start the Guided Tour");
+  start.addEventListener("click", startTour);
+  $("empty-state").append(start, el("p", "welcome-aside", words.aside ?? "or explore the Harness pane on the right"));
+  $("empty-state").classList.add("welcome");
+}
+
 // Offer the tour only when the workspace has one.
 async function offerTour() {
   try {
@@ -861,16 +882,7 @@ addEventListener("popstate", () => {
     })();
     if (health?.mode === "public" && left && !TOUR) {
       document.body.classList.remove("hosted-boot");
-      // Outside the tour a visitor gets a welcome with one clear way in (D-204, D-206).
-      $("empty-title").textContent = "Curious to see harness engineering in action?";
-      $("empty-hint").hidden = false;
-      $("empty-hint").textContent = "Watch a real AI agent review a contract, get four approvals and send the reply, step by step, in a five-minute voiced tour.";
-      const start = el("button", "welcome-cta");
-      start.type = "button";
-      start.append(el("span", "welcome-play", "▶"), "Start the Guided Tour");
-      start.addEventListener("click", startTour);
-      $("empty-state").append(start, el("p", "welcome-aside", "or explore the Harness pane on the right"));
-      $("empty-state").classList.add("welcome");
+      showWelcome();
     }
     if (health?.mode === "public" && !TOUR && !left) {
       history.replaceState(null, "", `?tour${location.hash}`);

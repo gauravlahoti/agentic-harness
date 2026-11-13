@@ -96,6 +96,7 @@ class Tour:
     skip: frozenset[str]
     turns: tuple[TourTurn, ...]
     steps: tuple[TourStep, ...]
+    welcome: tuple[tuple[str, str], ...] = ()  # the hosted page after Exit (D-206): its words
 
     @property
     def sequence(self) -> tuple[Event, ...]:
@@ -134,6 +135,7 @@ def load_tour(workspace: Path) -> Tour | None:
         skip=skip,
         turns=turns,
         steps=tuple(steps),
+        welcome=_welcome(config.get("welcome", {})),
     )
 
 
@@ -206,6 +208,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
         "model": first.get("data", {}).get("model"),
         "turns": [{"task": t.task, "events": list(t.events)} for t in tour.turns],
         "steps": steps,
+        "welcome": dict(tour.welcome),
     }
 
 
@@ -357,6 +360,21 @@ def _chips(step_id: str, value: Any) -> tuple[str, ...]:
     if any(len(v) > MAX_CHIP_CHARS for v in value):
         raise TourError(f"Step {step_id}: a chip may be at most {MAX_CHIP_CHARS} characters.")
     return tuple(v.strip() for v in value)
+
+
+WELCOME_KEYS = ("title", "line", "start", "aside")
+
+
+def _welcome(value: Any) -> tuple[tuple[str, str], ...]:
+    """The welcome after Exit (D-206): short strings, only the keys the page knows."""
+    if not isinstance(value, dict):
+        raise TourError("`welcome` must be a table.")
+    unknown = sorted(set(value) - set(WELCOME_KEYS))
+    if unknown:
+        raise TourError(f"`welcome` has no {', '.join(unknown)}; use {', '.join(WELCOME_KEYS)}.")
+    if not all(isinstance(v, str) and v.strip() for v in value.values()):
+        raise TourError("Each `welcome` entry must be text.")
+    return tuple((k, value[k].strip()) for k in WELCOME_KEYS if k in value)
 
 
 def _pause(config: dict[str, Any]) -> int:

@@ -457,3 +457,15 @@ def test_s14_the_tour_never_claims_no_plan_before_the_plan_arrives() -> None:
     run wrote its To-Do list. The tour leaves that line out; the normal page is unchanged."""
     app_js = (Path(__file__).parents[2] / "src" / "agentic_harness" / "web" / "app.js").read_text()
     assert "if (turn.planOn && !turn.todo && !turn.direct && !TOUR) {" in app_js
+
+
+def test_s13_ac6_the_hosted_welcome_comes_from_the_tour(ws_copy: Path) -> None:
+    """D-206: the welcome after Exit is workspace words, so the player knows no domain."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    welcome = tour_payload(tour, audio_url=lambda s, v: "")["welcome"]
+    assert welcome["start"] == "Start the Guided Tour"
+    assert welcome["title"].endswith("?")
+    edit_tour(ws_copy, 'aside = "', 'colour = "')
+    with pytest.raises(TourError, match="colour"):
+        load_tour(ws_copy)
