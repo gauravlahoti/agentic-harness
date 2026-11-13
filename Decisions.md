@@ -1487,3 +1487,15 @@
 - **Tried (D-192):** re-recording the tour's two turns live on Claude Sonnet 5.5. Five takes cost about $0.38. Sonnet took a different path: one skill, plan before lookup, no draft, three approvers, about three cents. So steps 4, 5, 7, 8 and 9 would have needed new voice lines.
 - **Your call:** "stick to previous clips and Gemini view only". This reverts D-192: the tour replays the Gemini 3.5 Flash-Lite recording with its own voice clips again, and the hosted page lists models as before. The Claude takes stay in local traces only.
 - **Unchanged:** owner live runs (D-190) still run on Claude.
+
+## D-196 · The owner session gets Memory and Observability; visitors can't read them (2026-11-13)
+- **Your review:** "facts are zero, we need the original facts; observability is gone, we need that too in this owner version".
+- **Why:**
+  - The container started with empty memory. The demo facts live in `workspaces/cloudco/demo-memory/` and were never copied into notes.
+  - Public mode hid Workspace and Observability for everyone, the owner included.
+- **Chose:**
+  - The image seeds notes from `demo-memory/` (made-up facts, never anyone's own notes) and carries `evals/catalog.json`, `evals/cases/` and the saved eval summaries (`.agentic-harness/evals/*.json`; no traces, no chats).
+  - The owner sees Workspace (Agent, Memory) and Observability (Online Evals, Offline Evals, Golden Dataset), but nothing that runs an eval, switches the judge or forgets a fact. Checks stay hidden.
+  - A teammate session's review: since public mode answers every GET, `/api/facts`, `/api/online-evals`, `/api/evals*` and `/api/sessions*` now need the owner passphrase (403 otherwise; the same lockout counter). The tour's own reads stay open.
+  - An unlocked tab sends the passphrase with every `/api/` call.
+- **Tests:** `test_public_mode.py::test_s14_ac11_*`.

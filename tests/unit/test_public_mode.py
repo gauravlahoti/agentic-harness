@@ -337,3 +337,36 @@ def test_s14_ac10_no_owner_without_a_claude_key(tmp_path: Path) -> None:
     app = create_app(config, project_root=tmp_path, workspace=Workspace.load(CLOUDCO))
     web = TestClient(app, base_url=f"https://{HOST}")
     assert web.get("/api/health", headers={"X-Harness-Owner": OWNER}).json()["mode"] == "public"
+
+
+# ── S14-AC11: memory, chats and evals are the owner's to read (D-196) ──────────────────────
+
+OWNER_READS = (
+    "/api/facts",
+    "/api/online-evals",
+    "/api/evals",
+    "/api/evals/plan",
+    "/api/evals/20261111-112301-8842a9",
+    "/api/sessions",
+    "/api/sessions/anything",
+)
+
+
+@pytest.mark.parametrize("path", OWNER_READS)
+def test_s14_ac11_visitors_cannot_read_memory_chats_or_evals(tmp_path: Path, path: str) -> None:
+    web = owner_client(tmp_path)
+    assert web.get(path).status_code == 403
+    assert web.get(path, headers={"X-Harness-Owner": "wrong-passphrase-here"}).status_code == 403
+
+
+def test_s14_ac11_the_owner_reads_memory_and_evals(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    owner = {"X-Harness-Owner": OWNER}
+    for path in ("/api/facts", "/api/online-evals", "/api/evals", "/api/sessions"):
+        assert web.get(path, headers=owner).status_code == 200, path
+
+
+def test_s14_ac11_the_tour_still_plays_for_visitors(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    for path in ("/", "/api/health", "/api/harness", "/api/tour"):
+        assert web.get(path).status_code == 200, path

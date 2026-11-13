@@ -10,6 +10,15 @@
 !/workspaces/
 /workspaces/*
 !/workspaces/cloudco/
+# The owner's Observability (D-196): eval catalog, golden cases, saved eval summaries only.
+!/evals/
+/evals/*
+!/evals/catalog.json
+!/evals/cases/
+!/.agentic-harness/
+/.agentic-harness/*
+!/.agentic-harness/evals/
+/.agentic-harness/evals/*/
 /workspaces/cloudco/tasks/
 /workspaces/cloudco/outbox/
 **/__pycache__/

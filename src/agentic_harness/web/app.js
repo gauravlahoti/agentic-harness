@@ -12,7 +12,19 @@ const OWNER_PASS = (() => {
     return "";
   }
 })();
-if (OWNER_PASS) PAGE_HEADER["X-Harness-Owner"] = OWNER_PASS;
+if (OWNER_PASS) {
+  PAGE_HEADER["X-Harness-Owner"] = OWNER_PASS;
+  // Memory, chats and evals are owner-only reads on a hosted copy (D-196): every API call
+  // from this tab carries the passphrase, not just the actions.
+  const plainFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (!url.startsWith("/api/")) return plainFetch(input, init);
+    const headers = new Headers(init.headers || {});
+    headers.set("X-Harness-Owner", OWNER_PASS);
+    return plainFetch(input, { ...init, headers });
+  };
+}
 const ICONS = { waiting: "○", passed: "✓", failed: "✗", skipped: "–" };
 
 const $ = (id) => document.getElementById(id);
@@ -118,8 +130,8 @@ function showOwnerMode() {
 
 function showView() {
   const views = { "#checks": "checks", "#memory": "memory", "#online": "online", "#evals": "evals", "#golden": "golden" };
-  const hosted = health?.mode === "public" || health?.mode === "owner";
-  const view = hosted ? "agent" : views[location.hash] ?? "agent";
+  // A visitor sees only the agent; the owner also gets Memory and Observability, never Checks.
+  const view = health?.mode === "public" ? "agent" : health?.mode === "owner" && location.hash === "#checks" ? "agent" : views[location.hash] ?? "agent";
   for (const name of ["agent", "memory", "online", "evals", "golden", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }

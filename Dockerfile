@@ -11,10 +11,17 @@ COPY pyproject.toml uv.lock Readme.md ./
 RUN uv sync --frozen --no-default-groups --no-install-project
 COPY src/ src/
 COPY workspaces/cloudco/ workspaces/cloudco/
+# For the owner's Observability (D-196): the golden cases, their catalog and saved eval
+# summaries (made-up CloudCo cases only; no traces, no chats).
+COPY evals/catalog.json evals/catalog.json
+COPY evals/cases/ evals/cases/
+COPY .agentic-harness/evals/*.json .agentic-harness/evals/
+# Also seeds the demo's long-term memory from the made-up facts (D-196), not anyone's notes.
 RUN uv sync --frozen --no-default-groups \
     && useradd --system --uid 10001 harness \
-    && mkdir .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox \
-    && chown harness .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox
+    && mkdir -p .agentic-harness/notes/cloudco workspaces/cloudco/tasks workspaces/cloudco/outbox \
+    && for p in sales engineering; do cp "workspaces/cloudco/demo-memory/$p.txt" ".agentic-harness/notes/cloudco/$p.md"; done \
+    && chown -R harness .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox
 
 USER harness
 # Public mode is baked in: this image can't start as a local, key-holding harness. Only an

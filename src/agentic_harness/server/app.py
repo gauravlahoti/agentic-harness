@@ -93,6 +93,9 @@ PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on
 # approvals, and nothing more. Repeated wrong passphrases lock the unlock for a while.
 OWNER_HEADER = "x-harness-owner"
 OWNER_ROUTES = frozenset({"/api/run", "/api/approval"})
+# Reads that show memory, conversations or evals: the owner's only, in public mode (D-196).
+OWNER_READS = ("/api/facts", "/api/online-evals", "/api/evals", "/api/sessions")
+OWNER_ONLY = "This part of the hosted harness is for its owner."
 MAX_OWNER_MISSES = 10
 OWNER_WINDOW_SECONDS = 600.0
 
@@ -256,6 +259,9 @@ def create_app(
             owner_may = request.state.owner and request.url.path in OWNER_ROUTES
             if request.method not in READ_METHODS and not owner_may:
                 return JSONResponse({"detail": PUBLIC_REFUSAL}, status_code=403)
+            # Memory, conversations and evals are the owner's to look at, not every visitor's.
+            if request.url.path.startswith(OWNER_READS) and not request.state.owner:
+                return JSONResponse({"detail": OWNER_ONLY}, status_code=403)
             return await call_next(request)
 
     @app.middleware("http")
