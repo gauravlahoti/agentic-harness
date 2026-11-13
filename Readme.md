@@ -1,67 +1,163 @@
 <!--
 Keeping this file current:
-- Change a row's Status in "What the harness does" when that part works end to end.
-- Remove "(coming next)" from a step once it runs.
 - Keep it project-level and short. Per-check progress lives in Tracker.md.
+- Every claim here must be true of the code today; config examples use real keys.
 -->
+
+<div align="center">
 
 # agentic-harness
 
-A general agent harness, built from scratch in plain Python on Gemini.
+**An AI agent harness, built from scratch in plain Python.**<br>
+No agent framework. Every line is readable, tested and explained.
 
-**Docs:** [Product](spec/00-product.md) · [Decisions](Decisions.md) · [Progress](Tracker.md) · [Security](Security.md)
+[![CI](https://github.com/gauravlahoti/agentic-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/gauravlahoti/agentic-harness/actions/workflows/ci.yml)
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776ab)
+![Gemini](https://img.shields.io/badge/model-Gemini-1a73e8)
+![Claude optional](https://img.shields.io/badge/Claude-optional-d97757)
 
-The model only decides what to do next. The harness does everything else: it gives the model the right context, runs its tools, checks what it's allowed to do, asks a human when it matters, and remembers the work. An agent is a **workspace**, a folder of instructions, skills, tools and rules. Swap the folder and you get a different agent, with no harness code changed.
+### [▶ Watch the guided tour](https://agentic-harness.gauravlahoti.dev/)
 
-The first agent is the **CloudCo Contract Agent**. It reviews a customer's changes to a renewal contract for Sales, Engineering and Finance, and never acts without a human's approval.
+Five minutes, voiced, replaying a real recorded run. No sign-up, no key.
 
-## Start with the code
+</div>
 
-1. Install [uv](https://docs.astral.sh/uv/), then clone this repository.
-2. Run `make setup` to install the locked dependencies, then `make check` to run the offline tests. Both are free and need no key.
-3. For live runs, copy `.env.example` to `.env` and add your [AI Studio](https://aistudio.google.com/apikey) key.
-4. Run `uv run agentic-harness serve --workspace workspaces/cloudco`, open http://127.0.0.1:8000, pick a team in the sidebar and give the agent a task. Pick the Gemini model in the input box.
+---
 
-**Using a coding agent?** Open the repository in Claude Code, Codex or Antigravity and ask it to set up and check the project. It follows the steps above and the project rules in [CLAUDE.md](CLAUDE.md) (Codex and Antigravity reach them through [AGENTS.md](AGENTS.md)). Add the key to `.env` yourself; agents are told never to read it.
+## The idea
 
-## What the harness does
+> **Agent = Model + Harness.**
 
-| Part | What it handles | CloudCo example | Status |
+A model on its own is a brain in a jar: it can tell you how to send a proposal, but it can't send it. The **harness** is everything around the model that lets it do real work, safely:
+
+- **Loop:** call the model, run the tools it asks for, repeat, and know when to stop.
+- **Context and memory:** decide what goes into the model's window, and what lasts beyond it.
+- **Tools:** the model only *asks*; the harness runs the tool and returns the result.
+- **Guardrails:** who may do what, lines that are never crossed, and when a person must approve.
+
+The model picks the next step. The harness does everything else.
+
+## How a run works
+
+```mermaid
+flowchart LR
+    T([Task]) --> C[Build context<br/>instructions · skills · memory]
+    C --> M{{Model}}
+    M -- "asks for a tool" --> G{Guardrails<br/>allowed? approved?}
+    G -- yes --> R[Run tool] --> M
+    G -- "needs a person" --> H([Human approves]) --> R
+    M -- "drafts an answer" --> V[Verify<br/>plain-code checks]
+    V -- "fails: one retry" --> M
+    V -- passes --> A([Answer + cost])
+    A -.-> E[Online evals<br/>score quality]
+```
+
+Every step is saved as a trace. The page draws the run live, and the same trace replays as the [guided tour](https://agentic-harness.gauravlahoti.dev/).
+
+## The first agent: CloudCo's Contract Agent
+
+CloudCo sells software. Two days before quarter end, its customer ShopCo sends back a $480,000 renewal with about 60 edits, and five of them matter: a 25% discount, Net 60 payment, 99.99% uptime, unlimited liability and a three-year price lock. The agent finds the changes that matter, checks each against CloudCo's terms, says who must approve, and drafts the reply. **People decide; the agent never agrees on its own.**
+
+*CloudCo, ShopCo, the people and every number are made up.*
+
+| Harness part | What it handles | In the CloudCo run |
+|---|---|---|
+| **Loop** | Plan → act → observe → repeat; stops at a step, cost or time limit | Keeps a to-do list and can't finish with items open |
+| **Context** | Standing instructions, team files, skills loaded only when needed | Loads the contract-review skill when the task needs it |
+| **Memory** | Facts that last across conversations; old turns pruned or summarised when the window fills | Starts knowing what was agreed last time |
+| **Tools** | Workspace tools, built-in tools, helper agents with their own budget | A clause-reviewer reads the 40-page markup; the main agent gets 5 lines |
+| **Guardrails** | Tools and fields per team, hard limits, approval chains | 25% discount needs the CFO, and the server checks who is answering |
+| **Verification** | Code checks the draft before you see it; a failure goes back once | A draft that missed two changes is sent back and fixed |
+
+## Three layers check every answer
+
+| Layer | When | Blocks the answer? | How |
 |---|---|---|---|
-| Loop | Calls the model, runs the tools it asks for, repeats; stops at step, cost or time limits | A run that hits its $1 budget stops and says why | Available |
-| Context | Standing instructions, team files, and skills loaded on demand | Checks each change against CloudCo's standard terms | Available |
-| Actions | Workspace tools, built-in tools, and sub-agents with a clean history | Finds ShopCo's 5 contract changes, with record IDs; a reviewer sub-agent reads the 40 pages | Available |
-| Guardrails | Tools and fields per profile, hard limits, a person approves sends | Engineering never sees prices; sending to ShopCo waits for you | Available |
-| Memory | Saved tasks you can resume, per-profile notes, context trimming | In round 2 it recalls that the CFO approved 20% in round 1 | Planned |
+| **Verification** | Before you see it | Yes, one retry | Plain code: plan complete, every change covered, right approver, email matches the agreed terms |
+| **Online evals** | After every live answer | No | One small judge call: groundedness, relevance, hallucination, citations, style |
+| **Offline evals** | On demand: `make eval` | No | A golden dataset, the same scorer, several runs per case |
+
+## Quick start
+
+You need [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/gauravlahoti/agentic-harness && cd agentic-harness
+make setup                      # install the locked dependencies
+make check                      # lint, strict types, offline tests: free, no key
+cp .env.example .env            # add your Gemini key: https://aistudio.google.com/apikey
+uv run agentic-harness serve --workspace workspaces/cloudco
+```
+
+Open **http://127.0.0.1:8000**, pick a team and give the agent a task. The **Harness** pane on the right shows each part as it works; **Observability** holds the online and offline evals.
+
+> **Using a coding agent?** Open the repo in Claude Code, Codex or Antigravity and ask it to set up and check the project. It follows [CLAUDE.md](CLAUDE.md) ([AGENTS.md](AGENTS.md) for the others). Add the key to `.env` yourself: agents are told never to read it.
 
 ## Build your own agent
 
-A workspace declares everything domain-specific. The harness reads `workspace.toml`; the model never sees it.
+**An agent is a folder.** Point the same harness at another folder and you have another agent, with no harness code changed. A test keeps the harness free of any domain word.
 
-```
+```text
 workspaces/<name>/
-├── workspace.toml     # wiring: memory, skills, tools, profiles, approvals
+├── workspace.toml     # wiring the model never sees: memory, skills, teams, limits, approvals
 ├── AGENTS.md          # standing instructions
-├── skills/            # SKILL.md folders, loaded on demand
+├── teams/<team>.md    # what each team needs to know
+├── skills/<team>/     # SKILL.md folders, loaded on demand
 └── tools.py           # the agent's own tools
 ```
 
 ```toml
 memory = ["AGENTS.md", "teams/{profile}.md"]
-skills = ["skills/company/", "skills/{profile}/"]
-tools  = "tools.py"
+skills = ["skills/{profile}"]
 
-[profiles.sales]
-tools = ["get_deal", "get_contract", "accept_change", "send_to_customer"]
+[profiles.engineering]
+tools       = ["read_contract", "search_policy"]
+hide_fields = ["annual_value_usd"]          # Engineering never sees prices
 
-[[approvals]]
-tool     = "accept_change"
-when     = { term = "discount", above = 15 }
-approver = "cfo"
+[[rules]]                                   # a line the company never crosses
+id    = "discount-never"
+tool  = "send_to_customer"
+arg   = "discount_pct"
+above = 25
+
+[[approvals]]                               # a person signs off first
+tool     = "send_to_customer"
+approver = "Finance"
+arg      = "payment_days"
+above    = 45
 ```
 
-## Scope
+The smallest agent, [`workspaces/hello`](workspaces/hello), is one tool and three lines of config.
 
-A local learning project, not a product. CloudCo and all its data are fictional. Actions write to a local outbox, never real email. The server binds to `127.0.0.1` only, and the API key is read in one module and never logged. Built without an agent framework, so every part is plain code you can read. Run `make help` for every command.
+## Safe by default
 
-Not licensed yet. A license will be added before the repository is made public.
+- **Local only.** The server answers on `127.0.0.1`.
+- **One home for the key.** Only `config.py` reads it, and it never reaches logs, traces or the page.
+- **No real side effects.** "Sent" emails land in a local outbox.
+- **Read-only when hosted.** The public tour (`HARNESS_PUBLIC=1`) answers reads only and holds no key.
+- **Guarded repo.** Secret scanning and a pre-commit leak check on every commit.
+
+More in [Security](Security.md). `make help` lists every command.
+
+## Under the hood
+
+- **Gemini** through the Interactions API, with the harness running every tool itself: no automatic function calling, no server-side tools. **Claude** (Haiku or Sonnet) is an optional, paid choice per run.
+- **Built in stages**, tests first. Each choice is recorded with its options, reasons and cost in [Decisions](Decisions.md); progress is in [Tracker](Tracker.md); stage walkthroughs are in [docs/](docs).
+- **Quality bar:** ruff, strict mypy and 590+ offline tests on every change. Real-model tests run only on request (`make live`).
+
+| Read next | |
+|---|---|
+| [Product](spec/00-product.md) | What it is and why |
+| [Company](spec/01-company.md) | CloudCo's made-up world |
+| [How we build](spec/how-we-build.md) | Stages, checks and the review loop |
+| [Decisions](Decisions.md) | Every real choice and its cost |
+
+## Author
+
+Built by **[Gaurav Lahoti](https://gauravlahoti.dev)**, as a hands-on way to learn what makes an AI agent work, one harness part at a time.
+
+[gauravlahoti.dev](https://gauravlahoti.dev) · [Guided tour](https://agentic-harness.gauravlahoti.dev/)
+
+## License
+
+No license yet. Until one is added, all rights are reserved.
