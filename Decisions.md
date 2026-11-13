@@ -1634,3 +1634,9 @@
 - **Your request:** delete memory facts and conversations from the page.
 - **Found:** both buttons already existed (× on a chat, Forget on a fact, two clicks each), but D-190/D-196 hid them in owner mode and the server refused them.
 - **Chose:** the owner may `DELETE /api/sessions/{id}` and `POST /api/facts/forget`; the page shows both buttons again in owner mode. Visitors are still refused, and the owner still can't delete evals or change tools. Deleting a chat removes the conversation; its run traces stay (Observability keeps its history). Test: `test_s14_ac20_the_owner_deletes_chats_and_forgets_facts`.
+
+## D-212 · A run outlives its page: reopen the chat to approve (2026-11-13)
+- **Your report:** the agent "started behaving very slow" again.
+- **Found:** it wasn't slow. At 13:16 a send paused for approval about 7 s in. The page then opened another chat (the card left the screen), and at 13:25 it reloaded. A run lived inside its page's request, so no page could show that card again, and the run waited out the 30-minute approval timeout. The server was unchanged; every other run today took 11–24 s.
+- **Chose:** the server drives each run in the background and keeps its events (`server/live.py`). `GET /api/sessions` marks a chat "waiting" or "running"; opening it returns `live`, and `GET /api/sessions/{id}/live` streams the run from its start, then live. The page shows "Waiting for approval" in the chat list and, on opening the chat, redraws the run with working approval cards. A run is no longer cancelled when its page goes away; its limits (turns, money, time) and the approval timeout still end it. Visitors can't run anything, and `/api/sessions` stays owner-only on the hosted copy.
+- **Tests:** `tests/unit/test_live_runs.py` (AC21–AC23), including a run whose page is cancelled mid-approval and finishes from a reopened chat.

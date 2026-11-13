@@ -3,8 +3,9 @@
 Harness part: the page. The harness emits events; this module is just one
 more listener that forwards them to the browser while the run goes on.
 
-Does not: decide anything about the run. If the page goes away, the run is
-cancelled; if the harness crashes, the page still gets a final event.
+Does not: decide anything about the run. If whoever reads this stream stops, the run is
+cancelled; the server reads it in the background (``live.py``, D-212), so a page that goes
+away doesn't stop it. If the harness crashes, the reader still gets a final event.
 """
 
 import asyncio

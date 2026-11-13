@@ -450,3 +450,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | S14 + D-206 (your review): pane hidden until the run starts; no step counter; 14 px subtitles; glass guide capsule with animated fold; hosted welcome with Start the Guided Tour. 638 offline tests. Local review before deploy. |
 | 2026-11-13 | D-210 (your report): No False "Sent" accepts "went to", "on its way" and "delivered to" as reporting a send that worked; MIT license added. |
 | 2026-11-13 | D-211 (your request): owner can delete chats and forget memory facts on the hosted copy; visitors still refused. |
+| 2026-11-13 | D-212 (your report): runs go on in the background; a reopened or reloaded chat follows its run and shows its approval cards; the chat list says "Waiting for approval". |

@@ -70,6 +70,7 @@ from agentic_harness.server.evals import (
     read_result,
     suite_path,
 )
+from agentic_harness.server.live import LiveRun
 from agentic_harness.server.runs import stream_run
 from agentic_harness.tour import (
     MAX_CLIP_BYTES,
@@ -221,6 +222,14 @@ def create_app(
     app.state.run_active = False
     approvals = Approvals()  # tool calls waiting for the person on the page
     app.state.approvals = approvals  # tests and tools may reach it
+    # Runs going on in the background, by conversation (D-212).
+    live_runs: dict[str, LiveRun] = {}
+    pumps: set[asyncio.Task[None]] = set()
+
+    def live_state(session_id: str) -> str | None:
+        live = live_runs.get(session_id)
+        return live.state() if live else None
+
     # Claude shows only when its key is in .env: the person pays for it (D-104).
     priced_models = [
         m
@@ -347,7 +356,13 @@ def create_app(
         found = sessions.list(profile_of(profile))
         return {
             "sessions": [
-                {"id": s.id, "title": s.title, "turns": s.turns, "updated": s.updated}
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "turns": s.turns,
+                    "updated": s.updated,
+                    "live": live_state(s.id),  # "waiting", "running" or None (D-212)
+                }
                 for s in found
             ]
         }
@@ -386,7 +401,18 @@ def create_app(
                 }
                 for t in session.turns
             ],
+            # A run still going in this chat: the page follows it at /live (D-212).
+            "live": {"task": live_runs[session_id].task} if live_state(session_id) else None,
         }
+
+    @app.get("/api/sessions/{session_id}/live")
+    async def follow_session(session_id: str, profile: str | None = None) -> StreamingResponse:
+        """The chat's running run, every line from its start, then the rest (D-212)."""
+        profile_of(profile)
+        live = live_runs.get(session_id)
+        if live is None or live.state() is None:
+            raise HTTPException(404, "Nothing is running in this conversation.")
+        return StreamingResponse(live.follow(), media_type="application/x-ndjson")
 
     @app.get("/api/online-evals")
     async def online_evals(profile: str | None = None) -> dict[str, object]:
@@ -833,10 +859,17 @@ def create_app(
                     trace_dir.mkdir(parents=True, exist_ok=True)
                     shutil.move(staged, trace_dir / staged.name)
 
-        async def lines() -> AsyncIterator[str]:
+        # The run goes on in the background, not inside this request: a page that switches
+        # chats or reloads can follow it again, approval cards included (D-212).
+        live = LiveRun(body.task)
+        live_runs[session_id] = live
+
+        async def pump() -> None:
             titling = asyncio.create_task(make_title(title_model, body.task)) if fresh else None
             try:
-                yield note("session_started", session_id=session_id, title=session.title, new=fresh)
+                await live.add(
+                    note("session_started", session_id=session_id, title=session.title, new=fresh)
+                )
                 async for line in stream_run(
                     harness,
                     body.task,
@@ -845,7 +878,7 @@ def create_app(
                 ):
                     if run_id := json.loads(line).get("run_id"):
                         run_ids.add(run_id)
-                    yield line
+                    await live.add(line)
                     if '"run_finished"' in line and not json.loads(line)["data"].get("agent_id"):
                         release()  # the answer is in: online evals may still be scoring (D-148)
                 if titling is not None:
@@ -855,15 +888,21 @@ def create_app(
                         title = session.title  # the first words stay
                     if title and title != session.title:
                         sessions.set_title(session_id, profile, title)
-                    yield note(
-                        "session_titled", session_id=session_id, title=title or session.title
+                    await live.add(
+                        note("session_titled", session_id=session_id, title=title or session.title)
                     )
             finally:
                 if titling is not None and not titling.done():
                     titling.cancel()
                 release()
                 await asyncio.to_thread(save_traces)
+                if live_runs.get(session_id) is live:
+                    del live_runs[session_id]
+                await live.close()
 
-        return StreamingResponse(lines(), media_type="application/x-ndjson")
+        task = asyncio.create_task(pump())
+        pumps.add(task)  # held, or the loop may drop a running task
+        task.add_done_callback(pumps.discard)
+        return StreamingResponse(live.follow(), media_type="application/x-ndjson")
 
     return app

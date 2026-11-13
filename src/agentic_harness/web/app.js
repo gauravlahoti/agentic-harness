@@ -488,6 +488,8 @@ function renderWork() {
       open.type = "button";
       open.setAttribute("aria-current", item.id === currentSession ? "true" : "false");
       open.append(el("span", "work-title", item.title), el("span", "work-meta", `${plural(item.turns, "task")} · ${ago(item.updated)}`));
+      // A run still going in this chat, and whether it waits for a person (D-212).
+      if (item.live) open.append(el("span", `work-live ${item.live}`, item.live === "waiting" ? "Waiting for approval" : "Running"));
       open.addEventListener("click", () => openSession(item.id));
       const del = el("button", "work-delete", "×");
       del.type = "button";
@@ -522,6 +524,7 @@ function toAgent() {
 
 function newConversation() {
   toAgent();
+  stopFollowing();
   currentSession = null;
   clearThread();
   $("empty-state").hidden = false;
@@ -531,6 +534,7 @@ function newConversation() {
 
 async function openSession(id) {
   toAgent();
+  stopFollowing();
   const response = await fetch(`/api/sessions/${encodeURIComponent(id)}${withProfile()}`);
   if (!response.ok) return refreshWork();
   const session = await response.json();
@@ -539,9 +543,51 @@ async function openSession(id) {
   $("empty-state").hidden = true;
   // Each turn redraws from its trace, every step as it happened (D-200); without one, its summary.
   for (const t of session.turns) (t.events?.length && replayTurn(t)) || $("thread").append(pastTurn(t));
+  if (session.live) followLive(id, session.live.task); // still running: pick it up again (D-212)
   renderWork();
   $("thread").lastElementChild?.scrollIntoView({ block: "end" });
   $("task").focus();
+}
+
+// A run that is still going, in a chat opened again: after a switch or a reload (D-212). The
+// server kept every event, so the turn draws from the start, approval cards included, then
+// follows the rest live. The page that started the run keeps its own copy; only this one shows.
+let following = null;
+
+function stopFollowing() {
+  following?.abort();
+  following = null;
+}
+
+async function followLive(id, task) {
+  const stop = new AbortController();
+  following = stop;
+  const turn = newTurn(task);
+  const send = $("send");
+  send.disabled = true; // one run per chat at a time
+  try {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(id)}/live${withProfile()}`, { signal: stop.signal });
+    if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
+    for await (const ev of readLines(response)) {
+      if (ev.type === "session_started") continue; // the chat is already open and listed
+      onEvent(ev, turn);
+      if (ev.type === "approval_requested" || ev.type === "approval_decided") refreshWork();
+      if (ev.type === "run_finished" && !ev.data.agent_id) send.disabled = false;
+    }
+  } catch (error) {
+    if (stop.signal.aborted) return; // left the chat: the run goes on without this page
+    turn.stats.classList.remove("working");
+    turn.stats.textContent = "";
+    turn.foot.textContent = `✗ ${error.message}`;
+    turn.foot.className = "run-foot failed";
+  } finally {
+    turn?.stopStatus?.();
+    if (following === stop) {
+      following = null;
+      send.disabled = false;
+      refreshWork();
+    }
+  }
 }
 
 // A finished turn, redrawn from its trace through the same onEvent() a live run uses, the way
@@ -1859,6 +1905,8 @@ async function runTask(event) {
     if (!response.ok) throw new Error((await response.json()).detail ?? response.statusText);
     for await (const ev of readLines(response)) {
       onEvent(ev, turn);
+      // The chat list says when this run waits for a person, wherever you are (D-212).
+      if (ev.type === "approval_requested" || ev.type === "approval_decided") refreshWork();
       // The answer is in: you may ask again while the online evals score it (D-148).
       if (ev.type === "run_finished" && !ev.data.agent_id) free();
     }
