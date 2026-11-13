@@ -1468,3 +1468,10 @@
   - The cues were re-timed to the new events.
 - **Voice:** the clips for steps 4, 5, 7, 8 and 9 now say the old words and need re-recording. The other clips still match.
 - **Also:** a hosted copy lists Claude models (it runs nothing else), and the pane's caching note no longer names a provider.
+
+## D-193 · Visitors see the switches but can't change them; a quiet note links the code (2026-11-13)
+- **Your review:** "this can be highlighted but the user can't click or change any selection; the knobs should not be active"; "the section shall be subtle, GitHub icon and logo, View the code, better polished professional language".
+- **Chose:**
+  - In the tour (local `?tour`) and for visitors to the hosted copy, every Harness switch shows its state but a click or the space key does nothing, and nothing is saved. In your owner session (D-190) and on your normal page they work as before.
+  - The hosted note is one quiet line under the agent's description, with a thin divider instead of a box: "A read-only replay of a real agent run. Clone the repository to run it live with your own model key." Under it, a small **View the Code** pill with the GitHub mark (an inline icon template; the page's security policy allows no HTML strings).
+- **Cost:** none. Deployed as part of S14; the live site needs a redeploy to show it.

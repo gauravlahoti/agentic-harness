@@ -58,10 +58,11 @@ async function loadHealth() {
 function showPublicMode() {
   document.body.classList.add("public-mode");
   const note = $("public-note");
-  note.append("This is a hosted, read-only tour. To run the agent live, run the harness on your own machine with your own model API key.");
+  note.append(el("span", "public-text", "A read-only replay of a real agent run. Clone the repository to run it live with your own model key."));
   if (health.repository) {
-    const link = Object.assign(document.createElement("a"), { href: health.repository, textContent: "View the Code", target: "_blank", rel: "noopener" });
-    note.append(" ", link);
+    const link = Object.assign(document.createElement("a"), { href: health.repository, className: "public-code", target: "_blank", rel: "noopener" });
+    link.append(fromTemplate("tpl-github"), "View the Code");
+    note.append(link);
   }
   note.hidden = false;
   // The tour sets whose view and which person; a visitor can see them but not change them.
@@ -1881,6 +1882,10 @@ function switchFor(kind, name) {
   input.setAttribute("switch", "");
   input.setAttribute("role", "switch");
   input.checked = !readOff()[kind].includes(name);
+  // A tour, or a visitor to the hosted copy, sees each switch but can't change it (your review).
+  input.addEventListener("click", (event) => {
+    if (document.body.matches(".tour-mode, .public-mode:not(.owner-mode)")) event.preventDefault();
+  });
   input.addEventListener("change", () => {
     const off = readOff();
     off[kind] = input.checked ? off[kind].filter((n) => n !== name) : [...new Set([...off[kind], name])];

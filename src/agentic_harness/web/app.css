@@ -2191,15 +2191,34 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .public-mode:not(.owner-mode) :is(#tour-exit, .tour-invite) { display: none; }
 /* Owner session (D-190): the server refuses deletes, so don't offer them. */
 .owner-mode .work-delete { display: none; }
+/* The hosted copy's note: quiet, one line of context and a way to the code (your review). */
 .public-note {
-  margin: 4px 0 18px;
-  padding: 11px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
+  margin: 2px 0 16px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid var(--line);
   color: var(--muted);
-  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+  font: 12px/1.55 ui-sans-serif, system-ui, sans-serif;
 }
+.public-text { display: block; }
+.public-note a.public-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.public-note a.public-code:hover { border-color: var(--accent); color: var(--accent); }
+.public-note a.public-code:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.github-mark { width: 14px; height: 14px; flex: none; }
+/* A tour, or a visitor to the hosted copy, sees each switch as it is but can't change it. */
+:is(.tour-mode, .public-mode:not(.owner-mode)) .switch-wrap,
+:is(.tour-mode, .public-mode:not(.owner-mode)) .switch { cursor: default; }
 .public-note[hidden] { display: none; }
 /* The tour picks the profile, person and chat: shown, greyed out, not clickable (inert in app.js). */
 .public-mode:not(.owner-mode) :is(#profiles, #people, #work) { opacity: 0.45; filter: grayscale(1); pointer-events: none; }
@@ -2207,7 +2226,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .owner-form input { flex: 1 1 140px; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
 .owner-form button, .owner-lock { padding: 7px 12px; border: 1px solid var(--accent); border-radius: 10px; background: transparent; color: var(--accent); font: 600 13px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
 .owner-error { flex-basis: 100%; margin: 0; color: var(--fail); }
-.public-note a { color: var(--accent); font-weight: 600; }
+.public-note a:not(.public-code) { color: var(--accent); font-weight: 600; }
 .tour-invite:hover { border-color: var(--accent); transform: translateY(-1px); }
 .tour-invite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .tour-invite-pointer { flex: none; width: 22px; height: 22px; color: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }

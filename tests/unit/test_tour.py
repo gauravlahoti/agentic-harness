@@ -435,3 +435,18 @@ def test_s13_ac6_the_stage_has_the_story_and_the_chips() -> None:
     ):
         assert part in page, part
     assert "dataset.beat" in script
+
+
+def test_s14_switches_are_shown_but_locked_for_visitors_and_the_note_links_the_code() -> None:
+    """D-193, your review: in the tour and on the hosted copy the Harness switches show their
+    state but can't be changed (the owner's session still can); the hosted note is quiet,
+    with the GitHub mark and View the Code."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    app_js = (web / "app.js").read_text()
+    switch = app_js.split("function switchFor")[1].split("\nfunction ")[0]
+    assert '".tour-mode, .public-mode:not(.owner-mode)"' in switch
+    assert "event.preventDefault()" in switch
+    page = (web / "index.html").read_text()
+    assert 'id="tpl-github"' in page
+    public = app_js.split("function showPublicMode")[1].split("\nfunction ")[0]
+    assert 'fromTemplate("tpl-github"), "View the Code"' in public
