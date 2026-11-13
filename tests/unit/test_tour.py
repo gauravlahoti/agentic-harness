@@ -482,3 +482,10 @@ def test_s13_ac5_the_guide_keeps_one_size() -> None:
     caption = css.split(".guide-caption {")[1].split("}")[0]
     assert "height: 3em;" in caption
     assert "overflow: hidden;" in caption
+
+
+def test_s13_ac6_the_pane_never_gets_a_cyan_outline() -> None:
+    """D-209, your review: no cyan highlight round the Harness pane at any step."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    assert "tour-whole" not in (web / "tour.js").read_text()
+    assert "tour-whole" not in (web / "app.css").read_text()

@@ -1620,3 +1620,7 @@
   - `captionCards()` splits any sentence that wouldn't fit two lines at the current width at its most natural pause nearest the middle (":" then ";" then ","), else at the middle word. Each card keeps its words' share of the voice, so the word highlight (D-204) carries across the split.
   - The title, controls and timeline keep their places. Recording mode keeps its tall script box.
 - **Open:** checking every step at desktop and phone width in Chrome; the browser permission prompt timed out.
+
+## D-209 · No cyan outline round the Harness pane (2026-11-13)
+- **Your review:** "this cyan highlight should not happen at all".
+- **Chose:** removed the `tour-whole` outline that steps presenting the whole harness drew around the pane (it came back at step 10, after D-206 kept it out of steps 1–3). Parts still open as they're narrated, with no tint or edge. A test keeps it gone.

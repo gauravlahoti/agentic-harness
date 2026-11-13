@@ -663,7 +663,6 @@ function markPart(part) {
   const beforeRun = tour.pos === 0;
   document.body.classList.toggle("tour-prerun", beforeRun);
   if (beforeRun) {
-    $("harness-pane").classList.remove("tour-whole");
     setPaneOpen(false, false);
     return;
   }
@@ -673,8 +672,7 @@ function markPart(part) {
       delete section.dataset.tourOpened;
     }
   }
-  // The whole harness: one cyan edge round the pane, not every part tinted (your review).
-  $("harness-pane").classList.toggle("tour-whole", part === "pane");
+  // No outline round the pane, ever (your review, D-209): the parts speak for themselves.
   if (!part) return;
   if (roomForPane()) setPaneOpen(true, false);
   if (part === "pane") return;
