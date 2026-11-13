@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -287,8 +287,20 @@ def create_app(
 
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
+    # A hosted copy marks its page before the first paint, so the chat screen never flashes
+    # before the tour does (D-202). Locally the page is the file, unchanged.
+    hosted_page = (
+        (WEB_DIR / "index.html")
+        .read_text(encoding="utf-8")
+        .replace("<body>", '<body class="hosted-boot">', 1)
+        if settings.public
+        else None
+    )
+
     @app.get("/", include_in_schema=False)
-    async def page() -> FileResponse:
+    async def page() -> Response:
+        if hosted_page is not None:
+            return HTMLResponse(hosted_page)
         return FileResponse(WEB_DIR / "index.html")
 
     @app.get("/favicon.ico", include_in_schema=False)

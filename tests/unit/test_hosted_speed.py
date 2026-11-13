@@ -116,3 +116,39 @@ def test_s14_ac15_page_redraws_turns_and_approves_in_one_click() -> None:
     assert "oneClick ? `Approve as ${roleOf(p)}` : `Switch to ${roleOf(p)}`" in app_js
     assert "if (oneClick) approve.click();" in app_js
     assert 'plural(c.skills.length, "skill")} on offer' in app_js
+
+
+def test_s14_ac17_a_hosted_page_is_marked_before_first_paint(tmp_path: Path) -> None:
+    """D-202, your report: the chat screen flashed before the tour. A hosted page is served
+    already marked, so CSS hides the chat until tour or owner mode; locally it's unchanged."""
+    hosted = create_app(
+        Settings(public=True), project_root=tmp_path, workspace=Workspace.load(HELLO)
+    )
+    page = TestClient(hosted, base_url="http://127.0.0.1").get("/")
+    assert page.status_code == 200
+    assert '<body class="hosted-boot">' in page.text
+    assert page.headers["cache-control"] == "no-cache"
+    local = TestClient(create_app(Settings(), project_root=tmp_path), base_url="http://127.0.0.1")
+    assert "hosted-boot" not in local.get("/").text
+    css = (WEB / "app.css").read_text()
+    assert ".hosted-boot:not(.tour-mode):not(.owner-mode)" in css
+
+
+def test_s14_ac17_a_hosted_page_never_stays_blank() -> None:
+    """D-202: a failed health check lifts the marker, and CSS reveals the page after 4 s even
+    if no script runs."""
+    app_js = (WEB / "app.js").read_text()
+    css = (WEB / "app.css").read_text()
+    assert 'document.body.classList.remove("hosted-boot")' in app_js
+    assert "@keyframes hosted-reveal { to { visibility: visible; } }" in css
+
+
+def test_s14_ac18_locked_switches_say_why() -> None:
+    """D-202, your request: hovering a locked switch explains it, only where it is locked."""
+    app_js = (WEB / "app.js").read_text()
+    css = (WEB / "app.css").read_text()
+    assert "Locked during the guided tour." in app_js
+    assert (
+        ":is(.tour-mode, .public-mode:not(.owner-mode)) "
+        ".switch-wrap:is(:hover, :focus-within)::after" in css
+    )

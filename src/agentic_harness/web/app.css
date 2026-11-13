@@ -980,7 +980,38 @@ body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane
 .pane-item.is-off summary :is(.act-risk, .pane-tag) { opacity: 0.5; }
 
 /* A switch: the native `switch` checkbox where supported, the same look everywhere. */
-.switch-wrap { display: inline-flex; padding-top: 3px; }
+.switch-wrap { display: inline-flex; padding-top: 3px; position: relative; }
+/* Locked switches (the tour, a hosted visitor; D-202): say why on hover or keyboard focus. */
+:is(.tour-mode, .public-mode:not(.owner-mode)) .switch { cursor: not-allowed; }
+:is(.tour-mode, .public-mode:not(.owner-mode)) .switch-wrap:is(:hover, :focus-within)::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 60;
+  left: -4px;
+  bottom: calc(100% + 10px);
+  width: 240px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 12.5px/1.45 ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+:is(.tour-mode, .public-mode:not(.owner-mode)) .switch-wrap:is(:hover, :focus-within)::before {
+  content: "";
+  position: absolute;
+  z-index: 61;
+  left: 10px;
+  bottom: calc(100% + 4px);
+  width: 10px;
+  height: 10px;
+  rotate: 45deg;
+  border: solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-width: 0 1px 1px 0;
+  background: var(--surface);
+}
 .switch {
   appearance: none;
   position: relative;
@@ -2188,6 +2219,14 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-invite[hidden], .tour-mode .tour-invite { display: none; }
 /* Public tour mode (S14, D-189): nothing here can run, record or change, so it isn't offered. */
 .public-mode:not(.owner-mode) .views.side-group, .public-mode #tour-rec-box { display: none; }
+/* A hosted copy starts marked (D-202): the chat screen stays hidden until the page knows
+   whether it's the tour or the owner's session, so it never flashes before the tour. */
+.hosted-boot:not(.tour-mode):not(.owner-mode) :is(#empty-state, #composer, #tour-invite, #thread) {
+  visibility: hidden;
+  /* A safety net with no script at all: if the page never learns its mode, show it anyway. */
+  animation: hosted-reveal 0s linear 4s forwards;
+}
+@keyframes hosted-reveal { to { visibility: visible; } }
 /* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval,
    switches the judge or forgets a fact (the server refuses those anyway). */
 .owner-mode :is(#evals-run, #evals-reset, #evals-stop, .fact-forget) { display: none; }

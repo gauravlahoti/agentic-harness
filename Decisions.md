@@ -1558,3 +1558,14 @@
   - **Owner default back to Claude Haiku 5.5** (D-200 had Sonnet): roughly twice as fast per call and cheaper. Sonnet stays in the menu.
   - **Streaming the answer word by word:** chosen, but it's a harness change (model clients, loop events, page), so it gets its own brief before code.
 - **Not chosen:** running the scope check in parallel.
+
+## D-202 · No chat flash before the tour; locked switches say why (2026-11-13)
+- **Your reports:**
+  - "whenever the page loads it shows the chat screen and in a few ms the guided tour… it feels like a glitch"
+  - "if they hover over a setting it should show a message, polished and professional"
+- **Why the flash:** the page learned it was a hosted tour only after `/api/health` answered, so the chat screen painted first.
+- **Chose:**
+  - In public mode the server serves the page with `<body class="hosted-boot">`. CSS keeps the chat screen hidden until the page is in tour or owner mode. Locally the page is the file, unchanged.
+  - Two safety nets, from a teammate session's review: a failed health check removes the marker, and a CSS-only fallback reveals the page after 4 s even if no script runs.
+  - Locked switches (the tour, a hosted visitor) show a tooltip on hover or keyboard focus, with a not-allowed cursor: "Locked during the guided tour. Run the harness yourself to switch tools, skills and checks on or off." Owner and local pages have no lock and no tooltip.
+- **Tests:** `test_hosted_speed.py::test_s14_ac17_*`, `test_s14_ac18_*`.

@@ -59,6 +59,7 @@ async function loadHealth() {
     if (health.mode === "public") showPublicMode();
     if (health.mode === "owner") showOwnerMode();
   } catch {
+    document.body.classList.remove("hosted-boot"); // no mode to wait for: show the page
     server.textContent = "Server down";
     server.className = "pill bad";
   }
@@ -1974,6 +1975,8 @@ function switchFor(kind, name) {
     if (!$("view-online").hidden) loadOnline(); // its switches live on the Online Evals page
   });
   label.append(input, el("span", "visually-hidden", `Use ${name}`));
+  // Shown on hover or focus only where the switch is locked: the tour, a visitor (D-202).
+  label.dataset.tip = "Locked during the guided tour. Run the harness yourself to switch tools, skills and checks on or off.";
   return label;
 }
 
