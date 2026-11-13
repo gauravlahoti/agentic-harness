@@ -162,5 +162,7 @@ def test_s14_ac19_the_agentic_loop_reads_like_the_reference() -> None:
     assert "It ends when a reply asks for no tools: that's the answer" in app_js
     assert "the harness runs them one after another" in app_js
     assert "${l.max_steps} turns · $${l.max_usd}" in app_js
-    assert "its cost counts toward this run's" in app_js
-    assert "so Gemini can cache it" not in app_js  # caching is the provider's, whichever model
+    # D-207, your review: only the loop itself stays (how it works, tools, model, stops)
+    loop = app_js.split('paneSection("loop"')[1].split("paneSection(")[0]
+    for gone in ('"Small jobs"', '"Before you see it"', '"Helpers"', '"Plans"', '"Prompt caching"'):
+        assert gone not in loop, gone

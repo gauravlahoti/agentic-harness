@@ -1608,3 +1608,7 @@
   - The step counter and its slash are gone; the chapter title stays. The timeline on the right shows progress. Subtitles 13 → 14 px.
   - **Guide capsule:** a translucent cyan glass panel (7 % accent fill, 32 % accent border, blur, soft glow). Hide Guide narrows it into a small orb pill while the text fades and slides out; Show Guide plays it back. Reduced motion: no animation.
   - **Hosted welcome** (after Exit, hosted only): "Curious to see harness engineering in action?", then "Watch a real AI agent review a contract, get four approvals and send the reply, step by step, in a five-minute voiced tour.", then a prominent **▶ Start the Guided Tour** button (accent fill, focus ring), then "or explore the Harness pane on the right".
+
+## D-207 · The Agentic Loop section keeps to the loop (2026-11-13)
+- **Your review:** "remove this part from the agent loop".
+- **Your pick:** removed Small jobs, Before you see it, Plans, Helpers and Prompt caching. The section keeps How it works, Tools, Model and Stops. Verification, the to-do tool and the helper stay described in their own sections (Verification, Tools).
