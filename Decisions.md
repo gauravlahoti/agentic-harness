@@ -1428,7 +1428,7 @@
 ## D-190 · Owner unlock: live Claude runs on the hosted copy, for the passphrase holder only (2026-11-13)
 - **Your request:** "ideally I want to show a live session to someone, I should have a super user key and in background it uses my Claude key stored in Secret Manager".
 - **Amends D-189** for one person. Visitors still get the read-only, keyless tour.
-- **Chose (your answers):** Claude only, from the existing `anthropic-api-key` secret. The way in is a hidden `?owner` link. You set the passphrase (`harness-owner-key`, at least 20 characters).
+- **Chose (your answers):** Claude only, from the existing `anthropic-api-key` secret. The way in is a hidden `?owner` link. You set the passphrase (`harness-owner-key`, at least 15 characters; lowered from 20 at your request so `harness-owner-key` could be a 15-character passphrase).
 - **How it works:**
   - `HARNESS_OWNER_KEY` is read only in public mode. With it set, `config.py` keeps Claude's key; without it, a public harness holds no key, as before. A Gemini key is never kept in public mode.
   - Each request's `X-Harness-Owner` header is checked once (`hmac.compare_digest`). Ten misses in ten minutes lock the unlock, even for the right passphrase, until the window passes.
@@ -1437,3 +1437,17 @@
   - The page keeps the passphrase in `sessionStorage` for that tab only and sends it on every request. **Lock** forgets it.
 - **Cost:** each owner run is capped by the usual limits (25 steps, $1, 2 minutes), and Cloud Run max 1 instance means one run at a time. Anyone holding the passphrase can spend up to that per run, so keep it in your password manager.
 - **Options not chosen:** a visible unlock button (every visitor would see a locked mode); Claude + Gemini (two keys behind the passphrase instead of one).
+
+## D-191 · Step 1 tells the model-alone story in beats, not a static jar (2026-11-13)
+- **Your review:** "the model in jar sits idle for the first few minutes, simple animation doesn't look good at all", then, while building it: no model during the agenda; three agenda items because the voice names three; show what a model is good at (reasoning, writing text) and that it can't connect to APIs; no text over any line; "neat and clean, high on visuals".
+- **Chose:** two new word marks, parsed and checked like `{pop:…}` and `{scene:…}`:
+  - `{chip:N}` lights entry N of a step's `chips`. The labels live in `tour.toml`, not in the player (D-172).
+  - `{beat:name}` moves the model-alone story on: `think`, `reach`, `seal`, `tell`, `bounce`. The beats add up.
+- **What step 1 shows:**
+  - The agenda as a roadmap. Each node ignites and the rail draws to it as it's named; there's no model yet.
+  - Then the model bursts in with its two powers, Reasoning and Writing text.
+  - Email, APIs and Web appear; each reach toward them breaks with a ✗.
+  - At "jar" the jar drops and seals. Nothing crosses the glass after that.
+  - "how to send it…" rises inside the jar, and a send pulse bounces off the glass.
+- **Kept:** the recorded voice (the caption words are unchanged) and the reduced-motion end states.
+- **Cost:** the story is drawn once in the stage SVG, so the page is slightly larger; nothing runs outside step 1.

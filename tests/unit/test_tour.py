@@ -371,3 +371,67 @@ def test_s13_ac5_the_guide_can_be_hidden_and_shown_again() -> None:
     tour_js = (web / "tour.js").read_text()
     assert "function tuckGuide(" in tour_js
     assert ".is-tucked" in (web / "app.css").read_text()
+
+
+# ── D-191: the model-alone story, in beats, and the agenda chips ───────────────────────────
+
+
+def test_s13_ac6_step_one_tells_the_model_alone_story_in_beats() -> None:
+    tour = load_tour(CLOUDCO)
+    assert tour is not None
+    first = tour.steps[0]
+    words = first.say.split()
+    beats = [(b, words[i]) for i, b in first.beats]
+    assert beats == [
+        ("think", "AI"),
+        ("reach", "But"),
+        ("seal", "jar:"),
+        ("tell", "It"),
+        ("bounce", "it"),
+    ]
+    assert [n for _, n in first.chip_marks] == [1, 2, 3]
+    assert len(first.chips) == 3  # the voice names three things, so the screen shows three
+    assert "{" not in first.say  # marks never show in the subtitles
+
+
+def test_s13_ac6_beats_and_chips_reach_the_page(ws_copy: Path) -> None:
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    step = tour_payload(tour, audio_url=lambda s, v: "")["steps"][0]
+    assert [b["beat"] for b in step["beats"]] == ["think", "reach", "seal", "tell", "bounce"]
+    assert step["chips"][0]
+    assert [c["chip"] for c in step["chip_marks"]] == [1, 2, 3]
+
+
+def test_s13_ac6_a_beat_must_be_known(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{beat:tell}", "{beat:dance}")
+    with pytest.raises(TourError, match="dance"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac6_a_chip_mark_needs_its_chip(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{chip:3}", "{chip:4}")
+    with pytest.raises(TourError, match="3 chips"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac6_chips_stay_short_and_few(ws_copy: Path) -> None:
+    edit_tour(ws_copy, '"What a harness is"', '"' + "x" * 41 + '"')
+    with pytest.raises(TourError, match="40 characters"):
+        load_tour(ws_copy)
+
+
+def test_s13_ac6_the_stage_has_the_story_and_the_chips() -> None:
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    page = (web / "index.html").read_text()
+    script = (web / "tour.js").read_text()
+    for part in (
+        "stage-story",
+        "story-skills",
+        "story-actions",
+        "story-bubble",
+        "story-bounce",
+        "stage-chips",
+    ):
+        assert part in page, part
+    assert "dataset.beat" in script

@@ -182,6 +182,34 @@
             <g class="stage-node node-guard" data-part="guard"><circle cx="200" cy="335" r="32"/><path d="M200 320l13 5v9c0 8-6 13-13 16-7-3-13-8-13-16v-9z"/><text x="200" y="390">Guardrails</text></g>
             <g class="stage-node node-context" data-part="context"><circle cx="65" cy="200" r="32"/><path d="M53 190h24M53 200h24M53 210h15"/><text x="65" y="255">Context &amp; Memory</text></g>
           </g>
+          <!-- The model alone, in beats (D-191): it thinks and writes, can't reach the world,
+               gets sealed in the jar, can say how but can't do. Shown by data-beat classes. -->
+          <g class="stage-story">
+            <circle class="story-burst" cx="200" cy="200" r="48"/>
+            <!-- What a model is good at, on its own: its two powers. Links run edge to edge. -->
+            <g class="story-skills">
+              <text class="story-heading" x="66" y="146">MODEL POWERS</text>
+              <path class="skill-link" d="M128 172H167"/>
+              <path class="skill-link" d="M128 228H167"/>
+              <g class="story-skill"><rect x="4" y="156" width="124" height="32" rx="16"/><path class="skill-icon" d="M24 163c.6 4 2.9 6.3 7 7-4.1.7-6.4 3-7 7-.6-4-2.9-6.3-7-7 4.1-.7 6.4-3 7-7z"/><text x="40" y="177">Reasoning</text></g>
+              <g class="story-skill"><rect x="4" y="212" width="124" height="32" rx="16"/><path class="skill-icon" d="M17 222h14M17 228h14M17 234h9"/><text x="40" y="233">Writing text</text></g>
+            </g>
+            <!-- What it can't do on its own: connect to anything. Each reach breaks. -->
+            <g class="story-actions">
+              <path class="story-reach" d="M244 182L300 142"/>
+              <path class="story-reach" d="M246 210L306 226"/>
+              <path class="story-reach" d="M232 236L282 292"/>
+              <g class="story-action act-mail"><circle cx="322" cy="128" r="20"/><path d="M312 121h20v14h-20zM312 122l10 8 10-8"/><text x="322" y="164">Email</text></g>
+              <g class="story-action act-api"><circle cx="328" cy="232" r="20"/><path d="M322 224c-4 0-4 2-4 4s0 4-3 4c3 0 3 2 3 4s0 4 4 4M334 224c4 0 4 2 4 4s0 4 3 4c-3 0-3 2-3 4s0 4-4 4"/><text x="328" y="268">APIs</text></g>
+              <g class="story-action act-web"><circle cx="298" cy="312" r="20"/><path d="M288 312a10 10 0 1 0 20 0a10 10 0 1 0-20 0M288 312h20M298 302c-4 6-4 14 0 20c4-6 4-14 0-20"/><text x="298" y="348">Web</text></g>
+              <text class="story-miss" x="272" y="168">✗</text>
+              <text class="story-miss" x="277" y="224">✗</text>
+              <text class="story-miss" x="257" y="270">✗</text>
+            </g>
+            <g class="story-bubble"><rect x="150" y="139" width="100" height="22" rx="11"/><text x="200" y="154">how to send it…</text></g>
+            <g class="story-bounce"><circle class="bounce-dot" r="5"/><circle class="bounce-ripple" cx="262" cy="168" r="10"/></g>
+          </g>
+          <g class="stage-chips" id="stage-chips"></g>
           <g class="stage-jar"><rect x="160" y="112" width="80" height="16" rx="5"/><path d="M152 136h96a18 18 0 0 1 18 18v92a38 38 0 0 1-38 38h-56a38 38 0 0 1-38-38v-92a18 18 0 0 1 18-18z"/></g>
           <g class="stage-core" filter="url(#stage-glow)"><circle cx="200" cy="200" r="44" fill="url(#stage-core)"/><path d="M198 178c-9-4-19 2-18 11-7 3-7 13-1 16-1 8 6 14 13 12 2 4 5 5 6 5zM202 178c9-4 19 2 18 11 7 3 7 13 1 16 1 8-6 14-13 12-2 4-5 5-6 5zM198 178v44"/><text x="200" y="262">Model</text></g>
           <g id="stage-particles"></g>

@@ -9,6 +9,8 @@
 # Pop marks, like `{pop:context}`, make that diagram part pop when the voice reaches the word
 # (loop, context, tools or guard; D-184). In the `build` scene a part appears only when it pops.
 # Scene marks, like `{scene:finale}`, switch the diagram's scene at that word (D-185).
+# Beat marks, like `{beat:seal}`, move the model-alone story on (think, reach, seal, tell,
+# bounce); chip marks, like `{chip:2}`, light that entry of the step's `chips` (D-191).
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across
 # the runs below; a helper's events play along but aren't counted. No `until`: nothing plays.
 # Clips: audio/<step id>.webm|.m4a|.mp3|.ogg, recorded on the page at /?tour=record.
@@ -24,8 +26,10 @@ skip = ["online_evals_started", "online_evals_finished"]  # Observability isn't 
 id = "01-jar"
 title = "Brain in a Jar"
 scene = "jar"
+# The agenda: the three things the voice names, each lit as it's named; then the model's story in five beats (D-191).
+chips = ["What a model can't do alone", "Why it needs a harness", "What a harness is"]
 say = """
-Welcome. In the next five minutes, we'll cover three things: what an AI model can't do on its own, why it needs a harness, and what a harness is. Then you'll see one at work, in a real recorded run of an agent I built from scratch. The company and its data are made up. First, the model on its own. AI models are very good at reasoning and writing. But on their own, they can't take actions. Think of a brain in a jar: capable, but trapped. It can tell you how to send a proposal; it can't send it.
+Welcome. In the next five minutes, we'll cover three things: {chip:1} what an AI model can't do on its own, {chip:2} why it needs a harness, and {chip:3} what a harness is. Then you'll see one at work, in a real recorded run of an agent I built from scratch. The company and its data are made up. First, the model on its own. {beat:think} AI models are very good at reasoning and writing. {beat:reach} But on their own, they can't take actions. Think of a brain in a {beat:seal} jar: capable, but trapped. {beat:tell} It can tell you how to send a proposal; {beat:bounce} it can't send it.
 """
 
 [[steps]]

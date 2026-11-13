@@ -36,7 +36,7 @@ MISSING_ANTHROPIC_KEY = "No Claude key. Add ANTHROPIC_API_KEY to .env, then rest
 DEFAULT_ENV_FILE = Path(".env")
 # Owner unlock (D-190): the passphrase's variable, and how long it must be at least.
 OWNER_KEY_NAME = "HARNESS_OWNER_KEY"
-MIN_OWNER_KEY = 20
+MIN_OWNER_KEY = 15
 
 
 class MissingKeyError(RuntimeError):

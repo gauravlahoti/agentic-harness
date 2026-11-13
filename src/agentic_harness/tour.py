@@ -46,7 +46,14 @@ POP = re.compile(r"\{pop:([a-z_]+)\}")
 DIAGRAM = {"loop", "context", "tools", "guard"}  # the diagram's four parts around the model
 # A scene mark: the diagram switches scene when the voice gets here (D-185).
 SCENE = re.compile(r"\{scene:([a-z_]+)\}")
-MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{(?:pop|scene):[a-z_]+\})")
+# A beat mark: the model-alone story moves on at this word (D-191).
+BEAT = re.compile(r"\{beat:([a-z_]+)\}")
+BEATS = {"think", "reach", "seal", "tell", "bounce"}  # the story of the model alone, in order
+# A chip mark: chip N of the step's `chips` lights up at this word (D-191).
+CHIP = re.compile(r"\{chip:([1-9])\}")
+MAX_CHIPS = 6
+MAX_CHIP_CHARS = 40
+MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{(?:pop|scene|beat|chip):[a-z0-9_]+\})")
 
 Event = dict[str, Any]
 
@@ -73,6 +80,9 @@ class TourStep:
     cues: tuple[tuple[int, int], ...] = ()  # (word, upto): events released at that word (D-180)
     pops: tuple[tuple[int, str], ...] = ()  # (word, part): the diagram part popped there (D-184)
     scenes: tuple[tuple[int, str], ...] = ()  # (word, scene): the diagram switches there (D-185)
+    beats: tuple[tuple[int, str], ...] = ()  # (word, beat): the model-alone story moves (D-191)
+    chips: tuple[str, ...] = ()  # short labels shown under the diagram, e.g. an agenda (D-191)
+    chip_marks: tuple[tuple[int, int], ...] = ()  # (word, chip number): it lights up there
 
 
 @dataclass(frozen=True)
@@ -178,6 +188,9 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
                 "cues": [{"word": w, "upto": u} for w, u in s.cues],
                 "pops": [{"word": w, "part": p} for w, p in s.pops],
                 "scenes": [{"word": w, "scene": n} for w, n in s.scenes],
+                "beats": [{"word": w, "beat": b} for w, b in s.beats],
+                "chips": list(s.chips),
+                "chip_marks": [{"word": w, "chip": c} for w, c in s.chip_marks],
                 "upto": s.upto,
                 # The version changes with every new take, so the browser fetches the new one.
                 "audio": audio_url(s.id, clip.stat().st_mtime_ns) if clip else None,
@@ -234,7 +247,10 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     upto = start if until is None else _position(step_id, str(until), sequence)
     if upto < start:
         raise TourError(f"Step {step_id} stops before the step ahead of it: steps only go forward.")
-    text, cues, pops, scenes = _marks(step_id, say, sequence, start, upto)
+    chips = _chips(step_id, raw.get("chips", []))
+    text, cues, pops, scenes, beats, chip_marks = _marks(
+        step_id, say, sequence, start, upto, len(chips)
+    )
     card = raw.get("card")
     scene = raw.get("scene", "hud")
     if scene not in SCENES:
@@ -250,6 +266,9 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
         cues=cues,
         pops=pops,
         scenes=scenes,
+        beats=beats,
+        chips=chips,
+        chip_marks=chip_marks,
     )
 
 
@@ -257,19 +276,33 @@ Marks = tuple[tuple[int, str], ...]
 
 
 def _marks(
-    step_id: str, say: str, sequence: list[Event], start: int, upto: int
-) -> tuple[str, tuple[tuple[int, int], ...], Marks, Marks]:
+    step_id: str, say: str, sequence: list[Event], start: int, upto: int, chips: int = 0
+) -> tuple[str, tuple[tuple[int, int], ...], Marks, Marks, Marks, tuple[tuple[int, int], ...]]:
     """Take the marks out of a caption, each tied to the word it sits before. A cue mark
     says how far the run plays; cues only move forward and stay inside the step (D-180).
     A pop mark names the diagram part to pop (D-184); a scene mark, the scene to switch to
-    (D-185)."""
+    (D-185); a beat mark, the model-alone story's next beat; a chip mark, the chip to light
+    (D-191)."""
     words: list[str] = []
     cues: list[tuple[int, int]] = []
     pops: list[tuple[int, str]] = []
     scenes: list[tuple[int, str]] = []
+    beats: list[tuple[int, str]] = []
+    lit: list[tuple[int, int]] = []
     last = start
     for piece in MARK.split(say):
-        if scene := SCENE.fullmatch(piece):
+        if beat := BEAT.fullmatch(piece):
+            if beat.group(1) not in BEATS:
+                raise TourError(
+                    f"Step {step_id}: {piece} must name one of {', '.join(sorted(BEATS))}."
+                )
+            beats.append((len(words), beat.group(1)))
+        elif chip := CHIP.fullmatch(piece):
+            number = int(chip.group(1))
+            if number > chips:
+                raise TourError(f"Step {step_id}: {piece}, but the step has {chips} chips.")
+            lit.append((len(words), number))
+        elif scene := SCENE.fullmatch(piece):
             if scene.group(1) not in SCENES:
                 raise TourError(
                     f"Step {step_id}: {piece} must name one of {', '.join(sorted(SCENES))}."
@@ -292,7 +325,7 @@ def _marks(
             last = at
         else:
             words.extend(piece.split())
-    return " ".join(words), tuple(cues), tuple(pops), tuple(scenes)
+    return " ".join(words), tuple(cues), tuple(pops), tuple(scenes), tuple(beats), tuple(lit)
 
 
 def _position(step_id: str, until: str, sequence: list[Event]) -> int:
@@ -313,6 +346,17 @@ def _position(step_id: str, until: str, sequence: list[Event]) -> int:
             if seen == nth:
                 return i + 1
     raise TourError(f"Step {step_id}: until {until!r}, but the runs have only {seen} of those.")
+
+
+def _chips(step_id: str, value: Any) -> tuple[str, ...]:
+    """A step's short labels (D-191): a few words each, at most MAX_CHIPS."""
+    if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+        raise TourError(f"Step {step_id}: `chips` must be a list of short labels.")
+    if len(value) > MAX_CHIPS:
+        raise TourError(f"Step {step_id}: at most {MAX_CHIPS} chips.")
+    if any(len(v) > MAX_CHIP_CHARS for v in value):
+        raise TourError(f"Step {step_id}: a chip may be at most {MAX_CHIP_CHARS} characters.")
+    return tuple(v.strip() for v in value)
 
 
 def _pause(config: dict[str, Any]) -> int:

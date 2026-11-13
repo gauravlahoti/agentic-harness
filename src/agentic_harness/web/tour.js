@@ -31,6 +31,7 @@ const tour = {
   analyser: null,
 };
 
+const SVG_NS = "http://www.w3.org/2000/svg";
 const MIN_GAP = 320; // ms between two events: slow enough for the eye and the spotlight to follow
 const EVENTS_SHARE = 0.75; // events fill this share of a step, so the voice can finish on them
 const lessMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -190,6 +191,7 @@ function showStep(n) {
   for (let i = tour.pos; i < startOf(n); i += 1) feed(i, { quiet: true });
   tour.step = n;
   const step = steps[n];
+  startStory(step); // a step with beats starts with the model alone (D-191)
   $("tour-count").textContent = `${String(n + 1).padStart(2, "0")} of ${String(steps.length).padStart(2, "0")}`;
   $("tour-title").textContent = step.title;
   // Recording: the whole paragraph is your script. Playing: the first sentence, then the
@@ -326,6 +328,8 @@ async function follow(step, seconds, gen, withClip) {
   let next = 0; // the next cue to reach
   let popped = 0; // pop marks the voice has passed (D-184)
   let switched = 0; // scene marks the voice has passed (D-185)
+  let beaten = 0; // beat marks the voice has passed (D-191)
+  let chipped = 0; // chip marks the voice has passed (D-191)
   let due = tour.pos; // play the run up to here
   for (;;) {
     const clipClock = withClip && !tour.voiceFailed;
@@ -347,6 +351,8 @@ async function follow(step, seconds, gen, withClip) {
     // The diagram: each part pops as the voice names it.
     while (popped < step.pops.length && step.pops[popped].word <= word) pop(step.pops[popped++].part);
     while (switched < step.scenes.length && step.scenes[switched].word <= word) setScene(step.scenes[switched++].scene);
+    while (beaten < step.beats.length && step.beats[beaten].word <= word) beat(step.beats[beaten++].beat);
+    while (chipped < step.chip_marks.length && step.chip_marks[chipped].word <= word) chip(step.chip_marks[chipped++].chip);
     if (tour.pos < due) feed(tour.pos);
     const done = (clipClock && tour.audio.ended) || at >= seconds;
     if (done && tour.pos >= due) return true;
@@ -374,6 +380,52 @@ function setScene(scene) {
   $("tour-stage").dataset.scene = scene;
   // The build scene starts bare: each part appears only when the voice pops it (D-185).
   for (const node of $("tour-stage").querySelectorAll(".on")) node.classList.remove("on");
+}
+
+// The model-alone story (D-191). Beats add up: once sealed, the jar stays sealed while the
+// voice says what the model can and can't do. A step with beats starts with the model alone.
+const BEATS = ["think", "reach", "seal", "tell", "bounce"];
+
+function startStory(step) {
+  const stage = $("tour-stage");
+  for (const name of BEATS) stage.classList.remove(`beat-${name}`);
+  delete stage.dataset.beat;
+  stage.classList.toggle("has-story", step.beats.length > 0);
+  // The step's chips as a roadmap: numbered nodes on a rail, each lit as the voice names it.
+  const row = $("stage-chips");
+  row.replaceChildren();
+  const gap = step.chips.length > 1 ? Math.min(100, 300 / (step.chips.length - 1)) : 0;
+  const top = 200 - (gap * (step.chips.length - 1)) / 2; // centred on the stage
+  const svg = (tag, attrs, text) => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  step.chips.forEach((label, i) => {
+    const y = top + i * gap;
+    const group = svg("g", { class: "stage-chip" });
+    group.dataset.chip = String(i + 1);
+    if (i > 0) group.append(svg("line", { class: "chip-rail", x1: 96, y1: y - gap + 22, x2: 96, y2: y - 22, pathLength: 100 }));
+    group.append(
+      svg("circle", { class: "chip-ripple", cx: 96, cy: y, r: 20 }),
+      svg("circle", { class: "chip-node", cx: 96, cy: y, r: 20 }),
+      svg("text", { class: "chip-num", x: 96, y: y + 6 }, String(i + 1)),
+      svg("text", { class: "chip-text", x: 134, y: y + 6 }, label),
+    );
+    row.append(group);
+  });
+}
+
+function beat(name) {
+  const stage = $("tour-stage");
+  stage.classList.add(`beat-${name}`);
+  stage.dataset.beat = name;
+}
+
+function chip(n) {
+  for (const node of $("stage-chips").querySelectorAll(".now")) node.classList.remove("now");
+  $("stage-chips").querySelector(`[data-chip="${n}"]`)?.classList.add("on", "now");
 }
 
 // One part lights up and a pulse runs from it to the model.
