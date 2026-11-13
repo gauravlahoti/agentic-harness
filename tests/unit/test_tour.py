@@ -450,3 +450,10 @@ def test_s14_switches_are_shown_but_locked_for_visitors_and_the_note_links_the_c
     assert 'id="tpl-github"' in page
     public = app_js.split("function showPublicMode")[1].split("\nfunction ")[0]
     assert 'fromTemplate("tpl-github"), "View the Code"' in public
+
+
+def test_s14_the_tour_never_claims_no_plan_before_the_plan_arrives() -> None:
+    """D-194, your review: "No To-Do plan" showed at the first tool call, then the recorded
+    run wrote its To-Do list. The tour leaves that line out; the normal page is unchanged."""
+    app_js = (Path(__file__).parents[2] / "src" / "agentic_harness" / "web" / "app.js").read_text()
+    assert "if (turn.planOn && !turn.todo && !turn.direct && !TOUR) {" in app_js

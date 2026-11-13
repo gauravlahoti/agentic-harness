@@ -1475,3 +1475,9 @@
   - In the tour (local `?tour`) and for visitors to the hosted copy, every Harness switch shows its state but a click or the space key does nothing, and nothing is saved. In your owner session (D-190) and on your normal page they work as before.
   - The hosted note is one quiet line under the agent's description, with a thin divider instead of a box: "A read-only replay of a real agent run. Clone the repository to run it live with your own model key." Under it, a small **View the Code** pill with the GitHub mark (an inline icon template; the page's security policy allows no HTML strings).
 - **Cost:** none. Deployed as part of S14; the live site needs a redeploy to show it.
+
+## D-194 · The tour leaves out "No To-Do plan" (2026-11-13)
+- **Your review:** "this line hurts when recorded in the demo, as eventually it plans a To-Do list".
+- **Why it happened:** the page writes "No To-Do plan · the model chose to work directly" at the first ordinary tool call (here `load_skill`). The recorded run writes its To-Do list one call later, so the line was wrong by the time the plan appeared.
+- **Chose:** the tour (local `?tour` and the hosted copy) never shows that line; the To-Do card shows the plan. Your normal page is unchanged (your rule: tour changes stay in the tour).
+- **Open:** the same early verdict can happen in a live chat, when the model plans after its first tool. A general fix (drop the line once a plan arrives) would change the normal page, so it waits for your call.

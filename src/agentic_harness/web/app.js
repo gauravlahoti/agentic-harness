@@ -991,7 +991,9 @@ function onEvent(ev, turn) {
   } else if (ev.type === "tool_finished" && turn.tools.get(d.call_id)?.plan) {
     if (d.is_error) addActivity(turn, { text: `Plan not saved · ${d.output}`, part: "plan", state: "error", raw: d });
   } else if (ev.type === "tool_started") {
-    if (turn.planOn && !turn.todo && !turn.direct) {
+    // Not in the tour: the line comes at the first tool call, and the recorded run writes its
+    // To-Do plan a call later, so "no plan" would be wrong on screen (your review, D-194).
+    if (turn.planOn && !turn.todo && !turn.direct && !TOUR) {
       // Direct or To-Do: the model decides (D-121). Say which, so a missing plan reads as its
       // choice, not as something skipped (your request, D-147).
       turn.direct = addActivity(turn, {
