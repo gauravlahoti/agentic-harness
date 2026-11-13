@@ -191,8 +191,11 @@ def test_s14_ac5_health_reports_local_mode(tmp_path: Path) -> None:
 
 
 def test_s14_ac5_page_has_the_public_note(tmp_path: Path) -> None:
-    page = public_client(tmp_path).get("/").text
-    assert 'id="public-note"' in page
+    web = public_client(tmp_path)
+    assert 'id="public-note"' in web.get("/").text
+    # The tour sets profile, person and chat: greyed out and inert for a visitor.
+    assert ".public-mode :is(#profiles, #people, #work)" in web.get("/static/app.css").text
+    assert '["profiles", "people", "work"]) $(id).inert = true' in web.get("/static/app.js").text
 
 
 def test_s14_ac6_the_server_starts_without_dev_tools() -> None:

@@ -52,6 +52,8 @@ function showPublicMode() {
     note.append(" ", link);
   }
   note.hidden = false;
+  // The tour sets whose view and which person; a visitor can see them but not change them.
+  for (const id of ["profiles", "people", "work"]) $(id).inert = true;
   showView();
 }
 

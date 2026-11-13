@@ -2198,6 +2198,8 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
 }
 .public-note[hidden] { display: none; }
+/* The tour picks the profile, person and chat: shown, greyed out, not clickable (inert in app.js). */
+.public-mode :is(#profiles, #people, #work) { opacity: 0.45; filter: grayscale(1); pointer-events: none; }
 .public-note a { color: var(--accent); font-weight: 600; }
 .tour-invite:hover { border-color: var(--accent); transform: translateY(-1px); }
 .tour-invite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
