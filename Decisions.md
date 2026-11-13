@@ -1624,3 +1624,8 @@
 ## D-209 · No cyan outline round the Harness pane (2026-11-13)
 - **Your review:** "this cyan highlight should not happen at all".
 - **Chose:** removed the `tour-whole` outline that steps presenting the whole harness drew around the pane (it came back at step 10, after D-206 kept it out of steps 1–3). Parts still open as they're narrated, with no tint or edge. A test keeps it gone.
+
+## D-210 · "Went to" counts as reporting a send (2026-11-13)
+- **Your report:** a live send ended "⚠ Not verified: No False "Sent" still failing".
+- **Found:** the send worked (Sales and the CFO approved) and the answer said "The counter-offer went to Maya Chen… approved the send". The check only knew "sent" phrasings, so it asked for a rewrite, got the same words, and failed twice.
+- **Chose:** when a send worked, "went to / went out", "on its way" and "delivered to" also count as telling the person. A claim with no send behind it is still read only by the strict "sent" wording, since "the draft went to Priya for approval" isn't a send. Test: `test_s11_ac8_a_send_reported_in_other_words_passes`.

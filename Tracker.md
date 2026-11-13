@@ -448,3 +448,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | (your report) Chats could not be clicked with Workspace + Observability open: Chats shrank to 15 px and its list spilled under the groups below. Chats now keeps its size; the sidebar scrolls. Reproduced and fixed in a local owner session. D-203. |
 | 2026-11-13 | S14 + D-204/D-205 (your review): word-by-word subtitles, 13 px, Exit Tour for visitors, sidebar groups hidden in the tour; Agentic Loop pane rewritten after the Agent SDK loop. 638 offline tests. Local review before deploy. |
 | 2026-11-13 | S14 + D-206 (your review): pane hidden until the run starts; no step counter; 14 px subtitles; glass guide capsule with animated fold; hosted welcome with Start the Guided Tour. 638 offline tests. Local review before deploy. |
+| 2026-11-13 | D-210 (your report): No False "Sent" accepts "went to", "on its way" and "delivered to" as reporting a send that worked; MIT license added. |

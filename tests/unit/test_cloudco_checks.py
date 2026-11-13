@@ -441,3 +441,23 @@ def test_d163_the_review_is_shown_before_a_send_and_the_reviewer_checks_policy()
     assert "Check every change that matters against CloudCo's policy" in reviewer
     skill = (ROOT / "skills" / "sales" / "reply-to-customer" / "SKILL.md").read_text()
     assert "fewest approvers" in skill
+
+
+def test_s11_ac8_a_send_reported_in_other_words_passes() -> None:
+    """D-210, your report: the send worked and the answer said "The counter-offer went to Maya
+    Chen", but only "sent" counted, so the check failed twice. Wider wording counts as reporting
+    a send that worked; a claim with no send behind it is still read strictly."""
+    sent = Call(
+        "send_to_customer", {}, json.dumps({"status": "sent", "approved_by": ["Sales"]}), False
+    )
+    for text in (
+        "The counter-offer went to Maya Chen at ShopCo. Sales approved the send.",
+        "It went out to Maya this morning, approved by Sales.",
+        "Your reply is on its way to Maya, approved by Sales.",
+        "Delivered to Maya Chen, approved by Sales.",
+    ):
+        assert verdict("no_false_sent", text, sent).ok, text
+    # Without a send, "went to" is about the draft's route, not a claim it was sent.
+    assert verdict("no_false_sent", "The draft went to Priya for approval.").applies is False
+    # And the wider words don't excuse a not-yet: still a failure when it did go.
+    assert not verdict("no_false_sent", "It hasn't gone out yet: it needs approval.", sent).ok
