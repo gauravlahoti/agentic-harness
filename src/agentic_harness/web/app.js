@@ -1976,7 +1976,7 @@ function switchFor(kind, name) {
   });
   label.append(input, el("span", "visually-hidden", `Use ${name}`));
   // Shown on hover or focus only where the switch is locked: the tour, a visitor (D-202).
-  label.dataset.tip = "Locked during the guided tour. Run the harness yourself to switch tools, skills and checks on or off.";
+  label.dataset.tip = "Read-only in this guided tour. To change tools, skills and checks, get the code from View the Code (in the sidebar) and run the harness on your own machine.";
   return label;
 }
 

@@ -147,7 +147,8 @@ def test_s14_ac18_locked_switches_say_why() -> None:
     """D-202, your request: hovering a locked switch explains it, only where it is locked."""
     app_js = (WEB / "app.js").read_text()
     css = (WEB / "app.css").read_text()
-    assert "Locked during the guided tour." in app_js
+    assert "Read-only in this guided tour." in app_js  # your wording choice (D-202)
+    assert "View the Code (in the sidebar)" in app_js
     assert (
         ":is(.tour-mode, .public-mode:not(.owner-mode)) "
         ".switch-wrap:is(:hover, :focus-within)::after" in css
