@@ -34,7 +34,9 @@ let TOUR = new URLSearchParams(location.search).get("tour") !== null; // the sid
 const TOUR_RECORD = new URLSearchParams(location.search).get("tour") === "record";
 // Bring a new line into view. In the tour the player scrolls instead: it centres whatever
 // the spotlight frames, so the page never jumps to its bottom edge (your review).
-const reveal = (node, how) => TOUR || node.scrollIntoView(how);
+// Redrawing a reopened chat from its traces (D-200): no scrolling line by line.
+let REPLAYING = false;
+const reveal = (node, how) => TOUR || REPLAYING || node.scrollIntoView(how);
 
 // ── Health: smoke row + what the Agent view can offer ───────────────────────
 let health = null;
@@ -534,10 +536,29 @@ async function openSession(id) {
   currentSession = id;
   clearThread();
   $("empty-state").hidden = true;
-  for (const t of session.turns) $("thread").append(pastTurn(t));
+  // Each turn redraws from its trace, every step as it happened (D-200); without one, its summary.
+  for (const t of session.turns) (t.events?.length && replayTurn(t)) || $("thread").append(pastTurn(t));
   renderWork();
   $("thread").lastElementChild?.scrollIntoView({ block: "end" });
   $("task").focus();
+}
+
+// A finished turn, redrawn from its trace through the same onEvent() a live run uses, the way
+// the tour plays a recording (D-171, D-200). False if it couldn't be drawn: the caller falls back.
+function replayTurn(t) {
+  REPLAYING = true;
+  let turn = null;
+  try {
+    turn = newTurn(t.task);
+    for (const ev of t.events) onEvent(ev, turn);
+    turn.activity.closest(".turn")?.classList.remove("new");
+    return true;
+  } catch {
+    turn?.activity.closest(".turn")?.remove();
+    return false;
+  } finally {
+    REPLAYING = false;
+  }
 }
 
 // An earlier task, shown as it was asked and answered. Its steps are in the trace.
@@ -885,7 +906,7 @@ function onEvent(ev, turn) {
       const who = c.profile ? `${labelFor(c.profile)} · ` : "";
       addActivity(turn, {
         text:
-          `Loaded context · ${who}${plural(c.files.length, "file")} · ${plural(c.skills.length, "skill")}` +
+          `Loaded context · ${who}${plural(c.files.length, "file")} · ${plural(c.skills.length, "skill")} on offer` +
           (c.warnings?.length ? " · ⚠ over budget" : ""),
         part: "context",
         state: "done",
@@ -1587,11 +1608,15 @@ function approvalCard(turn, d) {
     if (mayAnswer) return;
     hand.append(el("p", "handoff-text", `You are acting as ${roleOf(me)}. This one needs the ${d.approver}.`));
     for (const p of people().filter((x) => x.role === d.approver)) {
-      const sw = el("button", "handoff-switch", `Switch to ${roleOf(p)}`);
+      // The owner of a hosted copy plays every approver in a demo: one click switches to the
+      // right person and approves; the server still checks the role (D-200). Locally: two steps.
+      const oneClick = document.body.classList.contains("owner-mode");
+      const sw = el("button", "handoff-switch", oneClick ? `Approve as ${roleOf(p)}` : `Switch to ${roleOf(p)}`);
       sw.type = "button";
       sw.addEventListener("click", () => {
         setPerson(p.id);
         showActions(); // after the switch, the Approve button is where you look
+        if (oneClick) approve.click();
       });
       hand.append(sw);
     }

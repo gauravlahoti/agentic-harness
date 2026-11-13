@@ -10,7 +10,10 @@ Does not: hold any agent logic. It reads arguments, builds a harness with
 
 import argparse
 import asyncio
+import contextlib
+import importlib
 import sys
+import threading
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -53,6 +56,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def warm_sdks() -> threading.Thread:
+    """Import the model SDKs in the background while the server starts (D-200).
+
+    They are imported lazily, on the first run. On a host that reads its image lazily (Cloud
+    Run), that first import took ~18 s inside the first request; now it happens while the
+    page loads. A failed import is ignored: the run that needs it will say why.
+    """
+
+    def load() -> None:
+        for module in ("anthropic", "google.genai"):
+            with contextlib.suppress(ImportError):
+                importlib.import_module(module)
+
+    thread = threading.Thread(target=load, name="warm-sdks", daemon=True)
+    thread.start()
+    return thread
+
+
 def serve(port: int | None, workspace: Path | None) -> int:
     """Start the server. Imports stay inside so ``--version`` stays instant.
 
@@ -65,6 +86,7 @@ def serve(port: int | None, workspace: Path | None) -> int:
     from agentic_harness.workspace import Workspace
 
     settings = config.load_settings()
+    warm_sdks()
     app = create_app(settings, workspace=Workspace.load(workspace) if workspace else None)
     host = PUBLIC_HOST if settings.public else HOST
     port = port or settings.port or DEFAULT_PORT

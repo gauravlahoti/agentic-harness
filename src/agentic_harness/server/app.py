@@ -15,8 +15,10 @@ Does not: bind the network address (the CLI does), or read secrets.
 """
 
 import asyncio
+import contextlib
 import hmac
 import json
+import shutil
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
@@ -38,6 +40,7 @@ from agentic_harness.config import (
     CLAUDE_SMALL_MODEL,
     MISSING_ANTHROPIC_KEY,
     MISSING_KEY_MESSAGE,
+    OWNER_MODEL,
     Settings,
 )
 from agentic_harness.events import Event
@@ -89,6 +92,9 @@ PAGE_HEADER = {"X-Harness-Page": "1"}
 # Public tour mode (D-189): the only methods a hosted page answers. Everything else is a change.
 READ_METHODS = frozenset({"GET", "HEAD"})
 PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on your own machine."
+# A reopened chat redraws each turn from at most this many trace events (D-200).
+MAX_PAST_EVENTS = 800
+
 # Owner unlock (D-190): a request with the owner passphrase may run the agent and answer its
 # approvals, and nothing more. Repeated wrong passphrases lock the unlock for a while.
 OWNER_HEADER = "x-harness-owner"
@@ -324,6 +330,17 @@ def create_app(
             ]
         }
 
+    def past_events(run_id: str) -> list[dict[str, object]]:
+        """A finished turn's steps, from its trace: the page redraws them on return (D-200)."""
+        file = trace_dir / f"{run_id}.jsonl" if run_id else None
+        if file is None or not file.is_file():
+            return []
+        events: list[dict[str, object]] = []
+        for line in file.read_text(encoding="utf-8").splitlines()[:MAX_PAST_EVENTS]:
+            with contextlib.suppress(json.JSONDecodeError):
+                events.append(json.loads(line))
+        return events
+
     @app.get("/api/sessions/{session_id}")
     async def open_session(session_id: str, profile: str | None = None) -> dict[str, object]:
         try:
@@ -343,6 +360,7 @@ def create_app(
                     "plan": t.plan,
                     "checks": t.checks,
                     "online": t.online,
+                    "events": past_events(t.run_id),
                 }
                 for t in session.turns
             ],
@@ -480,7 +498,7 @@ def create_app(
             "owner_denied": bool(request.headers.get(OWNER_HEADER)) and not owner,
             "repository": REPOSITORY,
             "version": __version__,
-            "model": CLAUDE_SMALL_MODEL if owner else settings.model,
+            "model": OWNER_MODEL if owner else settings.model,
             "models": owner_models if owner else priced_models,
             "efforts": ["low", "medium", "high"],
             # What a Claude run's helper, checks and titles use (D-103), for the Harness pane.
@@ -687,7 +705,7 @@ def create_app(
             raise HTTPException(400, f"No person {body.person!r} in workspace.toml [[people]].")
         # The owner's run uses the Claude key; anyone else's, the server's own settings.
         cfg = owner_settings if owner_settings is not None and is_owner(request) else settings
-        name = body.model or (CLAUDE_SMALL_MODEL if cfg is owner_settings else cfg.model)
+        name = body.model or (OWNER_MODEL if cfg is owner_settings else cfg.model)
         claude = name.startswith(CLAUDE_PREFIX)
         if claude and not cfg.has_anthropic_key:
             raise HTTPException(400, MISSING_ANTHROPIC_KEY)
@@ -711,7 +729,7 @@ def create_app(
                 Limits(),
                 workspace,
                 profile=profile,
-                trace_dir=trace_dir,
+                trace_dir=settings.trace_staging or trace_dir,  # staged, then saved whole (D-200)
                 secrets=secrets,
                 # A helper may name its own model (D-62); same settings, other name.
                 model_factory=lambda helper: model_factory(
@@ -781,6 +799,18 @@ def create_app(
             event = Event(type_, run_id="", seq=0, time=0.0, data=data)
             return json.dumps(event.to_dict(), ensure_ascii=False) + "\n"
 
+        run_ids: set[str] = set()  # this run's trace files, the helpers' included
+
+        def save_traces() -> None:
+            """A staged trace goes to the trace folder in one write, not one per event (D-200)."""
+            if settings.trace_staging is None:
+                return
+            for run_id in run_ids:
+                staged = settings.trace_staging / f"{run_id}.jsonl"
+                if staged.is_file():
+                    trace_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(staged, trace_dir / staged.name)
+
         async def lines() -> AsyncIterator[str]:
             titling = asyncio.create_task(make_title(title_model, body.task)) if fresh else None
             try:
@@ -791,6 +821,8 @@ def create_app(
                     history=history,
                     record=lambda steps: sessions.append_steps(session_id, profile, steps),
                 ):
+                    if run_id := json.loads(line).get("run_id"):
+                        run_ids.add(run_id)
                     yield line
                     if '"run_finished"' in line and not json.loads(line)["data"].get("agent_id"):
                         release()  # the answer is in: online evals may still be scoring (D-148)
@@ -808,6 +840,7 @@ def create_app(
                 if titling is not None and not titling.done():
                     titling.cancel()
                 release()
+                await asyncio.to_thread(save_traces)
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")
 

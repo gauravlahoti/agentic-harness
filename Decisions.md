@@ -1529,3 +1529,22 @@
   - `make deploy-tour` takes `RUN_SA=…`.
 - **Why not the default account:** `agentic-rag`, `pulse` and `resend-mcp-server` also run on it; taking Editor away would have broken them.
 - **Cost:** none. A leaked token of the harness can now read two secrets and one bucket, not the whole project.
+
+## D-200 · Why live owner sessions were slow, and the fixes (2026-11-13)
+- **Your report:** "the live sessions are extremely slow… it loads all skills… once I come back to the conversation, the trace of loading skills and calling tools is gone". Then: "find the deeper root cause".
+- **Measured** (Cloud Run request logs, the run traces in the memory bucket, three tiny timed runs):
+  1. **The first Claude run on each instance waited ~18 s before anything happened.** `anthropic` (~3,270 modules) was imported lazily inside the first run, and Cloud Run gen2 reads image files lazily. The first byte came at 19.0 s on a warm instance's first run, then 1.2 s and 0.9 s.
+  2. **Cloud Run's 300 s request timeout killed runs waiting for approval.** Both "send" runs logged exactly 301 s and ended at `approval_requested`.
+  3. **No approval was ever posted:** a person switch plus a click per approver, easy to miss live.
+  4. **Every trace event re-uploaded the trace file to the mounted bucket** (D-198): ~0.2 s an event live vs 0.001 s on local disk, about 6 s a run.
+  5. **Reopened chats only had task, answer, plan and checks.** The steps were in the trace, never replayed.
+  6. **"2 skills" read as loaded** (they're offered); Haiku also skipped `load_skill`.
+  - **Not causes:** the model calls (cached prompts, 6–11k tokens), streaming (no buffering), container start (~2 s).
+- **Chose:**
+  1. `serve` imports `anthropic` and `google.genai` in a background thread at start.
+  2. `make deploy-tour` sets `--timeout 3600`, Cloud Run's maximum, above the 1800 s approval wait.
+  3. In an owner session the hand-off reads "Approve as <name> (<role>)" and approves in one click; the server's role check is unchanged. Local mode keeps the two steps.
+  4. `HARNESS_TRACE_STAGING` (set only in the image): a run traces to local disk and its files move to the trace folder once the stream ends. Unset (local use) writes event by event as before.
+  5. `GET /api/sessions/{id}` returns each turn's trace events (up to 800). The page redraws them through `onEvent()`, like the tour, and falls back to the summary without a trace.
+  6. Owner sessions default to Claude Sonnet 5.5 (your choice); helpers stay on Haiku. The label reads "2 skills on offer".
+- **Tests:** `tests/unit/test_hosted_speed.py` (S14-AC12 to AC15).

@@ -25,4 +25,7 @@ USER harness
 # owner passphrase (HARNESS_OWNER_KEY) opens live Claude runs, and only for its holder (D-190).
 # The run's own folders are the only places the app may write.
 ENV PATH="/app/.venv/bin:$PATH" HARNESS_PUBLIC=1
+# A run's trace is written on local disk and saved to the (mounted) trace folder once at its end:
+# one bucket write per run instead of one per event (D-200).
+ENV HARNESS_TRACE_STAGING=/tmp/harness-traces
 CMD ["agentic-harness", "serve", "--workspace", "workspaces/cloudco"]

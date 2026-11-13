@@ -59,7 +59,7 @@ deploy-tour: ## Host the tour on Cloud Run: make deploy-tour PROJECT=… HOSTS=�
 	gcloud run deploy $(SERVICE) --project $(PROJECT) --region $(REGION) --source . \
 		--allow-unauthenticated --min-instances 0 --max-instances 1 \
 		--memory 512Mi --cpu 1 --concurrency 20 --cpu-throttling --cpu-boost \
-		--execution-environment gen2 \
+		--execution-environment gen2 --timeout 3600 \
 		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)' $(OWNER_FLAGS) $(MEMORY_FLAGS) $(RUN_SA_FLAGS)
 
 seed-memory: ## Seed the memory bucket once (made-up facts, eval summaries): make seed-memory MEMORY_BUCKET=…

@@ -31,6 +31,7 @@ DEFAULT_MODEL = "gemini-3.8-flash"  # D-07; model names live in config only
 ANTHROPIC_KEY_NAME = "ANTHROPIC_API_KEY"
 CLAUDE_PREFIX = "claude-"
 CLAUDE_SMALL_MODEL = "claude-haiku-5-5"  # a Claude run's helper, checks and titles (D-103)
+OWNER_MODEL = "claude-sonnet-5-5"  # a hosted owner session's default (D-200); helpers stay small
 EVAL_JUDGE_MODEL = "gemini-3.5-flash-lite"  # the evals' default judge: most free quota (D-111)
 MISSING_ANTHROPIC_KEY = "No Claude key. Add ANTHROPIC_API_KEY to .env, then restart."
 DEFAULT_ENV_FILE = Path(".env")
@@ -80,6 +81,9 @@ class Settings:
     # Owner unlock (D-190): in public mode, a request with this passphrase may run the agent
     # on the Claude key. Without it, a public harness holds no key at all.
     owner_key: Secret | None = None
+    # Where a run's trace is written while it runs, before it is saved whole to the trace
+    # folder (D-200). Unset: traces are written straight to the trace folder, event by event.
+    trace_staging: Path | None = None
 
     @property
     def has_key(self) -> bool:
@@ -146,4 +150,5 @@ def load_settings(
         allowed_hosts=hosts,
         port=int(port) if port else None,
         owner_key=Secret(owner) if owner else None,
+        trace_staging=Path(staging) if (staging := get("HARNESS_TRACE_STAGING")) else None,
     )
