@@ -1548,3 +1548,4 @@
   5. `GET /api/sessions/{id}` returns each turn's trace events (up to 800). The page redraws them through `onEvent()`, like the tour, and falls back to the summary without a trace.
   6. Owner sessions default to Claude Sonnet 5.5 (your choice); helpers stay on Haiku. The label reads "2 skills on offer".
 - **Tests:** `tests/unit/test_hosted_speed.py` (S14-AC12 to AC15).
+- **Added 2026-11-13, after the live check:** the first run on a fresh instance still waited ~10 s. With `--cpu-throttling`, Cloud Run gives CPU only during requests (plus a short startup boost), so the background warm-up stalled. **Your choice:** `--no-cpu-throttling` (instance-based billing). It still scales to zero, and the warm-up finishes while an instance is up. Cost: within the free tier at this traffic (240k vCPU-seconds a month), then roughly $0.02 per idle 15-minute window.

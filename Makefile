@@ -58,7 +58,7 @@ deploy-tour: ## Host the tour on Cloud Run: make deploy-tour PROJECT=â€¦ HOSTS=â
 	@test -n "$(HOSTS)" || { echo "Set HOSTS=<names it answers to, comma-separated>"; exit 2; }
 	gcloud run deploy $(SERVICE) --project $(PROJECT) --region $(REGION) --source . \
 		--allow-unauthenticated --min-instances 0 --max-instances 1 \
-		--memory 512Mi --cpu 1 --concurrency 20 --cpu-throttling --cpu-boost \
+		--memory 512Mi --cpu 1 --concurrency 20 --no-cpu-throttling --cpu-boost \
 		--execution-environment gen2 --timeout 3600 \
 		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)' $(OWNER_FLAGS) $(MEMORY_FLAGS) $(RUN_SA_FLAGS)
 
