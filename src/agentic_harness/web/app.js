@@ -46,7 +46,7 @@ async function loadHealth() {
 function showPublicMode() {
   document.body.classList.add("public-mode");
   const note = $("public-note");
-  note.append("This is a hosted, read-only tour. To run the agent live, run the harness on your own machine with your own Gemini key.");
+  note.append("This is a hosted, read-only tour. To run the agent live, run the harness on your own machine with your own model API key.");
   if (health.repository) {
     const link = Object.assign(document.createElement("a"), { href: health.repository, textContent: "View the Code", target: "_blank", rel: "noopener" });
     note.append(" ", link);
