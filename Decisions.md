@@ -1475,6 +1475,7 @@
   - In the tour (local `?tour`) and for visitors to the hosted copy, every Harness switch shows its state but a click or the space key does nothing, and nothing is saved. In your owner session (D-190) and on your normal page they work as before.
   - The hosted note is one quiet line under the agent's description, with a thin divider instead of a box: "A read-only replay of a real agent run. Clone the repository to run it live with your own model key." Under it, a small **View the Code** pill with the GitHub mark (an inline icon template; the page's security policy allows no HTML strings).
 - **Cost:** none. Deployed as part of S14; the live site needs a redeploy to show it.
+- **Changed 2026-11-13, your review** ("the Exit Tour is barely visible"): Exit Tour (local tour only; the hosted copy hides it) now has bright text in an outlined pill like the round controls beside it, cyan on hover.
 
 ## D-194 · The tour leaves out "No To-Do plan" (2026-11-13)
 - **Your review:** "this line hurts when recorded in the demo, as eventually it plans a To-Do list".
