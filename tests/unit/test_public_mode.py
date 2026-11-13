@@ -370,3 +370,11 @@ def test_s14_ac11_the_tour_still_plays_for_visitors(tmp_path: Path) -> None:
     web = owner_client(tmp_path)
     for path in ("/", "/api/health", "/api/harness", "/api/tour"):
         assert web.get(path).status_code == 200, path
+
+
+def test_s14_ac11_the_owner_may_switch_the_online_judge(tmp_path: Path) -> None:
+    """D-197: the owner turns online evals on or off; a visitor can't."""
+    web = owner_client(tmp_path)
+    body = {"on": True}
+    assert web.post("/api/online-evals/judge", headers=PAGE_HEADER, json=body).status_code == 403
+    assert web.post("/api/online-evals/judge", headers=as_owner(), json=body).status_code == 200

@@ -6,8 +6,7 @@
 !Readme.md
 !src/
 !workspaces/cloudco/
-!evals/catalog.json
-!evals/cases/
+!evals/
 !.agentic-harness/evals/*.json
 workspaces/cloudco/tasks/
 workspaces/cloudco/outbox/

@@ -92,7 +92,8 @@ PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on
 # Owner unlock (D-190): a request with the owner passphrase may run the agent and answer its
 # approvals, and nothing more. Repeated wrong passphrases lock the unlock for a while.
 OWNER_HEADER = "x-harness-owner"
-OWNER_ROUTES = frozenset({"/api/run", "/api/approval"})
+# The owner may also switch the online judge (D-197): a Claude run's judge is Claude Haiku.
+OWNER_ROUTES = frozenset({"/api/run", "/api/approval", "/api/online-evals/judge"})
 # Reads that show memory, conversations or evals: the owner's only, in public mode (D-196).
 OWNER_READS = ("/api/facts", "/api/online-evals", "/api/evals", "/api/sessions")
 OWNER_ONLY = "This part of the hosted harness is for its owner."

@@ -1499,3 +1499,9 @@
   - A teammate session's review: since public mode answers every GET, `/api/facts`, `/api/online-evals`, `/api/evals*` and `/api/sessions*` now need the owner passphrase (403 otherwise; the same lockout counter). The tour's own reads stay open.
   - An unlocked tab sends the passphrase with every `/api/` call.
 - **Tests:** `test_public_mode.py::test_s14_ac11_*`.
+
+## D-197 · Owner: the Golden Dataset loads, and online evals switch on or off (2026-11-13)
+- **Your review:** "no golden dataset exists, also there is no option to turn online evals on or off".
+- **Why:** the Golden Dataset page asks the `evals` package for its plan (`python -m evals.run --plan`), and only its data files were in the image. The judge switch was hidden, and the server refused it.
+- **Chose:** the image carries the whole `evals/` package. It plans without DeepEval (checked in an install with no dev or eval packages); running offline evals stays off. The owner may `POST /api/online-evals/judge`; for a Claude run the judge is Claude Haiku, on your key. This widens D-190's owner writes to three, recorded in CLAUDE.md.
+- **Still open:** the switch, memory and chats live on the container's disk, so they reset when Cloud Run scales to zero. Externalising them (Firestore) is planned separately.

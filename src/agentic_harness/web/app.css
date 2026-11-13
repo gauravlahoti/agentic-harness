@@ -2190,7 +2190,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .public-mode:not(.owner-mode) .views.side-group, .public-mode #tour-rec-box { display: none; }
 /* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval,
    switches the judge or forgets a fact (the server refuses those anyway). */
-.owner-mode :is(#evals-run, #evals-reset, #evals-stop, #online-judge, .fact-forget) { display: none; }
+.owner-mode :is(#evals-run, #evals-reset, #evals-stop, .fact-forget) { display: none; }
 .public-mode:not(.owner-mode) :is(#tour-exit, .tour-invite) { display: none; }
 /* Owner session (D-190): the server refuses deletes, so don't offer them. */
 .owner-mode .work-delete { display: none; }

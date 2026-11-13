@@ -41,7 +41,7 @@ A learning project: a **general agent harness** built from scratch in plain Pyth
 - Never read or print `.env`. The user fills it in. Only `src/agentic_harness/config.py` loads it.
 - The key never reaches logs, traces, exports, the page or tool results.
 - The server binds to `127.0.0.1` only. Actions write to a local outbox, never real email.
-- The one exception is public tour mode (`HARNESS_PUBLIC=1`, D-189): the hosted tour listens on every address but answers only GET/HEAD and holds no key. Keep it that way: never add a write route that works in public mode, and never deploy with `agents-cli deploy` (it uploads `.env`). The only exception is the owner unlock (D-190): with the owner passphrase, `/api/run` and `/api/approval` open, on Claude only. Never widen `OWNER_ROUTES`.
+- The one exception is public tour mode (`HARNESS_PUBLIC=1`, D-189): the hosted tour listens on every address but answers only GET/HEAD and holds no key. Keep it that way: never add a write route that works in public mode, and never deploy with `agents-cli deploy` (it uploads `.env`). The only exception is the owner unlock (D-190, D-197): with the owner passphrase, exactly three writes open, `/api/run`, `/api/approval` and `/api/online-evals/judge`, on Claude only. Widen `OWNER_ROUTES` only when the user asks, and record it in a decision.
 - All CloudCo data is made up; label it so.
 
 ## Commands
