@@ -441,3 +441,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | S14 + D-196 (your review): owner session shows Memory (seeded demo facts) and Observability (saved evals, golden dataset); those reads and chats are owner-only in public mode (403 for visitors). 623 offline tests. |
 | 2026-11-13 | S14 + D-197 (your review): owner sees the Golden Dataset (evals package in the image) and can switch online evals on or off. 624 offline tests. |
 | 2026-11-13 | S14 + D-198 (your request): hosted memory (facts, chats, judge switch, eval summaries) on a mounted Cloud Storage bucket; survives scale-to-zero and redeploys. 624 offline tests. |
+| 2026-11-13 | S14: the hosted harness runs as its own service account (2 secrets + 1 bucket, no project role); `make deploy-tour RUN_SA=…`. D-199. |

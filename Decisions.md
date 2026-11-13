@@ -1519,3 +1519,13 @@
   - Each append rewrites the whole object, which is fine at this size.
   - Owner-only reads (D-196) still guard it from visitors.
 - **Cost:** a few MB and a few thousand writes a month, about $0.01–0.05.
+
+## D-199 · The hosted harness runs as its own service account (2026-11-13)
+- **Your go-ahead** after the D-198 review: Cloud Run reached the secrets and the memory bucket through the project's default compute account, which holds **Editor** on the whole project.
+- **Options:** remove Editor from the default account · give the harness its own account.
+- **Chose:** its own account, `agentic-harness-run@gcp-experiments-490306.iam.gserviceaccount.com`, with exactly three grants and no project role:
+  - `secretmanager.secretAccessor` on `anthropic-api-key` and on `harness-owner-key`
+  - `storage.objectUser` on `gs://gcp-experiments-490306-agentic-harness-memory`
+  - `make deploy-tour` takes `RUN_SA=…`.
+- **Why not the default account:** `agentic-rag`, `pulse` and `resend-mcp-server` also run on it; taking Editor away would have broken them.
+- **Cost:** none. A leaked token of the harness can now read two secrets and one bucket, not the whole project.
