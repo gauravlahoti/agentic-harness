@@ -7,7 +7,6 @@
 !src/
 !workspaces/cloudco/
 !evals/
-!.agentic-harness/evals/*.json
 workspaces/cloudco/tasks/
 workspaces/cloudco/outbox/
 **/__pycache__/

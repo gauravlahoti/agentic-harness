@@ -11,16 +11,13 @@ COPY pyproject.toml uv.lock Readme.md ./
 RUN uv sync --frozen --no-default-groups --no-install-project
 COPY src/ src/
 COPY workspaces/cloudco/ workspaces/cloudco/
-# For the owner's Observability (D-196): the golden cases, their catalog and saved eval
-# summaries (made-up CloudCo cases only; no traces, no chats).
-# The evals package too: the Golden Dataset page asks it for the plan (stdlib only, no DeepEval).
+# The evals package: the Golden Dataset page asks it for the plan (stdlib only, no DeepEval).
 COPY evals/ evals/
-COPY .agentic-harness/evals/*.json .agentic-harness/evals/
-# Also seeds the demo's long-term memory from the made-up facts (D-196), not anyone's notes.
+# .agentic-harness/ is where a bucket is mounted when hosted (D-198): facts, chats, the judge
+# switch and eval summaries live there and survive scale-to-zero. Seed it with `make seed-memory`.
 RUN uv sync --frozen --no-default-groups \
     && useradd --system --uid 10001 harness \
-    && mkdir -p .agentic-harness/notes/cloudco workspaces/cloudco/tasks workspaces/cloudco/outbox \
-    && for p in sales engineering; do cp "workspaces/cloudco/demo-memory/$p.txt" ".agentic-harness/notes/cloudco/$p.md"; done \
+    && mkdir -p .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox \
     && chown -R harness .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox
 
 USER harness

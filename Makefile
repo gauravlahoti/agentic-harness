@@ -1,6 +1,6 @@
 # One entry point for every routine task. CI runs `make check`, so local and CI never differ.
 .DEFAULT_GOAL := help
-.PHONY: help setup hooks format lint type test check live eval clean deploy-tour
+.PHONY: help setup hooks format lint type test check live eval clean deploy-tour seed-memory
 
 help: ## Show the commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-7s %s\n", $$1, $$2}'
@@ -44,6 +44,9 @@ HOSTS ?=
 # Owner unlock (D-190), optional: Secret Manager names for Claude's key and the passphrase.
 CLAUDE_SECRET ?=
 OWNER_SECRET ?=
+# Persistent memory (D-198), optional: a bucket mounted at .agentic-harness/ (facts, chats, judge).
+MEMORY_BUCKET ?=
+MEMORY_FLAGS = $(if $(MEMORY_BUCKET),--add-volume 'name=memory$(,)type=cloud-storage$(,)bucket=$(MEMORY_BUCKET)$(,)mount-options=uid=10001;gid=10001' --add-volume-mount 'volume=memory$(,)mount-path=/app/.agentic-harness')
 OWNER_FLAGS = $(if $(and $(CLAUDE_SECRET),$(OWNER_SECRET)),--update-secrets ANTHROPIC_API_KEY=$(CLAUDE_SECRET):latest$(,)HARNESS_OWNER_KEY=$(OWNER_SECRET):latest)
 , := ,
 
@@ -54,4 +57,9 @@ deploy-tour: ## Host the tour on Cloud Run: make deploy-tour PROJECT=… HOSTS=�
 		--allow-unauthenticated --min-instances 0 --max-instances 1 \
 		--memory 512Mi --cpu 1 --concurrency 20 --cpu-throttling --cpu-boost \
 		--execution-environment gen2 \
-		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)' $(OWNER_FLAGS)
+		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)' $(OWNER_FLAGS) $(MEMORY_FLAGS)
+
+seed-memory: ## Seed the memory bucket once (made-up facts, eval summaries): make seed-memory MEMORY_BUCKET=…
+	@test -n "$(MEMORY_BUCKET)" || { echo "Set MEMORY_BUCKET=<bucket>"; exit 2; }
+	for p in sales engineering; do gcloud storage cp --no-clobber workspaces/cloudco/demo-memory/$$p.txt gs://$(MEMORY_BUCKET)/notes/cloudco/$$p.md; done
+	gcloud storage cp --no-clobber '.agentic-harness/evals/*.json' gs://$(MEMORY_BUCKET)/evals/

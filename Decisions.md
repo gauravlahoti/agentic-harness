@@ -1505,3 +1505,17 @@
 - **Why:** the Golden Dataset page asks the `evals` package for its plan (`python -m evals.run --plan`), and only its data files were in the image. The judge switch was hidden, and the server refused it.
 - **Chose:** the image carries the whole `evals/` package. It plans without DeepEval (checked in an install with no dev or eval packages); running offline evals stays off. The owner may `POST /api/online-evals/judge`; for a Claude run the judge is Claude Haiku, on your key. This widens D-190's owner writes to three, recorded in CLAUDE.md.
 - **Still open:** the switch, memory and chats live on the container's disk, so they reset when Cloud Run scales to zero. Externalising them (Firestore) is planned separately.
+
+## D-198 · Hosted memory lives in a mounted Cloud Storage bucket (2026-11-13)
+- **Your request:** "if we want to use Firestore to externalise the memory, do it and wire it up".
+- **Problem:** on Cloud Run, facts, chats, the online-evals switch and eval summaries were files on the container's disk. They reset at every scale-to-zero or deploy.
+- **Options:**
+  - A Firestore storage layer: about 300 lines of new harness code plus tests, the `google-cloud-firestore` dependency (heavier image, slower cold start), cents a month.
+  - A Cloud Storage bucket mounted at `.agentic-harness/`: no harness code change, pennies a month.
+- **Chose (your answer):** the bucket, `gcp-experiments-490306-agentic-harness-memory` (us-central1, uniform access, public access prevented). It's mounted with Cloud Run's gen2 volume, `uid`/`gid` 10001 so the non-root user writes. Seeded once with `make seed-memory`: the made-up demo facts and the eval summaries. It never holds anyone's local notes or chats.
+- **The image** no longer carries facts or eval summaries. It keeps the `evals/` package for the Golden Dataset plan.
+- **Caveats:**
+  - Safe for one writer only; the service runs at most one instance.
+  - Each append rewrites the whole object, which is fine at this size.
+  - Owner-only reads (D-196) still guard it from visitors.
+- **Cost:** a few MB and a few thousand writes a month, about $0.01–0.05.
