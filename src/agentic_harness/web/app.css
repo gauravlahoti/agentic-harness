@@ -2235,9 +2235,8 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   animation: hosted-reveal 0s linear 4s forwards;
 }
 @keyframes hosted-reveal { to { visibility: visible; } }
-/* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval
-   (the server refuses those anyway). Forgetting a fact is the owner's (D-211). */
-.owner-mode :is(#evals-run, #evals-reset, #evals-stop) { display: none; }
+/* Owner on a hosted copy: Memory and Observability (D-196), forgetting a fact (D-211), and
+   running offline evals on Claude (D-213) are all the owner's. */
 /* The hosted welcome after Exit (D-206): a question, one line, and a clear way in. */
 .empty.welcome :is(#empty-hint) { max-width: 60ch; margin-inline: auto; }
 .welcome-cta {

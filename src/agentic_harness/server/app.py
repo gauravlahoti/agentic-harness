@@ -18,6 +18,7 @@ import asyncio
 import contextlib
 import hmac
 import json
+import os
 import shutil
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -65,6 +66,7 @@ from agentic_harness.server.evals import (
     catalog,
     command,
     delete_result,
+    eval_env,
     list_results,
     plan,
     read_result,
@@ -102,7 +104,14 @@ MAX_PAST_EVENTS = 800
 OWNER_HEADER = "x-harness-owner"
 # The owner may also switch the online judge (D-197): a Claude run's judge is Claude Haiku.
 OWNER_ROUTES = frozenset(
-    {"/api/run", "/api/approval", "/api/online-evals/judge", "/api/facts/forget"}
+    {
+        "/api/run",
+        "/api/approval",
+        "/api/online-evals/judge",
+        "/api/facts/forget",
+        "/api/evals/run",  # and run or stop an offline eval, on Claude (D-213)
+        "/api/evals/stop",
+    }
 )
 # The owner may also delete a conversation (D-211); its ID is in the path.
 OWNER_DELETES = "/api/sessions/"
@@ -652,24 +661,43 @@ def create_app(
             "has_cases": has_cases,
         }
 
+    def eval_models(request: Request) -> list[str]:
+        """The models an eval may use: Claude's for the hosted owner (D-213)."""
+        return owner_models if getattr(request.state, "owner", False) else priced_models
+
+    # A plan is the same for the same choice while the server runs (the cases ship with it):
+    # worked out once, not in a new process on every visit to the page (D-213).
+    plans: dict[tuple[str, ...], dict[str, object]] = {}
+
     @app.get("/api/evals/plan")
     async def evals_plan(
-        cases: str = "", runs: int = 1, model: str | None = None, judge: str | None = None
+        request: Request,
+        cases: str = "",
+        runs: int = 1,
+        model: str | None = None,
+        judge: str | None = None,
     ) -> dict[str, object]:
+        owner = getattr(request.state, "owner", False)
         try:
             args = command(
                 eval_suite(),
                 evals_folder,
                 cases=[c for c in cases.split(",") if c][:100],
                 runs=runs,
-                model=model or settings.model,
-                judge=judge or EVAL_JUDGE,
-                models=priced_models,
+                model=model or (OWNER_MODEL if owner else settings.model),
+                judge=judge or (OWNER_MODEL if owner else EVAL_JUDGE),
+                models=eval_models(request),
                 plan=True,
             )
         except EvalError as error:
             raise HTTPException(400, str(error)) from None
-        return await plan(project_root, args)
+        key = tuple(args)
+        if key not in plans:
+            found = await plan(project_root, args)
+            if found.get("type") != "plan":
+                return found  # an error: tried again next time
+            plans[key] = found
+        return plans[key]
 
     @app.get("/api/evals/follow")
     async def evals_follow() -> StreamingResponse:
@@ -699,21 +727,23 @@ def create_app(
             raise HTTPException(403, "Page actions must come from the harness page.")
         if evals.running:
             raise HTTPException(409, "An eval is already running.")
+        owner = getattr(request.state, "owner", False)
         try:
             args = command(
                 eval_suite(),
                 evals_folder,
                 cases=body.cases,
                 runs=body.runs,
-                model=body.model or settings.model,
-                judge=body.judge or EVAL_JUDGE,
-                models=priced_models,
+                model=body.model or (OWNER_MODEL if owner else settings.model),
+                judge=body.judge or (OWNER_MODEL if owner else EVAL_JUDGE),
+                models=eval_models(request),
             )
         except EvalError as error:
             raise HTTPException(400, str(error)) from None
+        env = eval_env(os.environ, owner=owner)  # the owner's eval sees the Claude key
 
         async def lines() -> AsyncIterator[str]:
-            async for event in evals.stream(project_root, args):
+            async for event in evals.stream(project_root, args, env):
                 yield json.dumps(event, ensure_ascii=False) + "\n"
 
         return StreamingResponse(lines(), media_type="application/x-ndjson")

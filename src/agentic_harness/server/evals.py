@@ -22,7 +22,7 @@ import json
 import re
 import shutil
 import sys
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -133,6 +133,19 @@ def command(
     return args
 
 
+# An owner's eval on a hosted copy runs with the Claude key (D-213). The eval is its own
+# process: with HARNESS_PUBLIC it would count no key at all. The passphrase stays behind.
+HOSTED_ONLY = ("HARNESS_PUBLIC", "HARNESS_OWNER_KEY")
+
+
+def eval_env(environ: Mapping[str, str], *, owner: bool) -> dict[str, str] | None:
+    """The eval process's environment: the owner's without the hosted switches, else None
+    (inherit the server's, unchanged)."""
+    if not owner:
+        return None
+    return {k: v for k, v in environ.items() if k not in HOSTED_ONLY}
+
+
 async def plan(project_root: Path, args: list[str]) -> dict[str, Any]:
     """What the eval would run and cost (the Run dialog); calls no model."""
     process = await asyncio.create_subprocess_exec(
@@ -185,12 +198,15 @@ class EvalProcess:
     def running(self) -> bool:
         return not self._done
 
-    async def start(self, project_root: Path, args: list[str]) -> None:
+    async def start(
+        self, project_root: Path, args: list[str], env: dict[str, str] | None = None
+    ) -> None:
         if self.running:
             raise EvalError("An eval is already running.")
         process = await asyncio.create_subprocess_exec(
             *args,
             cwd=project_root,
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -255,8 +271,10 @@ class EvalProcess:
                 return
             await changed.wait()
 
-    async def stream(self, project_root: Path, args: list[str]) -> AsyncIterator[dict[str, Any]]:
+    async def stream(
+        self, project_root: Path, args: list[str], env: dict[str, str] | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """Start the eval and follow it (what the Run button does)."""
-        await self.start(project_root, args)
+        await self.start(project_root, args, env)
         async for event in self.follow():
             yield event

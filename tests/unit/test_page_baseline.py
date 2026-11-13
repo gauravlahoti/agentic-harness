@@ -253,8 +253,8 @@ def test_sidebar_groups_start_folded_except_chats() -> None:
         assert 'aria-expanded="false"' in group[:600], f"{name} toggle says open"
     work = HTML[HTML.index('data-group="work"') :]
     assert 'data-collapsed="1"' not in work[:80]  # Chats starts open
-    # New storage key: folds clicked before this change don't override the new defaults.
-    assert "`side-fold-${group.dataset.group}`" in JS
+    # D-213: not remembered either; every visit starts at these defaults.
+    assert "side-fold-" not in JS
 
 
 def test_new_or_opened_conversation_goes_to_the_agent_page() -> None:

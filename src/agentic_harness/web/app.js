@@ -2655,13 +2655,9 @@ async function loadEvals(select) {
     $("evals-run").disabled = true; // nothing to start until the server can run evals
     return;
   }
-  if (evals.index.has_cases && !evals.suite.length) {
-    const plan = await fetch("/api/evals/plan").then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (plan?.type === "plan") {
-      evals.suite = plan.cases;
-      evals.defaultJudge = plan.judge;
-    }
-  }
+  // The page draws now; the Next Run card fills in when the plan arrives (D-213: it used to
+  // wait for it, and the page sat blank for seconds).
+  if (evals.index.has_cases && !evals.suite.length) loadSuite();
   setUpEvalPickers(evals.defaultJudge);
   refreshCost();
   // An eval is running but this page didn't start it (a reload, another tab): follow it.
@@ -2673,6 +2669,15 @@ async function loadEvals(select) {
     if (response.ok) evals.result = await response.json();
   }
   $("evals-run").disabled = !evals.index.has_cases || evals.running || evals.index.running;
+  renderEvals();
+}
+
+async function loadSuite() {
+  const plan = await fetch("/api/evals/plan").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (plan?.type !== "plan") return;
+  evals.suite = plan.cases;
+  evals.defaultJudge = plan.judge;
+  refreshCost();
   renderEvals();
 }
 
@@ -2818,8 +2823,10 @@ function setUpEvalPickers(defaultJudge) {
   const gemini = (m) => m && !m.startsWith("claude-");
   fillModelPick($("evals-model"), models);
   fillModelPick($("evals-judge"), models);
-  $("evals-model").value = [$("model").value, health?.model].find(gemini) ?? models.find(gemini) ?? models[0];
-  $("evals-judge").value = models.includes(defaultJudge) ? defaultJudge : models.find(gemini) ?? models[0];
+  // Gemini first where it's offered (it's free); the owner's Claude-only menu: the chat's model.
+  const fallback = models.find(gemini) ?? [$("model").value, health?.model].find((m) => models.includes(m)) ?? models[0];
+  $("evals-model").value = [$("model").value, health?.model].find(gemini) ?? fallback;
+  $("evals-judge").value = models.includes(defaultJudge) ? defaultJudge : fallback;
 }
 
 function renderEvalSummary() {
@@ -3761,27 +3768,12 @@ $("evals-stop").addEventListener("click", async () => {
 for (const group of document.querySelectorAll(".side-group")) {
   const toggle = group.querySelector(".side-toggle");
   if (!toggle) continue; // Acting As doesn't fold (found: it stopped every group after it folding)
-  // New key name (2026-11-12): folds clicked before "all folded but Chats" don't override it.
-  const key = `side-fold-${group.dataset.group}`;
+  // Not remembered (D-213, your review): every visit starts at the defaults below.
   const set = (collapsed) => {
     group.classList.toggle("collapsed", collapsed);
     toggle.setAttribute("aria-expanded", String(!collapsed));
     group.querySelector(".side-body").inert = collapsed; // folded links can't take focus
   };
-  const folded = group.dataset.collapsed === "1"; // all but Chats start folded (your request)
-  try {
-    const saved = localStorage.getItem(key);
-    set(saved === null ? folded : saved === "1");
-  } catch {
-    set(folded); // storage blocked: its default
-  }
-  toggle.addEventListener("click", () => {
-    const collapsed = !group.classList.contains("collapsed");
-    set(collapsed);
-    try {
-      localStorage.setItem(key, collapsed ? "1" : "0");
-    } catch {
-      // not remembered; it still folds
-    }
-  });
+  set(group.dataset.collapsed === "1"); // all but Chats start folded (your request)
+  toggle.addEventListener("click", () => set(!group.classList.contains("collapsed")));
 }

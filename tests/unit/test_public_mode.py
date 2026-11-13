@@ -304,8 +304,7 @@ def test_s14_ac9_the_owner_gets_nothing_else(tmp_path: Path) -> None:
         ("POST", "/api/checks"),
         ("PUT", "/api/tour/audio/01-jar"),
         ("DELETE", "/api/evals/anything"),
-        ("POST", "/api/evals/run"),
-    ):
+    ):  # D-213: running an eval is the owner's now (tests/unit/test_owner_evals.py)
         assert web.request(method, path, headers=as_owner(), content=b"x").status_code == 403
     gemini = {"task": "hi", "model": "gemini-3.5-flash-lite"}
     assert web.post("/api/run", headers=as_owner(), json=gemini).status_code == 400
