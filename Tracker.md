@@ -452,3 +452,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | D-211 (your request): owner can delete chats and forget memory facts on the hosted copy; visitors still refused. |
 | 2026-11-13 | D-212 (your report): runs go on in the background; a reopened or reloaded chat follows its run and shows its approval cards; the chat list says "Waiting for approval". |
 | 2026-11-13 | D-213 (your review): owner runs offline evals on Claude with real cost estimates; Offline Evals draws at once; sidebar folds start fresh each visit. |
+| 2026-11-13 | D-214 (your review): the hosted tour fits a phone: slim top bar, compact guide, story graphic between them, no sideways scroll. |

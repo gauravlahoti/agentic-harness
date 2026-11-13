@@ -528,7 +528,9 @@ function placeStage() {
   let size;
   let left;
   let top;
-  if (tour.scene !== "hud") {
+  if (tour.scene !== "hud" && innerWidth <= 720) {
+    ({ size, left, top } = phoneStage(chat));
+  } else if (tour.scene !== "hud") {
     // A big scene: centred over the chat, above the subtitles.
     size = Math.min(620, chat.width * 0.96, innerHeight * 0.64);
     left = chat.left + chat.width / 2 - size / 2;
@@ -544,6 +546,16 @@ function placeStage() {
   }
   place(stage, { left, top, width: Math.max(size, 0) });
   stage.classList.toggle("is-away", size < 140);
+}
+
+// A phone (D-214): the scene sits in the room between the top bar and the guide, centred,
+// and a little narrower than the screen, since some labels reach outside the drawing.
+function phoneStage(chat) {
+  const bar = $("sidebar").getBoundingClientRect().bottom;
+  const guide = $("tour-bar").getBoundingClientRect().top;
+  const room = Math.max(0, guide - Math.max(bar, 0) - 24);
+  const size = Math.min(chat.width * 0.8, room / 1.1); // the drawing is 400 × 440
+  return { size, left: chat.left + chat.width / 2 - size / 2, top: Math.max(bar, 0) + 12 + (room - size * 1.1) / 2 };
 }
 
 // Move an element, only when it moved. Through element.style: the page's security policy
