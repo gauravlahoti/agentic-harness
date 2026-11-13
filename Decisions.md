@@ -1569,6 +1569,7 @@
   - Two safety nets, from a teammate session's review: a failed health check removes the marker, and a CSS-only fallback reveals the page after 4 s even if no script runs.
   - Locked switches (the tour, a hosted visitor) show a tooltip on hover or keyboard focus, with a not-allowed cursor: "Locked during the guided tour. Run the harness yourself to switch tools, skills and checks on or off." Owner and local pages have no lock and no tooltip.
 - **Tests:** `test_hosted_speed.py::test_s14_ac17_*`, `test_s14_ac18_*`.
+- **Changed 2026-11-13, your wording choice:** the tooltip said "run the harness yourself" without saying where. It now reads: "Read-only in this guided tour. To change tools, skills and checks, get the code from View the Code (in the sidebar) and run the harness on your own machine." A hover tooltip can't hold a link, so it points to the sidebar button. Live in revision 00015.
 
 ## D-203 · Chats never shrinks under the groups below (2026-11-13)
 - **Your report:** "chat is not opening unless I collapse Workspace and Observability".
