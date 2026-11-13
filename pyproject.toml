@@ -3,6 +3,7 @@ name = "agentic-harness"
 version = "0.1.0"
 description = "A general agent harness built from scratch on Gemini. Agents run on it as workspaces."
 readme = "Readme.md"
+license = "MIT"
 authors = [
     { name = "Gaurav Lahoti" }
 ]

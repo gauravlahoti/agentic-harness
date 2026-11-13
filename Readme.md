@@ -160,4 +160,4 @@ Built by **[Gaurav Lahoti](https://gauravlahoti.dev)**, as a hands-on way to lea
 
 ## License
 
-No license yet. Until one is added, all rights are reserved.
+[MIT](License.md). Use it, change it, build on it; just keep the copyright notice.
