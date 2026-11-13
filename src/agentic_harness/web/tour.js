@@ -107,7 +107,7 @@ async function setUpTour() {
   if (data.profile && [...$("profile").options].some((o) => o.value === data.profile)) $("profile").value = data.profile;
   if (data.model && [...$("model").options].some((o) => o.value === data.model)) $("model").value = data.model;
   setPerson(data.person ?? null);
-  if (roomForPane()) setPaneOpen(true, false);
+  // The pane waits for the run (D-206): markPart() opens it once Priya's message plays.
   loadPane();
   $("tour-bar").hidden = false;
   $("tour-rec-box").hidden = !TOUR_RECORD;
@@ -141,6 +141,7 @@ function feed(i, { quiet = false } = {}) {
   const before = list ? list.children.length : 0;
   onEvent(ev, turn);
   tour.pos = i + 1;
+  if (i === 0) markPart(tour.show); // the run has started: the pane slides in (D-206)
   // A card waiting for another role: switch to that person, as someone at the page would.
   if (ev.type === "approval_requested" && !helper) handOff(ev.data.approver);
   if (quiet) return;
@@ -629,6 +630,15 @@ function drawOrb(time) {
 // ── The pane part and the card ─────────────────────────────────────────────
 function markPart(part) {
   tour.show = part;
+  // Before the recorded run starts (steps 1-3), the Harness pane is fully hidden: no pane, no
+  // toggle, no cyan edge. It slides in when Priya's message plays (your review, D-206).
+  const beforeRun = tour.pos === 0;
+  document.body.classList.toggle("tour-prerun", beforeRun);
+  if (beforeRun) {
+    $("harness-pane").classList.remove("tour-whole");
+    setPaneOpen(false, false);
+    return;
+  }
   for (const section of document.querySelectorAll("#pane-body .pane-part")) {
     if (section.dataset.tourOpened) {
       section.open = false;
@@ -851,10 +861,16 @@ addEventListener("popstate", () => {
     })();
     if (health?.mode === "public" && left && !TOUR) {
       document.body.classList.remove("hosted-boot");
-      // Outside the tour a visitor sees what this page is and how to go on (D-204).
-      $("empty-title").textContent = "A read-only replay of a real agent run";
+      // Outside the tour a visitor gets a welcome with one clear way in (D-204, D-206).
+      $("empty-title").textContent = "Curious to see harness engineering in action?";
       $("empty-hint").hidden = false;
-      $("empty-hint").textContent = "Take the guided tour to watch it work, or open the Harness pane on the right to explore each part.";
+      $("empty-hint").textContent = "Watch a real AI agent review a contract, get four approvals and send the reply, step by step, in a five-minute voiced tour.";
+      const start = el("button", "welcome-cta");
+      start.type = "button";
+      start.append(el("span", "welcome-play", "▶"), "Start the Guided Tour");
+      start.addEventListener("click", startTour);
+      $("empty-state").append(start, el("p", "welcome-aside", "or explore the Harness pane on the right"));
+      $("empty-state").classList.add("welcome");
     }
     if (health?.mode === "public" && !TOUR && !left) {
       history.replaceState(null, "", `?tour${location.hash}`);

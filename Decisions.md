@@ -1595,3 +1595,16 @@
   - Rows in the reference's terms: a **turn**; the model answers or asks for tools; the harness runs them and feeds the results back; the loop ends on a reply with no tool calls.
   - What this harness does on top: tools run one after another; plain-code checks can send an answer back for one more turn; limits of 25 turns, $1 or 2 minutes, after which the run says which one stopped it; helpers get their own loop (15 turns, half the time, a quarter of the budget, cost counted to the run); provider-neutral prompt caching. The header reads "25 turns", not "steps".
 - **Checked in code:** tools run in order (`loop.py`); a helper's cost is charged to the run (`subagents.py`).
+
+## D-206 · Tour polish: the pane waits for the run; a glass guide capsule; a hosted welcome (2026-11-13)
+- **Your review:**
+  - "the Harness pane should stay hidden, with no cyan edge, until Priya sends her message"
+  - "04 of 10 looks vague, remove it"
+  - "subtitle font one point bigger"
+  - "this section should sit in a pill with a transparent cyan background and collapse more beautifully, animated"
+  - The welcome copy after Exit, relayed by a teammate session as your approved wording.
+- **Chose:**
+  - **Pane timing (your pick):** hidden in steps 1–3 (no pane, toggle or edge); it slides in when the recorded run's first event plays (step 4), then opens each narrated part. Going back before step 4 hides it again.
+  - The step counter and its slash are gone; the chapter title stays. The timeline on the right shows progress. Subtitles 13 → 14 px.
+  - **Guide capsule:** a translucent cyan glass panel (7 % accent fill, 32 % accent border, blur, soft glow). Hide Guide narrows it into a small orb pill while the text fades and slides out; Show Guide plays it back. Reduced motion: no animation.
+  - **Hosted welcome** (after Exit, hosted only): "Curious to see harness engineering in action?", then "Watch a real AI agent review a contract, get four approvals and send the reply, step by step, in a five-minute voiced tour.", then a prominent **▶ Start the Guided Tour** button (accent fill, focus ring), then "or explore the Harness pane on the right".

@@ -2232,6 +2232,28 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 /* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval,
    switches the judge or forgets a fact (the server refuses those anyway). */
 .owner-mode :is(#evals-run, #evals-reset, #evals-stop, .fact-forget) { display: none; }
+/* The hosted welcome after Exit (D-206): a question, one line, and a clear way in. */
+.empty.welcome :is(#empty-hint) { max-width: 60ch; margin-inline: auto; }
+.welcome-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: 700 16px ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.welcome-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 45%, transparent); }
+.welcome-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 4px; }
+.welcome-play { font-size: 13px; }
+.welcome-aside { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .welcome-cta { transition: none; } }
 /* A visitor outside the tour (after Exit, D-204): no composer or examples, just the way back in. */
 .public-mode:not(.owner-mode) :is(#composer, #examples) { display: none; }
 /* The words of the subtitle light up as the voice says them (D-204). */
@@ -2290,6 +2312,27 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 
 /* ── The guide (D-178, D-179): a voice orb and film-style subtitles, no box ─────────── */
 .tour-guide { position: relative; z-index: 60; display: flex; align-items: center; gap: 24px; padding: 0 4px; }
+/* The guide sits in a translucent cyan capsule (your review, D-206): a soft glass panel that
+   folds into a small orb capsule and opens back out, animated. */
+.tour-mode .tour-guide {
+  max-width: 100%;
+  padding: 12px 22px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent) inset, 0 10px 34px color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: max-width 0.55s cubic-bezier(0.22, 1, 0.36, 1), padding 0.45s ease, border-radius 0.45s ease, gap 0.45s ease;
+}
+.tour-mode .guide-talk {
+  max-width: 2000px;
+  max-height: 320px;
+  overflow: hidden;
+  transition: max-width 0.55s cubic-bezier(0.22, 1, 0.36, 1), max-height 0.45s ease, opacity 0.3s ease 0.12s, translate 0.45s ease;
+}
+.tour-mode .tour-show { white-space: nowrap; }
+.tour-mode .guide-orb { transition: width 0.45s ease, height 0.45s ease, margin 0.45s ease; }
 .tour-guide[hidden] { display: none; }
 /* The orb's glow fills its box, so the gap above is real breathing room, not overlap. */
 .guide-orb { flex: none; width: 72px; height: 72px; margin: -6px 0 -6px -8px; color: var(--accent); }
@@ -2309,7 +2352,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .guide-caption {
   margin: 0;
   min-height: 1.5em;
-  font-size: 13px; /* 2px smaller (your review, D-204) */
+  font-size: 14px; /* your review: 15 → 13 → 14 (D-204, D-206) */
   font-weight: 450;
   line-height: 1.5;
   letter-spacing: 0;
@@ -2352,6 +2395,9 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-main { min-width: 96px; background: var(--accent); color: var(--accent-text); box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); }
 .tour-pill { background: transparent; color: var(--text); }
 .tour-icon:focus-visible, .tour-main:focus-visible, .tour-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Only the chapter title shows; "04 of 10" read as vague (your review, D-206). The timeline
+   on the right still shows where the tour is. */
+#tour-count, .guide-step .guide-sep { display: none; }
 .tour-countdown { min-width: 72px; font: 11px ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
 .tour-timeline { display: flex; flex: 1; min-width: 120px; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .tour-tick { flex: 1; height: 3px; border-radius: 3px; background: var(--line); transition: background 0.4s ease, box-shadow 0.4s ease; }
@@ -2386,7 +2432,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 @media (max-width: 600px) {
   .tour-guide { gap: 16px; }
   .guide-orb { width: 56px; height: 56px; }
-  .guide-caption { font-size: 13px; }
+  .guide-caption { font-size: 14px; }
 }
 
 /* The spotlight: everything dims except the line being explained (and the Harness pane). */
@@ -2411,6 +2457,13 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-guide.is-tucked { gap: 10px; }
 .tour-guide.is-tucked .guide-talk { display: none; }
 .tour-guide.is-tucked .guide-orb { width: 40px; height: 40px; margin: 0; }
+/* In the tour the fold animates (D-206): the text fades and slides out while the capsule
+   narrows to an orb pill; Show Guide plays it back. */
+.tour-mode .tour-guide.is-tucked { max-width: 220px; padding: 6px 10px 6px 6px; border-radius: 999px; }
+.tour-mode .tour-guide.is-tucked .guide-talk { display: block; max-width: 0; max-height: 0; opacity: 0; translate: -12px 0; transition: max-width 0.5s cubic-bezier(0.22, 1, 0.36, 1), max-height 0.35s ease, opacity 0.18s ease, translate 0.3s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .tour-mode :is(.tour-guide, .guide-talk, .guide-orb) { transition: none; }
+}
 .tour-mode .dock:has(.tour-guide.is-tucked) { padding-top: 10px; }
 .tour-show[hidden] { display: none; }
 /* Every approval card fits on screen in the tour (your review): the email's subject stays;
@@ -2423,6 +2476,11 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-mode #harness-pane, .tour-mode #sidebar { z-index: 50; }
 /* With the pane hidden, its show button must stay above the dim too, or it can't be found. */
 .tour-mode .pane-toggle { z-index: 50; }
+/* Before the tour's run starts, the Harness pane and its toggle stay out of sight (D-206). */
+.tour-prerun :is(.pane-toggle, .lane-right) { display: none; }
+.harness-pane:not([hidden]) { animation: pane-in 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes pane-in { from { opacity: 0; translate: 24px 0; } }
+@media (prefers-reduced-motion: reduce) { .harness-pane:not([hidden]) { animation: none; } }
 .tour-mode .lane-handle { z-index: 50; }
 
 /* A new step: its name flashes in the label line, never over the content (your review). */
