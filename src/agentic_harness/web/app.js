@@ -862,7 +862,47 @@ const announce = (text) => {
 };
 
 // Turn one event from the harness into a change on the page.
+// Hosted owner session (D-201): the run header says what's happening and for how long, so a
+// long model call never looks stuck. Local pages keep "Working…" (your rule: local unchanged).
+const STATUS_OF = {
+  run_started: () => "Starting",
+  model_called: () => "Model thinking",
+  tool_started: (d) => `Running ${d.name}`,
+  verify_started: () => "Checking the answer",
+  approval_requested: (d) => `Waiting for ${d.approver} to approve`,
+  approval_decided: () => "Continuing",
+  online_evals_started: () => "Online evals scoring",
+};
+
+function liveStatus(ev, turn) {
+  if (!turn?.stats || REPLAYING || TOUR || ev.data?.agent_id) return;
+  if (!document.body.classList.contains("owner-mode")) return;
+  const stop = () => {
+    clearInterval(turn.statusTick);
+    turn.statusTick = null;
+  };
+  if (ev.type === "run_finished") return stop(); // the numbers take over the header
+  if (ev.type === "online_evals_finished") {
+    stop();
+    turn.stats.classList.remove("working");
+    turn.stats.textContent = "";
+    return;
+  }
+  const label = STATUS_OF[ev.type]?.(ev.data ?? {});
+  if (!label) return;
+  const since = Date.now();
+  const show = () => {
+    turn.stats.textContent = `${label}… ${Math.floor((Date.now() - since) / 1000)}s`;
+  };
+  turn.stats.classList.add("working");
+  stop();
+  show();
+  turn.statusTick = setInterval(show, 1000);
+  turn.stopStatus = stop;
+}
+
 function onEvent(ev, turn) {
+  liveStatus(ev, turn);
   const d = ev.data;
   if (ev.type === "session_started") {
     currentSession = d.session_id;
@@ -1828,6 +1868,7 @@ async function runTask(event) {
     turn.foot.className = "run-foot failed";
     announce(`Failed: ${error.message}`);
   } finally {
+    turn?.stopStatus?.(); // an error or a cut stream never leaves the counter running
     free();
     if (paneInfo) loadPane(); // a fact the agent just saved shows at once
   }

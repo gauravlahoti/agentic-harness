@@ -1549,3 +1549,12 @@
   6. Owner sessions default to Claude Sonnet 5.5 (your choice); helpers stay on Haiku. The label reads "2 skills on offer".
 - **Tests:** `tests/unit/test_hosted_speed.py` (S14-AC12 to AC15).
 - **Added 2026-11-13, after the live check:** the first run on a fresh instance still waited ~10 s. With `--cpu-throttling`, Cloud Run gives CPU only during requests (plus a short startup boost), so the background warm-up stalled. **Your choice:** `--no-cpu-throttling` (instance-based billing). It still scales to zero, and the warm-up finishes while an instance is up. Cost: within the free tier at this traffic (240k vCPU-seconds a month), then roughly $0.02 per idle 15-minute window.
+
+## D-201 · The owner sees what a run is doing; Haiku for live demos (2026-11-13)
+- **Your report:** "still the same issue, I keep seeing Working… on the request, it's too slow".
+- **Measured** on your 09:15 run (Sonnet, 14.6 s): scope check 0.8 s, three Sonnet calls of 2.4, 2.9 and 2.3 s (one a verify retry), then the online judge 4.6 s after the answer. The infrastructure delays (D-200) were gone; the rest is model time behind a static "Working…".
+- **Chose (your picks):**
+  - **Live step status** for the hosted owner session: the run header reads "Starting…", "Model thinking… 3s", "Running lookup_customer_record…", "Checking the answer…", "Waiting for CFO to approve…", "Online evals scoring…". It counts seconds and always stops at the end or on an error. Local pages keep "Working…" (your rule: local changes need your say).
+  - **Owner default back to Claude Haiku 5.5** (D-200 had Sonnet): roughly twice as fast per call and cheaper. Sonnet stays in the menu.
+  - **Streaming the answer word by word:** chosen, but it's a harness change (model clients, loop events, page), so it gets its own brief before code.
+- **Not chosen:** running the scope check in parallel.

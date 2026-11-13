@@ -443,3 +443,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | S14 + D-198 (your request): hosted memory (facts, chats, judge switch, eval summaries) on a mounted Cloud Storage bucket; survives scale-to-zero and redeploys. 624 offline tests. |
 | 2026-11-13 | S14: the hosted harness runs as its own service account (2 secrets + 1 bucket, no project role); `make deploy-tour RUN_SA=…`. D-199. |
 | 2026-11-13 | S14 + D-200 (your report): live owner sessions — SDK warm-up at start, 3600 s request timeout, one-click owner approvals, traces staged and saved once, reopened chats redraw every step, owner default Sonnet, "skills on offer". 632 offline tests. |
+| 2026-11-13 | S14 + D-201 (your report): hosted owner run header shows the live step and seconds; owner default Haiku 5.5. 633 offline tests. Streaming brief next. |

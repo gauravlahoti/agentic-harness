@@ -93,8 +93,20 @@ def test_s14_ac14_a_turn_without_a_trace_has_no_steps(tmp_path: Path) -> None:
     assert web.get(f"/api/sessions/{session}").json()["turns"][0]["events"] == []
 
 
-def test_s14_ac15_the_owner_defaults_to_sonnet() -> None:
-    assert OWNER_MODEL == "claude-sonnet-5-5"
+def test_s14_ac15_the_owner_defaults_to_haiku_for_speed() -> None:
+    """D-201, your choice: Haiku for live demos (D-200 had Sonnet)."""
+    assert OWNER_MODEL == "claude-haiku-5-5"
+
+
+def test_s14_ac16_the_owner_sees_live_step_status_locally_unchanged() -> None:
+    """D-201: the hosted owner's run header says what is happening and for how long;
+    a local page keeps "Working…"."""
+    app_js = (WEB / "app.js").read_text()
+    assert "function liveStatus(ev, turn)" in app_js
+    assert 'if (!document.body.classList.contains("owner-mode")) return;' in app_js
+    assert '"Model thinking"' in app_js
+    assert "turn?.stopStatus?.();" in app_js
+    assert 'el("span", "agent-stats working", "Working…")' in app_js  # local default kept
 
 
 def test_s14_ac15_page_redraws_turns_and_approves_in_one_click() -> None:
