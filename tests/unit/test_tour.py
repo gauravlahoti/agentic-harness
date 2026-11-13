@@ -66,7 +66,7 @@ def test_s13_ac1_a_step_must_have_a_caption(ws_copy: Path) -> None:
 
 
 def test_s13_ac1_until_must_name_an_event_that_happens(ws_copy: Path) -> None:
-    edit_tour(ws_copy, 'until = "tool_finished#1"', 'until = "tool_finished#99"')
+    edit_tour(ws_copy, 'until = "tool_finished#2"', 'until = "tool_finished#99"')
     with pytest.raises(TourError, match="tool_finished#99"):
         load_tour(ws_copy)
     edit_tour(ws_copy, 'until = "tool_finished#99"', 'until = "no_such_event#1"')
@@ -75,7 +75,7 @@ def test_s13_ac1_until_must_name_an_event_that_happens(ws_copy: Path) -> None:
 
 
 def test_s13_ac1_steps_may_not_go_backwards(ws_copy: Path) -> None:
-    edit_tour(ws_copy, 'until = "tool_finished#3"', 'until = "run_started#1"')
+    edit_tour(ws_copy, 'until = "tool_finished#4"', 'until = "run_started#1"')
     with pytest.raises(TourError, match="before"):
         load_tour(ws_copy)
 

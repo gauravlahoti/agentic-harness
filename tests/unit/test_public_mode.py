@@ -283,8 +283,8 @@ def test_s14_ac9_visitors_still_cannot_run(tmp_path: Path) -> None:
         assert response.status_code == 403
     health = web.get("/api/health").json()
     assert health["mode"] == "public"
-    assert health["key"] == "missing"  # Claude is listed (D-192), but nothing can run on it
-    assert all(m.startswith("claude-") for m in health["models"])
+    assert health["key"] == "missing"
+    assert not any(m.startswith("claude-") for m in health["models"])
 
 
 def test_s14_ac9_the_owner_runs_on_claude(tmp_path: Path) -> None:

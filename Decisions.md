@@ -1481,3 +1481,8 @@
 - **Why it happened:** the page writes "No To-Do plan · the model chose to work directly" at the first ordinary tool call (here `load_skill`). The recorded run writes its To-Do list one call later, so the line was wrong by the time the plan appeared.
 - **Chose:** the tour (local `?tour` and the hosted copy) never shows that line; the To-Do card shows the plan. Your normal page is unchanged (your rule: tour changes stay in the tour).
 - **Open:** the same early verdict can happen in a live chat, when the model plans after its first tool. A general fix (drop the line once a plan arrives) would change the normal page, so it waits for your call.
+
+## D-195 · Tour stays on the Gemini recording (2026-11-13)
+- **Tried (D-192):** re-recording the tour's two turns live on Claude Sonnet 5.5. Five takes cost about $0.38. Sonnet took a different path: one skill, plan before lookup, no draft, three approvers, about three cents. So steps 4, 5, 7, 8 and 9 would have needed new voice lines.
+- **Your call:** "stick to previous clips and Gemini view only". This reverts D-192: the tour replays the Gemini 3.5 Flash-Lite recording with its own voice clips again, and the hosted page lists models as before. The Claude takes stay in local traces only.
+- **Unchanged:** owner live runs (D-190) still run on Claude.
