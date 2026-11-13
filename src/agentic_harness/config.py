@@ -34,6 +34,9 @@ CLAUDE_SMALL_MODEL = "claude-haiku-5-5"  # a Claude run's helper, checks and tit
 EVAL_JUDGE_MODEL = "gemini-3.5-flash-lite"  # the evals' default judge: most free quota (D-111)
 MISSING_ANTHROPIC_KEY = "No Claude key. Add ANTHROPIC_API_KEY to .env, then restart."
 DEFAULT_ENV_FILE = Path(".env")
+# Owner unlock (D-190): the passphrase's variable, and how long it must be at least.
+OWNER_KEY_NAME = "HARNESS_OWNER_KEY"
+MIN_OWNER_KEY = 20
 
 
 class MissingKeyError(RuntimeError):
@@ -74,6 +77,9 @@ class Settings:
     public: bool = False
     allowed_hosts: tuple[str, ...] = ()  # the names it answers to, besides localhost (public only)
     port: int | None = None  # where to listen when --port isn't given: a container's $PORT
+    # Owner unlock (D-190): in public mode, a request with this passphrase may run the agent
+    # on the Claude key. Without it, a public harness holds no key at all.
+    owner_key: Secret | None = None
 
     @property
     def has_key(self) -> bool:
@@ -119,9 +125,13 @@ def load_settings(
     if port is not None and not port.isdigit():
         raise ValueError(f"PORT must be a whole number, not {port!r}")
 
-    # Public mode never holds a key: a key set by mistake still can't be spent (D-189).
+    owner = get(OWNER_KEY_NAME) if public else None
+    if owner is not None and len(owner) < MIN_OWNER_KEY:
+        raise ValueError(f"{OWNER_KEY_NAME} must be at least {MIN_OWNER_KEY} characters.")
+    # Public mode holds no Gemini key, and Claude's only behind the owner passphrase (D-189,
+    # D-190): a key set by mistake still can't be spent by a visitor.
     key = None if public else next((v for name in SECRET_ENV_NAMES if (v := get(name))), None)
-    claude = None if public else get(ANTHROPIC_KEY_NAME)
+    claude = get(ANTHROPIC_KEY_NAME) if not public or owner else None
     hosts = tuple(
         h for part in (get("HARNESS_ALLOWED_HOSTS") or "").split(",") if (h := part.strip())
     )
@@ -135,4 +145,5 @@ def load_settings(
         public=public,
         allowed_hosts=hosts,
         port=int(port) if port else None,
+        owner_key=Secret(owner) if owner else None,
     )

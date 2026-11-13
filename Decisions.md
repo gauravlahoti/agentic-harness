@@ -1424,3 +1424,16 @@
 - **Why not `agents-cli deploy`:** it copies the project `.env` into the service's environment, which here holds the Gemini key. It also expects an ADK project manifest. The other services on gauravlahoti.dev deploy the same way, with `gcloud run deploy --source .`.
 - **Voice clips** are cached for a year in public mode (their URL carries `?v=`, which changes with each take); the page itself stays `no-cache`.
 - **Cost:** about nothing. It scales to zero and makes no model calls, so it stays inside the Cloud Run free tier.
+
+## D-190 · Owner unlock: live Claude runs on the hosted copy, for the passphrase holder only (2026-11-13)
+- **Your request:** "ideally I want to show a live session to someone, I should have a super user key and in background it uses my Claude key stored in Secret Manager".
+- **Amends D-189** for one person. Visitors still get the read-only, keyless tour.
+- **Chose (your answers):** Claude only, from the existing `anthropic-api-key` secret. The way in is a hidden `?owner` link. You set the passphrase (`harness-owner-key`, at least 20 characters).
+- **How it works:**
+  - `HARNESS_OWNER_KEY` is read only in public mode. With it set, `config.py` keeps Claude's key; without it, a public harness holds no key, as before. A Gemini key is never kept in public mode.
+  - Each request's `X-Harness-Owner` header is checked once (`hmac.compare_digest`). Ten misses in ten minutes lock the unlock, even for the right passphrase, until the window passes.
+  - An owner request may also reach `POST /api/run` and `POST /api/approval`, and nothing else. Checks, evals, voice recording and deletes still get 403.
+  - An owner run gets the Claude key (`replace(settings, public=False)`), Claude models only, defaulting to Haiku 5.5. Everyone else's settings still report no key. The passphrase is scrubbed from traces like any key.
+  - The page keeps the passphrase in `sessionStorage` for that tab only and sends it on every request. **Lock** forgets it.
+- **Cost:** each owner run is capped by the usual limits (25 steps, $1, 2 minutes), and Cloud Run max 1 instance means one run at a time. Anyone holding the passphrase can spend up to that per run, so keep it in your password manager.
+- **Options not chosen:** a visible unlock button (every visitor would see a locked mode); Claude + Gemini (two keys behind the passphrase instead of one).

@@ -15,7 +15,9 @@ Does not: bind the network address (the CLI does), or read secrets.
 """
 
 import asyncio
+import hmac
 import json
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
 from importlib.metadata import PackageNotFoundError, metadata
@@ -87,6 +89,12 @@ PAGE_HEADER = {"X-Harness-Page": "1"}
 # Public tour mode (D-189): the only methods a hosted page answers. Everything else is a change.
 READ_METHODS = frozenset({"GET", "HEAD"})
 PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on your own machine."
+# Owner unlock (D-190): a request with the owner passphrase may run the agent and answer its
+# approvals, and nothing more. Repeated wrong passphrases lock the unlock for a while.
+OWNER_HEADER = "x-harness-owner"
+OWNER_ROUTES = frozenset({"/api/run", "/api/approval"})
+MAX_OWNER_MISSES = 10
+OWNER_WINDOW_SECONDS = 600.0
 
 
 def _repository() -> str | None:
@@ -208,14 +216,45 @@ def create_app(
     hosts = ["127.0.0.1", "localhost", *(settings.allowed_hosts if settings.public else ())]
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
 
+    # Owner unlock (D-190): public mode with a passphrase and Claude's key. An owner request
+    # runs with the key; every other request still sees a keyless, read-only harness.
+    owner_settings = (
+        replace(settings, public=False)
+        if settings.public and settings.owner_key and settings.anthropic_key
+        else None
+    )
+    owner_models = [m for m in load_prices().models() if m.startswith(CLAUDE_PREFIX)]
+    misses: list[float] = []
+
+    def check_owner(request: Request) -> bool:
+        """True only for the right passphrase. Constant-time, and locked after many misses."""
+        given = request.headers.get(OWNER_HEADER, "")
+        if owner_settings is None or settings.owner_key is None or not given:
+            return False
+        now = time.monotonic()
+        misses[:] = [t for t in misses if now - t < OWNER_WINDOW_SECONDS]
+        if len(misses) >= MAX_OWNER_MISSES:
+            return False
+        if hmac.compare_digest(given.encode(), settings.owner_key.reveal().encode()):
+            return True
+        misses.append(now)
+        return False
+
+    def is_owner(request: Request) -> bool:
+        return bool(getattr(request.state, "owner", False))
+
     if settings.public:
 
         @app.middleware("http")
         async def read_only(
             request: Request, call_next: Callable[[Request], Awaitable[Response]]
         ) -> Response:
+            # Checked once per request, so one wrong passphrase counts as one miss.
+            request.state.owner = check_owner(request)
             # One rule for every route, present and future: a hosted tour changes nothing.
-            if request.method not in READ_METHODS:
+            # The owner may only run the agent and answer its approvals (D-190).
+            owner_may = request.state.owner and request.url.path in OWNER_ROUTES
+            if request.method not in READ_METHODS and not owner_may:
                 return JSONResponse({"detail": PUBLIC_REFUSAL}, status_code=403)
             return await call_next(request)
 
@@ -419,20 +458,28 @@ def create_app(
         return {"ok": True}
 
     @app.get("/api/health")
-    async def health() -> dict[str, object]:
+    async def health(request: Request) -> dict[str, object]:
+        owner = is_owner(request)
         # "missing" is not an error: offline work never needs the key (S00-AC12, AC15).
         return {
             "server": "up",
-            "key": "present" if settings.has_key or settings.has_anthropic_key else "missing",
+            "key": "present"
+            if owner or settings.has_key or settings.has_anthropic_key
+            else "missing",
             # Public tour mode (D-189): the page shows the tour and hides what it can't do.
-            "mode": "public" if settings.public else "local",
+            # "owner": the passphrase was right, so live runs on Claude are open (D-190).
+            "mode": "owner" if owner else "public" if settings.public else "local",
+            # A passphrase was sent but not accepted: the page says so.
+            "owner_denied": bool(request.headers.get(OWNER_HEADER)) and not owner,
             "repository": REPOSITORY,
             "version": __version__,
-            "model": settings.model,
-            "models": priced_models,
+            "model": CLAUDE_SMALL_MODEL if owner else settings.model,
+            "models": owner_models if owner else priced_models,
             "efforts": ["low", "medium", "high"],
             # What a Claude run's helper, checks and titles use (D-103), for the Harness pane.
-            "claude_small_model": CLAUDE_SMALL_MODEL if settings.has_anthropic_key else None,
+            "claude_small_model": CLAUDE_SMALL_MODEL
+            if owner or settings.has_anthropic_key
+            else None,
             "workspace": None
             if workspace is None
             else {
@@ -631,17 +678,19 @@ def create_app(
         person = next((p for p in workspace.people if p.id == body.person), None)
         if body.person and person is None:
             raise HTTPException(400, f"No person {body.person!r} in workspace.toml [[people]].")
-        name = body.model or settings.model
+        # The owner's run uses the Claude key; anyone else's, the server's own settings.
+        cfg = owner_settings if owner_settings is not None and is_owner(request) else settings
+        name = body.model or (CLAUDE_SMALL_MODEL if cfg is owner_settings else cfg.model)
         claude = name.startswith(CLAUDE_PREFIX)
-        if claude and not settings.has_anthropic_key:
+        if claude and not cfg.has_anthropic_key:
             raise HTTPException(400, MISSING_ANTHROPIC_KEY)
-        if not claude and not settings.has_key and settings.backend == "gemini_api":
+        if not claude and not cfg.has_key and cfg.backend == "gemini_api":
             raise HTTPException(400, MISSING_KEY_MESSAGE + " Then restart.")
-        if name not in priced_models:
+        if name not in (owner_models if cfg is owner_settings else priced_models):
             raise HTTPException(400, f"Model {name!r} has no price in pricing.toml.")
-        model = model_factory(replace(settings, model=name, thinking=body.effort))
+        model = model_factory(replace(cfg, model=name, thinking=body.effort))
         # Every key the run could touch is scrubbed from its trace.
-        secrets = [k.reveal() for k in (settings.api_key, settings.anthropic_key) if k]
+        secrets = [k.reveal() for k in (cfg.api_key, cfg.anthropic_key, cfg.owner_key) if k]
         small = CLAUDE_SMALL_MODEL if claude else None  # a Claude run's small calls (D-103)
         off = Off(
             tuple(body.off.tools),
@@ -659,7 +708,7 @@ def create_app(
                 secrets=secrets,
                 # A helper may name its own model (D-62); same settings, other name.
                 model_factory=lambda helper: model_factory(
-                    replace(settings, model=helper, thinking=body.effort)
+                    replace(cfg, model=helper, thinking=body.effort)
                 ),
                 off=off,
                 approver=approvals.ask,  # the page's ⏸ card answers (D-79)
@@ -708,7 +757,7 @@ def create_app(
         harness.subscribe(finished)
         title_model = model_factory(
             replace(
-                settings,
+                cfg,
                 model=small
                 or workspace.title_model
                 or (workspace.scope.model if workspace.scope and workspace.scope.model else name),

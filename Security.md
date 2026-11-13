@@ -23,7 +23,8 @@
 | No key, ever | `config.py` reads none in public mode; `Settings` reports none even if given one |
 | Only its own names answer | `TrustedHostMiddleware`: localhost + `HARNESS_ALLOWED_HOSTS` |
 | Secrets never reach the build | `.gcloudignore` and `.dockerignore` are allowlists; the Dockerfile copies named folders only |
-| A small blast radius | Non-root container; Cloud Run max 1 instance, no secrets mounted |
+| A small blast radius | Non-root container; Cloud Run max 1 instance; writes only to its run folders |
+| Owner unlock (D-190) | Optional. `HARNESS_OWNER_KEY` (20+ chars) from Secret Manager; checked in constant time, locked after 10 misses in 10 minutes. Opens only `/api/run` and `/api/approval`, on Claude only; visitors never see a key |
 
 ## Agent safety model
 

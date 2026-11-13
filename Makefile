@@ -41,12 +41,17 @@ PROJECT ?=
 REGION ?= us-central1
 SERVICE ?= agentic-harness
 HOSTS ?=
+# Owner unlock (D-190), optional: Secret Manager names for Claude's key and the passphrase.
+CLAUDE_SECRET ?=
+OWNER_SECRET ?=
+OWNER_FLAGS = $(if $(and $(CLAUDE_SECRET),$(OWNER_SECRET)),--update-secrets ANTHROPIC_API_KEY=$(CLAUDE_SECRET):latest$(,)HARNESS_OWNER_KEY=$(OWNER_SECRET):latest)
+, := ,
 
-deploy-tour: ## Host the read-only tour on Cloud Run (no key): make deploy-tour PROJECT=… HOSTS=…
+deploy-tour: ## Host the tour on Cloud Run: make deploy-tour PROJECT=… HOSTS=… [CLAUDE_SECRET=… OWNER_SECRET=…]
 	@test -n "$(PROJECT)" || { echo "Set PROJECT=<your Google Cloud project>"; exit 2; }
 	@test -n "$(HOSTS)" || { echo "Set HOSTS=<names it answers to, comma-separated>"; exit 2; }
 	gcloud run deploy $(SERVICE) --project $(PROJECT) --region $(REGION) --source . \
 		--allow-unauthenticated --min-instances 0 --max-instances 1 \
 		--memory 512Mi --cpu 1 --concurrency 20 --cpu-throttling --cpu-boost \
 		--execution-environment gen2 \
-		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)'
+		--set-env-vars '^;^HARNESS_PUBLIC=1;HARNESS_ALLOWED_HOSTS=$(HOSTS)' $(OWNER_FLAGS)

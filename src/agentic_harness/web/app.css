@@ -2187,7 +2187,10 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 }
 .tour-invite[hidden], .tour-mode .tour-invite { display: none; }
 /* Public tour mode (S14, D-189): nothing here can run, record or change, so it isn't offered. */
-.public-mode :is(.views.side-group, #tour-exit, #tour-rec-box, .tour-invite) { display: none; }
+.public-mode :is(.views.side-group, #tour-rec-box) { display: none; }
+.public-mode:not(.owner-mode) :is(#tour-exit, .tour-invite) { display: none; }
+/* Owner session (D-190): the server refuses deletes, so don't offer them. */
+.owner-mode .work-delete { display: none; }
 .public-note {
   margin: 4px 0 18px;
   padding: 11px 14px;
@@ -2199,7 +2202,11 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 }
 .public-note[hidden] { display: none; }
 /* The tour picks the profile, person and chat: shown, greyed out, not clickable (inert in app.js). */
-.public-mode :is(#profiles, #people, #work) { opacity: 0.45; filter: grayscale(1); pointer-events: none; }
+.public-mode:not(.owner-mode) :is(#profiles, #people, #work) { opacity: 0.45; filter: grayscale(1); pointer-events: none; }
+.owner-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.owner-form input { flex: 1 1 140px; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+.owner-form button, .owner-lock { padding: 7px 12px; border: 1px solid var(--accent); border-radius: 10px; background: transparent; color: var(--accent); font: 600 13px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+.owner-error { flex-basis: 100%; margin: 0; color: var(--fail); }
 .public-note a { color: var(--accent); font-weight: 600; }
 .tour-invite:hover { border-color: var(--accent); transform: translateY(-1px); }
 .tour-invite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -2,6 +2,17 @@
 // Text from the server is always set with textContent, never as HTML.
 
 const PAGE_HEADER = { "X-Harness-Page": "1" }; // the server refuses actions without it (D-20)
+// Owner unlock (D-190): on a hosted copy, the owner's passphrase rides on every request from
+// this tab, so its runs use the Claude key. Kept for this tab only; Lock forgets it.
+const OWNER_STORE = "harness-owner";
+const OWNER_PASS = (() => {
+  try {
+    return sessionStorage.getItem(OWNER_STORE) || "";
+  } catch {
+    return "";
+  }
+})();
+if (OWNER_PASS) PAGE_HEADER["X-Harness-Owner"] = OWNER_PASS;
 const ICONS = { waiting: "○", passed: "✓", failed: "✗", skipped: "–" };
 
 const $ = (id) => document.getElementById(id);
@@ -24,7 +35,7 @@ async function loadHealth() {
   const server = $("smoke-server");
   const key = $("smoke-key");
   try {
-    health = await (await fetch("/api/health")).json();
+    health = await (await fetch("/api/health", { headers: OWNER_PASS ? { "X-Harness-Owner": OWNER_PASS } : {} })).json();
     server.textContent = "Server up ✓";
     server.className = "pill ok";
     // A missing key is fine: everything offline works without it (S00-AC12).
@@ -32,6 +43,7 @@ async function loadHealth() {
     key.className = health.key === "present" ? "pill ok" : "pill skip";
     $("version").textContent = `v${health.version}`;
     if (health.mode === "public") showPublicMode();
+    if (health.mode === "owner") showOwnerMode();
   } catch {
     server.textContent = "Server down";
     server.className = "pill bad";
@@ -54,12 +66,59 @@ function showPublicMode() {
   note.hidden = false;
   // The tour sets whose view and which person; a visitor can see them but not change them.
   for (const id of ["profiles", "people", "work"]) $(id).inert = true;
+  // The owner's way in: only at ?owner, or after a passphrase that didn't work.
+  if (new URLSearchParams(location.search).has("owner") || health.owner_denied) note.append(ownerForm(health.owner_denied));
+  showView();
+}
+
+// The passphrase box. Sent once to check it, then kept for this tab (D-190).
+function ownerForm(denied) {
+  if (denied) forgetOwner();
+  const form = el("form", "owner-form");
+  const input = Object.assign(document.createElement("input"), { type: "password", placeholder: "Owner passphrase", autocomplete: "off", required: true });
+  input.setAttribute("aria-label", "Owner passphrase");
+  const unlock = Object.assign(document.createElement("button"), { type: "submit", textContent: "Unlock" });
+  form.append(input, unlock);
+  if (denied) form.append(el("p", "owner-error", "That passphrase didn't work."));
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    try {
+      sessionStorage.setItem(OWNER_STORE, input.value);
+    } catch {
+      return;
+    }
+    location.replace(location.pathname); // reload without ?owner: health now answers as the owner
+  });
+  return form;
+}
+
+function forgetOwner() {
+  try {
+    sessionStorage.removeItem(OWNER_STORE);
+  } catch {
+    // Nothing kept.
+  }
+}
+
+// An owner session on a hosted copy: the full agent view, runs on Claude, nothing else opened.
+function showOwnerMode() {
+  document.body.classList.add("public-mode", "owner-mode");
+  const note = $("public-note");
+  note.append("Owner session: live runs use your Claude key and cost real money. ");
+  const lock = Object.assign(document.createElement("button"), { type: "button", className: "owner-lock", textContent: "Lock" });
+  lock.addEventListener("click", () => {
+    forgetOwner();
+    location.replace(location.pathname);
+  });
+  note.append(lock);
+  note.hidden = false;
   showView();
 }
 
 function showView() {
   const views = { "#checks": "checks", "#memory": "memory", "#online": "online", "#evals": "evals", "#golden": "golden" };
-  const view = health?.mode === "public" ? "agent" : views[location.hash] ?? "agent";
+  const hosted = health?.mode === "public" || health?.mode === "owner";
+  const view = hosted ? "agent" : views[location.hash] ?? "agent";
   for (const name of ["agent", "memory", "online", "evals", "golden", "checks"]) {
     $(`view-${name}`).hidden = name !== view;
   }

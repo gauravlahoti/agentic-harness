@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from agentic_harness.cli import main
 from agentic_harness.config import Secret, Settings, load_settings
+from agentic_harness.model import ModelClient
 from agentic_harness.server.app import PAGE_HEADER, create_app
 from agentic_harness.workspace import Workspace
 
@@ -194,7 +195,10 @@ def test_s14_ac5_page_has_the_public_note(tmp_path: Path) -> None:
     web = public_client(tmp_path)
     assert 'id="public-note"' in web.get("/").text
     # The tour sets profile, person and chat: greyed out and inert for a visitor.
-    assert ".public-mode :is(#profiles, #people, #work)" in web.get("/static/app.css").text
+    assert (
+        ".public-mode:not(.owner-mode) :is(#profiles, #people, #work)"
+        in web.get("/static/app.css").text
+    )
     assert '["profiles", "people", "work"]) $(id).inert = true' in web.get("/static/app.js").text
 
 
@@ -208,3 +212,128 @@ def test_s14_ac6_the_server_starts_without_dev_tools() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=ROOT
     )
     assert out.stdout.strip() == "[]"
+
+
+# ── S14-AC8 to AC10: the owner unlock (D-190) ──────────────────────────────────────────────
+
+OWNER = "a-long-owner-passphrase-for-tests"
+CLAUDE_KEY = "sk-ant-fake-key-for-tests-0123456789"
+
+
+class BuiltError(Exception):
+    """Raised by the stand-in model factory: the run got this far, and no model was called."""
+
+
+def owner_client(tmp_path: Path, built: list[Settings] | None = None) -> TestClient:
+    def factory(settings: Settings) -> ModelClient:
+        if built is not None:
+            built.append(settings)
+        raise BuiltError
+
+    config = Settings(
+        public=True,
+        allowed_hosts=(HOST,),
+        anthropic_key=Secret(CLAUDE_KEY),
+        owner_key=Secret(OWNER),
+    )
+    app = create_app(
+        config,
+        project_root=tmp_path,
+        workspace=Workspace.load(CLOUDCO),
+        memory_dir=tmp_path,
+        trace_dir=tmp_path / "traces",
+        model_factory=factory,
+    )
+    return TestClient(app, base_url=f"https://{HOST}")
+
+
+def as_owner(passphrase: str = OWNER) -> dict[str, str]:
+    return {**PAGE_HEADER, "X-Harness-Owner": passphrase}
+
+
+def test_s14_ac8_owner_key_keeps_claude_only_behind_it(tmp_path: Path) -> None:
+    env = {
+        "HARNESS_PUBLIC": "1",
+        "HARNESS_OWNER_KEY": OWNER,
+        "ANTHROPIC_API_KEY": CLAUDE_KEY,
+        "GEMINI_API_KEY": FAKE_KEY,
+    }
+    settings = load_settings(tmp_path / "missing.env", environ=env)
+    assert settings.anthropic_key is not None  # kept, for the owner's runs
+    assert settings.api_key is None  # Gemini: never, in public mode
+    assert not settings.has_anthropic_key  # to everyone else, still no key
+    assert OWNER not in repr(settings)
+
+
+def test_s14_ac8_owner_key_must_be_long(tmp_path: Path) -> None:
+    env = {"HARNESS_PUBLIC": "1", "HARNESS_OWNER_KEY": "short"}
+    with pytest.raises(ValueError, match="HARNESS_OWNER_KEY"):
+        load_settings(tmp_path / "missing.env", environ=env)
+
+
+def test_s14_ac8_owner_key_means_nothing_in_local_mode(tmp_path: Path) -> None:
+    settings = load_settings(tmp_path / "missing.env", environ={"HARNESS_OWNER_KEY": OWNER})
+    assert settings.owner_key is None
+
+
+def test_s14_ac9_visitors_still_cannot_run(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    for headers in (PAGE_HEADER, as_owner("wrong-passphrase-of-good-length")):
+        response = web.post("/api/run", headers=headers, json={"task": "hi"})
+        assert response.status_code == 403
+    health = web.get("/api/health").json()
+    assert health["mode"] == "public"
+    assert health["key"] == "missing"
+    assert not any(m.startswith("claude-") for m in health["models"])
+
+
+def test_s14_ac9_the_owner_runs_on_claude(tmp_path: Path) -> None:
+    built: list[Settings] = []
+    web = owner_client(tmp_path, built)
+    with pytest.raises(BuiltError):
+        web.post("/api/run", headers=as_owner(), json={"task": "hi", "profile": "sales"})
+    assert len(built) == 1
+    assert built[0].model.startswith("claude-")
+    assert built[0].has_anthropic_key  # the run itself may use the key
+    assert built[0].require_anthropic_key() == CLAUDE_KEY
+
+
+def test_s14_ac9_the_owner_gets_nothing_else(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    for method, path in (
+        ("POST", "/api/checks"),
+        ("PUT", "/api/tour/audio/01-jar"),
+        ("DELETE", "/api/sessions/anything"),
+        ("POST", "/api/evals/run"),
+    ):
+        assert web.request(method, path, headers=as_owner(), content=b"x").status_code == 403
+    gemini = {"task": "hi", "model": "gemini-3.5-flash-lite"}
+    assert web.post("/api/run", headers=as_owner(), json=gemini).status_code == 400
+
+
+def test_s14_ac9_owner_health_opens_claude(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    health = web.get("/api/health", headers={"X-Harness-Owner": OWNER}).json()
+    assert health["mode"] == "owner"
+    assert health["key"] == "present"
+    assert health["models"]
+    assert all(m.startswith("claude-") for m in health["models"])
+    assert health["model"] in health["models"]
+    wrong = web.get("/api/health", headers={"X-Harness-Owner": "nope"}).json()
+    assert wrong["mode"] == "public"
+    assert wrong["owner_denied"] is True
+
+
+def test_s14_ac10_many_wrong_passphrases_lock_the_unlock(tmp_path: Path) -> None:
+    web = owner_client(tmp_path)
+    for _ in range(10):
+        web.get("/api/health", headers={"X-Harness-Owner": "guess-guess-guess-guess"})
+    health = web.get("/api/health", headers={"X-Harness-Owner": OWNER}).json()
+    assert health["mode"] == "public"  # even the right one waits out the lock
+
+
+def test_s14_ac10_no_owner_without_a_claude_key(tmp_path: Path) -> None:
+    config = Settings(public=True, allowed_hosts=(HOST,), owner_key=Secret(OWNER))
+    app = create_app(config, project_root=tmp_path, workspace=Workspace.load(CLOUDCO))
+    web = TestClient(app, base_url=f"https://{HOST}")
+    assert web.get("/api/health", headers={"X-Harness-Owner": OWNER}).json()["mode"] == "public"

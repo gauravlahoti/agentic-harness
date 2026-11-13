@@ -34,7 +34,7 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | [S11](spec/stages/S11-plan-verify.md) | Plan and Verify | 🟨 | 14/15 | 0/15 | 1 |
 | [S12](spec/stages/S12-guarded-actions.md) | Guarded actions and identity | 🟨 | 13/14 | 0/14 | 1 |
 | [S13](spec/stages/S13-guided-tour.md) | Guided Tour | 🟦 | 6/9 | 0/9 | 1 |
-| [S14](spec/stages/S14-public-tour.md) | Public Tour Mode | 🟦 | 6/7 | 0/7 | – |
+| [S14](spec/stages/S14-public-tour.md) | Public Tour Mode | 🟦 | 9/10 | 0/10 | 1 |
 
 ## Checks
 
@@ -295,7 +295,10 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | AC4 | Public mode listens on every address; local mode stays on 127.0.0.1 even with `$PORT`; `--port` wins | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac4_*` (3) |
 | AC5 | Health reports the mode; the page opens on the tour with the read-only note and hides what it can't do | 🧪 👀 | 🟨 | `test_public_mode.py::test_s14_ac5_*` (3) · 👀 Chrome: opens on Start Tour, note + View the Code, no Exit, voice plays, no console errors |
 | AC6 | Local mode is unchanged | 🧪 | 🟨 | all 596 offline tests pass (`make check`, 89% coverage) |
-| AC7 | Hosted on Cloud Run: the same checks pass against the live URL; the service has no secrets, min 0, max 1 | 👀 | 🟦 |  |
+| AC7 | Hosted on Cloud Run: the same checks pass against the live URL; min 0, max 1; only the owner secrets mounted | 👀 | 🟨 | 👀 run.app URL: reads 200, writes 403, key missing, 10 clips; min 0, max 1, no secrets (before D-190) |
+| AC8 | The owner passphrase keeps Claude's key (never Gemini's) in public mode; it must be 20+ characters; it means nothing locally | 🧪 | 🟨 | `test_public_mode.py::test_s14_ac8_*` (3) |
+| AC9 | Visitors still can't run; the owner runs on Claude only and reaches nothing but run and approval; health opens Claude for the owner only | 🧪 👀 | 🟨 | `test_public_mode.py::test_s14_ac9_*` (4) · 👀 Chrome, local: ?owner box, wrong passphrase refused and not kept, right one opens Claude models + composer, Lock forgets it |
+| AC10 | Ten wrong passphrases lock the unlock; no Claude key means no owner mode | 🧪 🔑 | 🟨 | `test_public_mode.py::test_s14_ac10_*` (2) · 🔑 your first live owner run on the hosted copy |
 
 ## Product goals
 
@@ -432,3 +435,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | Security audit for a public repo: no key ever committed (gitleaks + key-format search over all commits). Voice clips removed from history, commits on the no-reply email, `main` and tags force-pushed. Secret scanning waits until the repo is public. D-188. |
 | 2026-11-12 | Your review → D-178/D-179: the tour is presented by a voice orb (no name) with subtitles, chapter titles, a living diagram and a spotlight; 10-second pause between steps; dark + cyan theme for the whole page; Observability stays visible. AC5 waits for your look. |
 | 2026-11-13 | S14 · Public Tour Mode, your request: host the tour on gauravlahoti.dev via Cloud Run (min 0), with no key because visitors won't type their own. Brief approved → 🟦 (plan approval). Built 6/7 🟨: GET/HEAD-only middleware, keyless config, public bind, page note, Dockerfile + allowlist `.gcloudignore` (upload preview: 10 clips, no `.env`). `test_public_mode.py` (29); 596 offline tests. D-189. AC7 waits for the deploy. |
+| 2026-11-13 | S14 + D-190 (your request): owner unlock for live demos. `?owner` passphrase opens Claude runs on the hosted copy, Claude key from Secret Manager; visitors unchanged. Profile, person and chats greyed out for visitors; note says "model API key". 606 offline tests. Waits for the `harness-owner-key` secret and your first live owner run. |

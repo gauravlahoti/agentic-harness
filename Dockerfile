@@ -13,9 +13,12 @@ COPY src/ src/
 COPY workspaces/cloudco/ workspaces/cloudco/
 RUN uv sync --frozen --no-default-groups \
     && useradd --system --uid 10001 harness \
-    && mkdir .agentic-harness && chown harness .agentic-harness
+    && mkdir .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox \
+    && chown harness .agentic-harness workspaces/cloudco/tasks workspaces/cloudco/outbox
 
 USER harness
-# Public mode is baked in: this image can't start as a local, key-holding harness.
+# Public mode is baked in: this image can't start as a local, key-holding harness. Only an
+# owner passphrase (HARNESS_OWNER_KEY) opens live Claude runs, and only for its holder (D-190).
+# The run's own folders are the only places the app may write.
 ENV PATH="/app/.venv/bin:$PATH" HARNESS_PUBLIC=1
 CMD ["agentic-harness", "serve", "--workspace", "workspaces/cloudco"]
