@@ -563,12 +563,13 @@ function drawOrb(time) {
   // How loud the voice is right now: the real audio when there is a clip, else a gentle
   // made-up rhythm while the captions run, else a slow breath.
   let levels = null;
-  if (tour.analyser && !tour.audio.paused) {
+  // Muted, the orb rests: it mustn't look like it's speaking when you can't hear it.
+  if (tour.analyser && !tour.audio.paused && !tour.muted) {
     tour.analyser.getByteFrequencyData(bins);
     if (bins.some((v) => v > 0)) levels = [...bins].map((v) => v / 255);
   }
   if (!levels) {
-    const talking = tour.speaking && tour.playing;
+    const talking = tour.speaking && tour.playing && !tour.muted;
     levels = [...bins].map((_, i) => (talking ? 0.35 + 0.3 * Math.abs(Math.sin(time / 180 + i * 0.7) * Math.sin(time / 310 + i)) : 0.08 + 0.05 * Math.sin(time / 900)));
   }
   const loud = levels.reduce((a, b) => a + b, 0) / levels.length;

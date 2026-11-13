@@ -2265,6 +2265,11 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .tour-icon svg { width: 13px; height: 13px; }
 .tour-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent); }
 .tour-icon[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+/* Mute shows its state: a speaker with waves, or crossed out in red with no glow (your review). */
+#tour-mute .sound-off { display: none; }
+#tour-mute[aria-pressed="true"] { border-color: color-mix(in srgb, var(--fail) 55%, var(--line)); color: var(--fail); box-shadow: none; }
+#tour-mute[aria-pressed="true"] .sound-on { display: none; }
+#tour-mute[aria-pressed="true"] .sound-off { display: inline; }
 .tour-icon:disabled { opacity: 0.35; cursor: default; }
 .tour-main, .tour-pill {
   padding: 4px 14px;
@@ -2484,8 +2489,9 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .beat-seal :is(.story-reach, .story-miss, .skill-link) { visibility: hidden; }
 
 /* tell: it can say how, from inside the jar. */
-.story-bubble rect { fill: color-mix(in srgb, var(--accent) 16%, var(--surface)); stroke: var(--accent); stroke-width: 1.2; }
-.tour-stage .story-bubble text { font: 600 10px ui-sans-serif, system-ui, sans-serif; fill: var(--text); }
+.story-bubble :is(rect, path) { fill: color-mix(in srgb, var(--accent) 16%, var(--surface)); stroke: var(--accent); stroke-width: 1.4; stroke-linejoin: round; }
+.story-bubble rect { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 40%, transparent)); }
+.tour-stage .story-bubble text { font: 600 12px ui-sans-serif, system-ui, sans-serif; fill: var(--text); }
 .story-bubble { transform: translateY(10px); }
 .beat-tell .story-bubble { opacity: 1; transform: none; }
 
