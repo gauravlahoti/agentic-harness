@@ -2229,9 +2229,9 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   animation: hosted-reveal 0s linear 4s forwards;
 }
 @keyframes hosted-reveal { to { visibility: visible; } }
-/* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval,
-   switches the judge or forgets a fact (the server refuses those anyway). */
-.owner-mode :is(#evals-run, #evals-reset, #evals-stop, .fact-forget) { display: none; }
+/* Owner on a hosted copy (D-196): Memory and Observability to look at; nothing that runs an eval
+   (the server refuses those anyway). Forgetting a fact is the owner's (D-211). */
+.owner-mode :is(#evals-run, #evals-reset, #evals-stop) { display: none; }
 /* The hosted welcome after Exit (D-206): a question, one line, and a clear way in. */
 .empty.welcome :is(#empty-hint) { max-width: 60ch; margin-inline: auto; }
 .welcome-cta {
@@ -2261,8 +2261,6 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .guide-caption .word.said { color: var(--text); }
 .guide-caption .word.now { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .guide-caption .word { transition: none; } }
-/* Owner session (D-190): the server refuses deletes, so don't offer them. */
-.owner-mode .work-delete { display: none; }
 /* The hosted copy's note: quiet, one line of context and a way to the code (your review). */
 .public-note {
   margin: 2px 0 16px;

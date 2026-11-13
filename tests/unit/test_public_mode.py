@@ -303,7 +303,7 @@ def test_s14_ac9_the_owner_gets_nothing_else(tmp_path: Path) -> None:
     for method, path in (
         ("POST", "/api/checks"),
         ("PUT", "/api/tour/audio/01-jar"),
-        ("DELETE", "/api/sessions/anything"),
+        ("DELETE", "/api/evals/anything"),
         ("POST", "/api/evals/run"),
     ):
         assert web.request(method, path, headers=as_owner(), content=b"x").status_code == 403
@@ -378,3 +378,26 @@ def test_s14_ac11_the_owner_may_switch_the_online_judge(tmp_path: Path) -> None:
     body = {"on": True}
     assert web.post("/api/online-evals/judge", headers=PAGE_HEADER, json=body).status_code == 403
     assert web.post("/api/online-evals/judge", headers=as_owner(), json=body).status_code == 200
+
+
+def test_s14_ac20_the_owner_deletes_chats_and_forgets_facts(tmp_path: Path) -> None:
+    """D-211, your request: the owner can delete a conversation and forget a memory fact from
+    the page; a visitor still can't, and the owner still can't delete evals."""
+    from agentic_harness.memory import list_notes, note_path
+
+    web = owner_client(tmp_path)
+    facts = note_path(tmp_path, Workspace.load(CLOUDCO).name, "sales")
+    facts.parent.mkdir(parents=True)
+    facts.write_text("2026-11-13 · ShopCo prefers Net 45\n2026-11-13 · Maya Chen buys\n")
+    forget = {"profile": "sales", "line": "2026-11-13 · Maya Chen buys"}
+    assert web.post("/api/facts/forget", headers=PAGE_HEADER, json=forget).status_code == 403
+    assert web.post("/api/facts/forget", headers=as_owner(), json=forget).status_code == 200
+    assert list_notes(facts) == ["2026-11-13 · ShopCo prefers Net 45"]
+    # Past the guard: the owner reaches the route (no such chat), a visitor never does.
+    gone = "/api/sessions/20261113-000000-abcdef?profile=sales"
+    assert web.delete(gone, headers=PAGE_HEADER).status_code == 403
+    assert web.delete(gone, headers=as_owner()).status_code == 404
+    # The page offers both buttons to the owner again.
+    css = (ROOT / "src/agentic_harness/web/app.css").read_text()
+    assert ".owner-mode .work-delete" not in css
+    assert ".fact-forget) { display: none; }" not in css

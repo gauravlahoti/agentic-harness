@@ -95,11 +95,16 @@ PUBLIC_REFUSAL = "This is a read-only tour. To run the agent, run the harness on
 # A reopened chat redraws each turn from at most this many trace events (D-200).
 MAX_PAST_EVENTS = 800
 
-# Owner unlock (D-190): a request with the owner passphrase may run the agent and answer its
-# approvals, and nothing more. Repeated wrong passphrases lock the unlock for a while.
+# Owner unlock (D-190): a request with the owner passphrase may run the agent, answer its
+# approvals, and tidy its own memory and chats (D-211), and nothing more. Repeated wrong
+# passphrases lock the unlock for a while.
 OWNER_HEADER = "x-harness-owner"
 # The owner may also switch the online judge (D-197): a Claude run's judge is Claude Haiku.
-OWNER_ROUTES = frozenset({"/api/run", "/api/approval", "/api/online-evals/judge"})
+OWNER_ROUTES = frozenset(
+    {"/api/run", "/api/approval", "/api/online-evals/judge", "/api/facts/forget"}
+)
+# The owner may also delete a conversation (D-211); its ID is in the path.
+OWNER_DELETES = "/api/sessions/"
 # Reads that show memory, conversations or evals: the owner's only, in public mode (D-196).
 OWNER_READS = ("/api/facts", "/api/online-evals", "/api/evals", "/api/sessions")
 OWNER_ONLY = "This part of the hosted harness is for its owner."
@@ -262,8 +267,13 @@ def create_app(
             # Checked once per request, so one wrong passphrase counts as one miss.
             request.state.owner = check_owner(request)
             # One rule for every route, present and future: a hosted tour changes nothing.
-            # The owner may only run the agent and answer its approvals (D-190).
-            owner_may = request.state.owner and request.url.path in OWNER_ROUTES
+            # The owner may run the agent and answer its approvals (D-190);
+            # D-211: and forget a fact or delete a chat, from the page.
+            path = request.url.path
+            owner_may = request.state.owner and (
+                path in OWNER_ROUTES
+                or (request.method == "DELETE" and path.startswith(OWNER_DELETES))
+            )
             if request.method not in READ_METHODS and not owner_may:
                 return JSONResponse({"detail": PUBLIC_REFUSAL}, status_code=403)
             # Memory, conversations and evals are the owner's to look at, not every visitor's.

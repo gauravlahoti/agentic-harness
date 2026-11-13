@@ -1629,3 +1629,8 @@
 - **Your report:** a live send ended "⚠ Not verified: No False "Sent" still failing".
 - **Found:** the send worked (Sales and the CFO approved) and the answer said "The counter-offer went to Maya Chen… approved the send". The check only knew "sent" phrasings, so it asked for a rewrite, got the same words, and failed twice.
 - **Chose:** when a send worked, "went to / went out", "on its way" and "delivered to" also count as telling the person. A claim with no send behind it is still read only by the strict "sent" wording, since "the draft went to Priya for approval" isn't a send. Test: `test_s11_ac8_a_send_reported_in_other_words_passes`.
+
+## D-211 · The owner deletes chats and forgets facts on the hosted copy (2026-11-13)
+- **Your request:** delete memory facts and conversations from the page.
+- **Found:** both buttons already existed (× on a chat, Forget on a fact, two clicks each), but D-190/D-196 hid them in owner mode and the server refused them.
+- **Chose:** the owner may `DELETE /api/sessions/{id}` and `POST /api/facts/forget`; the page shows both buttons again in owner mode. Visitors are still refused, and the owner still can't delete evals or change tools. Deleting a chat removes the conversation; its run traces stay (Observability keeps its history). Test: `test_s14_ac20_the_owner_deletes_chats_and_forgets_facts`.
