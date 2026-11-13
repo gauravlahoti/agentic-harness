@@ -446,3 +446,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | S14 + D-201 (your report): hosted owner run header shows the live step and seconds; owner default Haiku 5.5. 633 offline tests. Streaming brief next. |
 | 2026-11-13 | S14 + D-202 (your reports): hosted page marked before first paint (no chat flash; never stuck blank); locked switches explain themselves on hover. 636 offline tests. |
 | 2026-11-13 | (your report) Chats could not be clicked with Workspace + Observability open: Chats shrank to 15 px and its list spilled under the groups below. Chats now keeps its size; the sidebar scrolls. Reproduced and fixed in a local owner session. D-203. |
+| 2026-11-13 | S14 + D-204/D-205 (your review): word-by-word subtitles, 13 px, Exit Tour for visitors, sidebar groups hidden in the tour; Agentic Loop pane rewritten after the Agent SDK loop. 638 offline tests. Local review before deploy. |

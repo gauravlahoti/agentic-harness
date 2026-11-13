@@ -2210,21 +2210,26 @@ function renderPane() {
   // Plain words for anyone: what the loop does, when it stops. Raw values are in the trace.
   const time = l.max_seconds % 60 === 0 ? `${l.max_seconds / 60} minutes` : `${l.max_seconds} seconds`;
   const share = (x) => ({ 0.5: "half", 0.25: "a quarter" })[x] ?? `${x * 100}%`;
-  const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} steps · $${l.max_usd} · ${time}`, [
+  // Worded after the agent loop as Anthropic's Agent SDK describes it: a turn, tool calls whose
+  // results feed back, and an end on a reply that asks for no tools (your review, D-205).
+  const checksOn = (info.verify?.checks ?? []).some((c) => !off.checks.includes(c.name));
+  const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} turns · $${l.max_usd} · ${time}`, [
     facts([
-      ["How it works", "Thinks, uses a tool, reads the result, and repeats until it has an answer"],
+      ["How it works", "Each turn, the model reads the task, its instructions and the conversation so far, then either answers or asks for tools. The harness runs the tools and feeds the results back for the next turn. It ends when a reply asks for no tools: that's the answer"],
+      ["Tools", "A turn may ask for several tools; the harness runs them one after another, then the model sees every result together"],
       // Picked per run in the chat box, so it follows the menu (with the Thinking level).
       ["Model", `${modelLabel($("model").value || health.model)} · Thinking: ${$("effort")?.selectedOptions[0]?.textContent.replace(/^Thinking:\s*/, "") || "Auto"}. You pick both in the chat box; each run can use a different one`],
       ["Small jobs", smallJobs(l.small_models ?? [])],
-      ["Stops", `When it has an answer, or after ${l.max_steps} steps, $${l.max_usd} or ${time}, whichever comes first`],
-      ["Helpers get", `Up to ${share(l.helper_slice.time)} the time left and ${share(l.helper_slice.money)} of the budget`],
+      ...(checksOn ? [["Before you see it", "Plain-code checks read the answer; a failed one sends it back for one more turn"]] : []),
+      ["Stops", `When a reply asks for no tools, or when a limit is hit first: ${l.max_steps} turns, $${l.max_usd} or ${time}. A limit ends the run and says which one`],
+      ["Helpers", `A helper runs its own loop with a clean history: up to ${l.helper_slice.max_steps} turns, ${share(l.helper_slice.time)} the time left, ${share(l.helper_slice.money)} of the budget, and its cost counts toward this run's`],
       // Planning (S11): part of the loop, not a step before it.
       ...(info.verify?.plan_on
         ? [["Plans", off.tools.includes("write_plan") ? "Switched off: no to-do lists this run" : "For a task with 3 or more parts the agent keeps a to-do list (write_plan) and can't finish with items open; a simple question gets a direct answer"]]
         : []),
-      // A fixed prompt keeps every request's start identical, which is what Gemini's
-      // caching needs; cached input is billed at a lower price (pricing.toml).
-      ["Prompt caching", "The prompt stays fixed for the whole run, so Gemini can cache it and charge less"],
+      // A fixed start keeps every request's prefix identical, which provider caching needs;
+      // cached input is billed at a lower price (pricing.toml).
+      ["Prompt caching", "The start of every request (instructions and tool definitions) stays the same, so the provider caches it: later turns cost less and answer faster"],
     ]),
   ]);
 

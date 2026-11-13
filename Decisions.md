@@ -1576,3 +1576,22 @@
 - **Cause:** the sidebar is a full-height column, and Chats was the one group allowed to shrink (`min-height: 0`, since S07). In the owner session, the owner note plus both open groups no longer fit, so Chats shrank to 15 px and its list spilled over the groups below: a click on a chat landed on the group drawn on top of it. A short window could do the same on the local page.
 - **Chose:** Chats keeps its size (`flex-shrink: 0`); its list still scrolls on its own (max 32vh), and the sidebar scrolls when every group is open. When everything fits, nothing looks different.
 - **Checked:** the owner session reproduced locally (public mode, a throwaway passphrase, 127.0.0.1 only): before, the click hit New Conversation; after, the chat opens with both groups open. `test_the_chats_group_never_shrinks_under_the_groups_below`.
+
+## D-204 · Tour: words light up as they're spoken; smaller subtitles; a way out (2026-11-13)
+- **Your review:**
+  - "the transcript should be highlighted based on what the voice is saying"
+  - "reduce the size of the subtitles by 2 points"
+  - "there is no exit mode"
+  - "this section (profiles, acting as, chats) is not even needed in guided mode"
+- **Chose:**
+  - **Word by word:** each subtitle sentence is drawn as words. Words already said turn bright, the word being said takes the accent colour, and the rest wait dimmed. Timing is each word's share of the clip (D-180), the same as the cues, so it can run slightly ahead or behind. Exact per-word timestamps from ElevenLabs would fix that, at the cost of regenerating the clips' timing (open). Reduced motion drops the colour fade.
+  - **Subtitles 15 px → 13 px.**
+  - **Exit Tour on the hosted copy:** a visitor may leave (button or Escape). The tab then stays out of the tour and lands on a read-only page with "Want a Guided Tour?" to go back in. Visitors never get the composer.
+  - **Profiles, Acting As and Chats** are hidden for tour visitors, no longer greyed out. The owner session is unchanged.
+
+## D-205 · The Agentic Loop pane reads like the agent loop (2026-11-13)
+- **Your review:** "rewrite the Agentic Loop, it looks incorrect", with Anthropic's Agent SDK page on the agent loop as the reference.
+- **Chose (your pick, the precise version):**
+  - Rows in the reference's terms: a **turn**; the model answers or asks for tools; the harness runs them and feeds the results back; the loop ends on a reply with no tool calls.
+  - What this harness does on top: tools run one after another; plain-code checks can send an answer back for one more turn; limits of 25 turns, $1 or 2 minutes, after which the run says which one stopped it; helpers get their own loop (15 turns, half the time, a quarter of the budget, cost counted to the run); provider-neutral prompt caching. The header reads "25 turns", not "steps".
+- **Checked in code:** tools run in order (`loop.py`); a helper's cost is charged to the run (`subagents.py`).

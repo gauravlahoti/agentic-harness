@@ -153,3 +153,14 @@ def test_s14_ac18_locked_switches_say_why() -> None:
         ":is(.tour-mode, .public-mode:not(.owner-mode)) "
         ".switch-wrap:is(:hover, :focus-within)::after" in css
     )
+
+
+def test_s14_ac19_the_agentic_loop_reads_like_the_reference() -> None:
+    """D-205, your review: the Agentic Loop rows follow the Agent SDK's loop (turns, tool results
+    fed back, an end on a reply with no tool calls) and say what this harness adds."""
+    app_js = (WEB / "app.js").read_text()
+    assert "It ends when a reply asks for no tools: that's the answer" in app_js
+    assert "the harness runs them one after another" in app_js
+    assert "${l.max_steps} turns · $${l.max_usd}" in app_js
+    assert "its cost counts toward this run's" in app_js
+    assert "so Gemini can cache it" not in app_js  # caching is the provider's, whichever model

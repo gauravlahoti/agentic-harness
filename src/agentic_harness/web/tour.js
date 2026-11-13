@@ -32,6 +32,7 @@ const tour = {
 };
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const TOUR_LEFT = "tour-left"; // a hosted visitor chose Exit Tour (D-204), for this tab
 const MIN_GAP = 320; // ms between two events: slow enough for the eye and the spotlight to follow
 const EVENTS_SHARE = 0.75; // events fill this share of a step, so the voice can finish on them
 const lessMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -196,6 +197,7 @@ function showStep(n) {
   $("tour-title").textContent = step.title;
   // Recording: the whole paragraph is your script. Playing: the first sentence, then the
   // captions follow the voice.
+  tour.caption = null; // the next sentence the voice reaches is drawn word by word (D-204)
   $("tour-say").textContent = TOUR_RECORD ? step.say : sentences(step.say)[0];
   [...$("tour-dots").children].forEach((tick, i) => {
     tick.className = `tour-tick${i < n ? " done" : i === n ? " now" : ""}`;
@@ -324,7 +326,7 @@ async function follow(step, seconds, gen, withClip) {
   const span = step.upto - tour.pos;
   const cues = step.cues.length ? step.cues : Array.from({ length: span }, (_, k) => ({ word: Math.round(((k + 1) / span) * total * EVENTS_SHARE), upto: tour.pos + k + 1 }));
   let played = 0; // seconds heard, when there's no clip to ask
-  let shown = 0;
+  let shown = -1; // -1: the first sentence is drawn as words too (D-204)
   let next = 0; // the next cue to reach
   let popped = 0; // pop marks the voice has passed (D-184)
   let switched = 0; // scene marks the voice has passed (D-185)
@@ -341,7 +343,9 @@ async function follow(step, seconds, gen, withClip) {
     if (!TOUR_RECORD && i !== shown) {
       shown = i;
       const say = $("tour-say");
-      say.textContent = parts[i];
+      // Word by word (D-204): frame() lights each word as the voice reaches it.
+      say.replaceChildren(...parts[i].split(/\s+/).filter(Boolean).map((w) => el("span", "word", `${w} `)));
+      tour.caption = { from: starts[i], words: [...say.children], lit: -1, seconds, total, clock: () => (withClip && !tour.voiceFailed ? tour.audio.currentTime : played) };
       say.classList.remove("enter");
       void say.offsetWidth; // restart the fade for the new sentence
       say.classList.add("enter");
@@ -470,7 +474,23 @@ function frame(time) {
   placeStage();
   placeSpot();
   drawOrb(time);
+  lightWords();
   requestAnimationFrame(frame);
+}
+
+// The subtitle follows the voice word by word (D-204): words already said are bright, the one
+// being said is in the accent colour, the rest wait dimmed. Timing is each word's share of the
+// clip (D-180), so it can run a little ahead or behind the voice.
+function lightWords() {
+  const c = tour.caption;
+  if (!c || !c.words.length) return;
+  const now = Math.floor((c.clock() / c.seconds) * c.total - c.from);
+  if (now === c.lit) return;
+  c.lit = now;
+  c.words.forEach((w, k) => {
+    w.classList.toggle("said", k < now);
+    w.classList.toggle("now", k === now);
+  });
 }
 
 function placeStage() {
@@ -738,6 +758,14 @@ async function saveTake(step, blob) {
 function exitTour() {
   tour.gen += 1;
   tour.audio.pause();
+  // A hosted copy opens on the tour; after Exit it stays out, until "Want a Guided Tour?" (D-204).
+  if (health?.mode === "public") {
+    try {
+      sessionStorage.setItem(TOUR_LEFT, "1");
+    } catch {
+      // Not remembered: the next load opens the tour again.
+    }
+  }
   if (recorder?.state === "recording") recorder.stop();
   location.assign(location.pathname + location.hash);
 }
@@ -753,6 +781,11 @@ function go(n) {
 // The sidebar's "Want a Guided Tour?": start here, on this page. A reload would lose the
 // click, and browsers play sound only after one; so the URL changes without one.
 async function startTour() {
+  try {
+    sessionStorage.removeItem(TOUR_LEFT);
+  } catch {
+    // Nothing remembered.
+  }
   history.pushState(null, "", `?tour${location.hash}`);
   TOUR = true;
   $("tour-invite").hidden = true;
@@ -804,12 +837,26 @@ addEventListener("popstate", () => {
   $("tour-rec").addEventListener("click", toggleRecord);
   $("tour-exit").addEventListener("click", exitTour);
   addEventListener("keydown", (event) => {
-    // A hosted copy is the tour (D-189): Escape has nothing to go back to.
-    if (TOUR && health?.mode !== "public" && event.key === "Escape" && !event.defaultPrevented) exitTour();
+    if (TOUR && event.key === "Escape" && !event.defaultPrevented) exitTour();
   });
   // A hosted copy opens on the tour, waiting on Start Tour: browsers play sound only after a click.
   const begin = () => {
-    if (health?.mode === "public" && !TOUR) {
+    // A visitor who left the tour stays out of it (D-204): the read-only page and the invite.
+    const left = (() => {
+      try {
+        return sessionStorage.getItem(TOUR_LEFT) === "1";
+      } catch {
+        return false;
+      }
+    })();
+    if (health?.mode === "public" && left && !TOUR) {
+      document.body.classList.remove("hosted-boot");
+      // Outside the tour a visitor sees what this page is and how to go on (D-204).
+      $("empty-title").textContent = "A read-only replay of a real agent run";
+      $("empty-hint").hidden = false;
+      $("empty-hint").textContent = "Take the guided tour to watch it work, or open the Harness pane on the right to explore each part.";
+    }
+    if (health?.mode === "public" && !TOUR && !left) {
       history.replaceState(null, "", `?tour${location.hash}`);
       TOUR = true;
       currentSession = null;
