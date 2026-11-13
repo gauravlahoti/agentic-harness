@@ -2136,7 +2136,7 @@ function renderPane() {
         : []),
       // A fixed prompt keeps every request's start identical, which is what Gemini's
       // caching needs; cached input is billed at a lower price (pricing.toml).
-      ["Prompt caching", "The prompt stays fixed for the whole run, so Gemini can cache it and charge less"],
+      ["Prompt caching", "The prompt stays fixed for the whole run, so the model provider can cache it and charge less"],
     ]),
   ]);
 

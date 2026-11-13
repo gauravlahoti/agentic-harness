@@ -473,12 +473,14 @@ def create_app(
             "owner_denied": bool(request.headers.get(OWNER_HEADER)) and not owner,
             "repository": REPOSITORY,
             "version": __version__,
+            # A hosted copy runs Claude only (the owner's runs, D-190; the tour's recording,
+            # D-192), so its page lists Claude. Listing a model is not running it.
             "model": CLAUDE_SMALL_MODEL if owner else settings.model,
-            "models": owner_models if owner else priced_models,
+            "models": owner_models if owner or settings.public else priced_models,
             "efforts": ["low", "medium", "high"],
             # What a Claude run's helper, checks and titles use (D-103), for the Harness pane.
             "claude_small_model": CLAUDE_SMALL_MODEL
-            if owner or settings.has_anthropic_key
+            if owner or settings.public or settings.has_anthropic_key
             else None,
             "workspace": None
             if workspace is None

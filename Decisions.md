@@ -1451,3 +1451,20 @@
   - "how to send it…" rises inside the jar, and a send pulse bounces off the glass.
 - **Kept:** the recorded voice (the caption words are unchanged) and the reduced-motion end states.
 - **Cost:** the story is drawn once in the stage SVG, so the page is slightly larger; nothing runs outside step 1.
+
+## D-192 · The tour replays a real Claude Sonnet 5.5 run (2026-11-13)
+- **Your request:** "in the entire demo Gemini is shown, I want you to show Claude", then "use the existing question, but with Claude Sonnet".
+- **Chose:** re-record the same two turns live on Claude Sonnet 5.5. Never relabel a Gemini run, because the tour says "a real recorded run" and its costs come from the trace.
+- **Takes:** five, $0.06–$0.10 each, about $0.38 in all. Sonnet is consistent across them:
+  - It loads only the contract-review skill, writes its to-do list before the lookup, and never searches the policy itself (the helper does).
+  - It sends without a separate draft, and never adds Net 60, so three approvers: Sales, Engineering, CFO.
+- **Picked:** take 1 (turns `20261113-120817-02a003`, `20261113-120850-b67237`). Its first answer didn't name who must approve each change; the Right Approver check sent it back and the fix passed.
+- **Script:** only the lines the new run made untrue changed.
+  - Step 4: one skill.
+  - Step 5: to-do list, then lookup.
+  - Step 7: why the draft was sent back.
+  - Step 8: three approvers.
+  - Step 9: about three cents, on Claude Sonnet.
+  - The cues were re-timed to the new events.
+- **Voice:** the clips for steps 4, 5, 7, 8 and 9 now say the old words and need re-recording. The other clips still match.
+- **Also:** a hosted copy lists Claude models (it runs nothing else), and the pane's caching note no longer names a provider.

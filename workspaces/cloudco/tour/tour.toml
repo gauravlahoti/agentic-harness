@@ -19,7 +19,7 @@ title = "How the Harness Works"
 chat = "ShopCo Counter-Offer"  # the tour's conversation in the sidebar
 profile = "sales"
 person = "priya"
-runs = ["runs/1-review.jsonl", "runs/2-send.jsonl"]  # recorded live, Flash-Lite, 2026-11-12
+runs = ["runs/1-review.jsonl", "runs/2-send.jsonl"]  # recorded live, Claude Sonnet 5.5, 2026-11-13 (D-192)
 skip = ["online_evals_started", "online_evals_finished"]  # Observability isn't in this tour
 
 [[steps]]
@@ -64,27 +64,27 @@ Made-up company, people and numbers.
 id = "04-context"
 title = "Context and Memory"
 show = "context"
-until = "tool_finished#2"
+until = "tool_finished#1"
 say = """
-Priya from Sales asks the agent to review ShopCo's changes and send a counter-offer. Before the model sees a word, the harness builds its context. {run_started#1} Context engineering decides what goes into the model's window for this task, and what stays out: the company's instructions, Priya's profile, and five facts from long-term memory. Memory is storage that lasts beyond the window. {scope_checked#1} Skills load only when needed: {model_replied#1} here, contract review {tool_finished#1} and replying to a customer. {tool_finished#2} The window is finite. When it fills up, the harness either summarises older turns, which is shorter but loses detail, or prunes stale tool output and keeps the important turns word for word.
+Priya from Sales asks the agent to review ShopCo's changes and send a counter-offer. Before the model sees a word, the harness builds its context. {run_started#1} Context engineering decides what goes into the model's window for this task, and what stays out: the company's instructions, Priya's profile, and five facts from long-term memory. Memory is storage that lasts beyond the window. {scope_checked#1} Skills load only when needed: {model_replied#1} here, contract review. {tool_finished#1} The window is finite. When it fills up, the harness either summarises older turns, which is shorter but loses detail, or prunes stale tool output and keeps the important turns word for word.
 """
 
 [[steps]]
 id = "05-loop"
 title = "The Agentic Loop"
 show = "loop"
-until = "tool_finished#4"
+until = "tool_finished#3"
 say = """
-Now the agentic loop. The model plans, acts with a tool, reads the result, and repeats until the goal is met. Here it looks up ShopCo, {tool_finished#3} then writes itself a to-do list. {tool_finished#4} The harness runs this loop, not the model. And it decides when to stop: when there's an answer, or after 25 steps, one dollar or two minutes, whichever comes first.
+Now the agentic loop. The model plans, acts with a tool, reads the result, and repeats until the goal is met. Here it writes itself a to-do list, {tool_finished#2} then looks up ShopCo. {tool_finished#3} The harness runs this loop, not the model. And it decides when to stop: when there's an answer, or after 25 steps, one dollar or two minutes, whichever comes first.
 """
 
 [[steps]]
 id = "06-tools"
 title = "Tools"
 show = "tools"
-until = "tool_finished#6"
+until = "tool_finished#5"
 say = """
-With tools, the model can do things in the world. The model only asks for a tool; the harness runs it and sends back the result. Here it hands the contract review to a helper agent, {tool_started#5} the clause reviewer, with its own slice of time and budget. {tool_finished#5} The helper reads the contract and the policy. And look: a line hidden in the contract tries to instruct the AI to approve it. The harness flags it and fences it as data. Anything it asks for would still need a person. {tool_finished#6}
+With tools, the model can do things in the world. The model only asks for a tool; the harness runs it and sends back the result. Here it hands the contract review to a helper agent, {tool_started#4} the clause reviewer, with its own slice of time and budget. {tool_finished#4} The helper reads the contract and the policy. And look: a line hidden in the contract tries to instruct the AI to approve it. The harness flags it and fences it as data. Anything it asks for would still need a person. {tool_finished#5}
 """
 
 [[steps]]
@@ -93,16 +93,16 @@ title = "Verification"
 show = "verify"
 until = "run_finished#1"
 say = """
-Before the answer reaches Priya, the harness checks it. {verify_started#1} Plain code reads the draft: is the plan complete, is every change covered, is the right approver named. {verify_finished#1} The first draft missed two changes, so the harness sent it back. The model fixed it, {verify_started#2} and the new answer passed. {run_finished#1} That's self-verification, built into the loop. Notice too: the agent raises its concerns first, and asks before it drafts anything.
+Before the answer reaches Priya, the harness checks it. {verify_started#1} Plain code reads the draft: is the plan complete, is every change covered, is the right approver named. {verify_finished#1} The first draft didn't name who must approve each change, so the harness sent it back. The model fixed it, {verify_started#2} and the new answer passed. {run_finished#1} That's self-verification, built into the loop. Notice too: the agent raises its concerns first, and asks before it drafts anything.
 """
 
 [[steps]]
 id = "08-guardrails"
 title = "Guardrails"
 show = "guard"
-until = "file_saved#2"
+until = "file_saved#1"
 say = """
-Priya agrees and asks it to send. {tool_finished#9} Now, guardrails. Different people get different access, and some actions need approval before they happen. Hard limits come first: {limits_checked#1} lines the company never crosses. Then the email itself is checked against the terms. {action_checked#1} Then the approvals: {approval_requested#1} Sales signs off, {approval_requested#2} Engineering approves the uptime, {approval_requested#3} Finance the payment terms, {approval_requested#4} and the CFO the discount and the liability cap. {approval_decided#4} Each must be the right person; the server checks who's answering. Only then does the email go out, {file_saved#2} to a local outbox, not real email.
+Priya agrees and asks it to send. {tool_started#8} Now, guardrails. Different people get different access, and some actions need approval before they happen. Hard limits come first: {limits_checked#1} lines the company never crosses. Then the email itself is checked against the terms. {action_checked#1} Then the approvals: {approval_requested#1} Sales signs off, {approval_requested#2} Engineering approves the uptime, {approval_requested#3} and the CFO the discount and the liability cap. {approval_decided#3} Each must be the right person; the server checks who's answering. Only then does the email go out, {file_saved#1} to a local outbox, not real email.
 """
 
 [[steps]]
@@ -111,7 +111,7 @@ title = "The Answer"
 show = "loop"
 until = "end"
 say = """
-{run_finished#2} Here's the answer, checked again, with what the run cost: model calls, tokens, dollars and seconds. About a cent, on a small model.
+{run_finished#2} Here's the answer, checked again, with what the run cost: model calls, tokens, dollars and seconds. About three cents, on Claude Sonnet.
 """
 
 [[steps]]
