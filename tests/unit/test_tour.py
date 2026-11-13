@@ -469,3 +469,16 @@ def test_s13_ac6_the_hosted_welcome_comes_from_the_tour(ws_copy: Path) -> None:
     edit_tour(ws_copy, 'aside = "', 'colour = "')
     with pytest.raises(TourError, match="colour"):
         load_tour(ws_copy)
+
+
+def test_s13_ac5_the_guide_keeps_one_size() -> None:
+    """D-208, your review: the capsule's height moved with the subtitle. The caption is always
+    two lines tall, and long sentences split into cards that fit those two lines."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    script = (web / "tour.js").read_text()
+    css = (web / "app.css").read_text()
+    assert "function captionCards(text)" in script
+    assert "const parts = captionCards(step.say);" in script
+    caption = css.split(".guide-caption {")[1].split("}")[0]
+    assert "height: 3em;" in caption
+    assert "overflow: hidden;" in caption

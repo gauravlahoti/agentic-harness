@@ -1612,3 +1612,11 @@
 ## D-207 · The Agentic Loop section keeps to the loop (2026-11-13)
 - **Your review:** "remove this part from the agent loop".
 - **Your pick:** removed Small jobs, Before you see it, Plans, Helpers and Prompt caching. The section keeps How it works, Tools, Model and Stops. Verification, the to-do tool and the helper stay described in their own sections (Verification, Tools).
+
+## D-208 · The guide keeps one size: subtitles fit two lines (2026-11-13)
+- **Your review** (relayed by a teammate session): the guide capsule's height changed with the subtitle (1 to 3 lines; step 10 reached 3), which moved your focus.
+- **Chose:**
+  - The caption box is always two lines tall.
+  - `captionCards()` splits any sentence that wouldn't fit two lines at the current width at its most natural pause nearest the middle (":" then ";" then ","), else at the middle word. Each card keeps its words' share of the voice, so the word highlight (D-204) carries across the split.
+  - The title, controls and timeline keep their places. Recording mode keeps its tall script box.
+- **Open:** checking every step at desktop and phone width in Chrome; the browser permission prompt timed out.

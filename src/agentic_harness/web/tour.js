@@ -199,7 +199,7 @@ function showStep(n) {
   // Recording: the whole paragraph is your script. Playing: the first sentence, then the
   // captions follow the voice.
   tour.caption = null; // the next sentence the voice reaches is drawn word by word (D-204)
-  $("tour-say").textContent = TOUR_RECORD ? step.say : sentences(step.say)[0];
+  $("tour-say").textContent = TOUR_RECORD ? step.say : captionCards(step.say)[0];
   [...$("tour-dots").children].forEach((tick, i) => {
     tick.className = `tour-tick${i < n ? " done" : i === n ? " now" : ""}`;
   });
@@ -315,11 +315,39 @@ function sentences(text) {
   return text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
 }
 
+// The guide keeps one size (D-208): every subtitle card fits two lines at the current width.
+// A longer sentence splits at its most natural pause nearest the middle (":" then ";" then ","),
+// else at the middle word; each card keeps its words' share of the voice, like a sentence.
+function captionCards(text) {
+  const box = $("tour-say");
+  const px = parseFloat(getComputedStyle(box).fontSize) || 14;
+  const width = box.clientWidth || 560;
+  const max = Math.max(40, Math.floor((width / (px * 0.54)) * 2 * 0.9)); // characters in two lines
+  const split = (s) => {
+    if (s.length <= max) return [s];
+    const mid = s.length / 2;
+    let cut = -1;
+    for (const mark of [":", ";", ","]) {
+      let best = -1;
+      for (let i = s.indexOf(mark); i > 0; i = s.indexOf(mark, i + 1)) {
+        if (i < s.length - 1 && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+      }
+      if (best > 0 && Math.abs(best - mid) < s.length * 0.35) {
+        cut = best + 1;
+        break;
+      }
+    }
+    if (cut < 0) cut = s.lastIndexOf(" ", mid) > 0 ? s.lastIndexOf(" ", mid) : Math.floor(mid);
+    return [...split(s.slice(0, cut).trim()), ...split(s.slice(cut).trim())];
+  };
+  return sentences(text).flatMap(split);
+}
+
 // One clock for the subtitles and the run: where the voice is now (D-180). Each sentence
 // and each cue mark sits at a word; a word's time is its share of the voice. With a clip
 // the clock is the clip itself, so Pause holds everything.
 async function follow(step, seconds, gen, withClip) {
-  const parts = sentences(step.say);
+  const parts = captionCards(step.say); // sentences, split so none passes two lines (D-208)
   const total = Math.max(step.say.split(/\s+/).length, 1);
   const starts = []; // the word each sentence starts at
   parts.reduce((at, part) => (starts.push(at), at + part.split(/\s+/).length), 0);

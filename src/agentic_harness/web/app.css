@@ -2352,6 +2352,10 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 .guide-caption {
   margin: 0;
   min-height: 1.5em;
+  /* Always two lines tall, so the guide capsule never resizes (D-208); captionCards() keeps
+     every card within two lines at the current width. */
+  height: 3em;
+  overflow: hidden;
   font-size: 14px; /* your review: 15 → 13 → 14 (D-204, D-206) */
   font-weight: 450;
   line-height: 1.5;
@@ -2360,7 +2364,7 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   text-wrap: pretty; /* fill the line: the width beside the orb is there to be used (your review) */
   text-shadow: 0 2px 18px light-dark(rgb(255 255 255 / 0.9), rgb(0 0 0 / 0.9));
 }
-.tour-recording .guide-caption { font-size: 18px; line-height: 1.6; max-height: 14em; overflow-y: auto; text-wrap: pretty; } /* your script: read it out */
+.tour-recording .guide-caption { height: auto; font-size: 18px; line-height: 1.6; max-height: 14em; overflow-y: auto; text-wrap: pretty; } /* your script: read it out */
 .guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .tour-icon {
   display: grid;
