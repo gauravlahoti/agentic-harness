@@ -1569,3 +1569,9 @@
   - Two safety nets, from a teammate session's review: a failed health check removes the marker, and a CSS-only fallback reveals the page after 4 s even if no script runs.
   - Locked switches (the tour, a hosted visitor) show a tooltip on hover or keyboard focus, with a not-allowed cursor: "Locked during the guided tour. Run the harness yourself to switch tools, skills and checks on or off." Owner and local pages have no lock and no tooltip.
 - **Tests:** `test_hosted_speed.py::test_s14_ac17_*`, `test_s14_ac18_*`.
+
+## D-203 · Chats never shrinks under the groups below (2026-11-13)
+- **Your report:** "chat is not opening unless I collapse Workspace and Observability".
+- **Cause:** the sidebar is a full-height column, and Chats was the one group allowed to shrink (`min-height: 0`, since S07). In the owner session, the owner note plus both open groups no longer fit, so Chats shrank to 15 px and its list spilled over the groups below: a click on a chat landed on the group drawn on top of it. A short window could do the same on the local page.
+- **Chose:** Chats keeps its size (`flex-shrink: 0`); its list still scrolls on its own (max 32vh), and the sidebar scrolls when every group is open. When everything fits, nothing looks different.
+- **Checked:** the owner session reproduced locally (public mode, a throwaway passphrase, 127.0.0.1 only): before, the click hit New Conversation; after, the chat opens with both groups open. `test_the_chats_group_never_shrinks_under_the_groups_below`.

@@ -280,3 +280,13 @@ def test_approval_card_header_terms_and_buttons_in_view() -> None:
     assert 'reveal(target, { block: "center"' in card  # reveal() = scrollIntoView outside the tour
     assert "card.scrollIntoView" not in card
     assert ".approval-mail-line { display: contents; }" in CSS
+
+
+def test_the_chats_group_never_shrinks_under_the_groups_below() -> None:
+    """Your report (2026-11-13): with Workspace and Observability open, the chats could not be
+    clicked. The sidebar is a full-height column; Chats was allowed to shrink to nothing, so
+    its list spilled over the groups below. Chats keeps its size (its list scrolls on its
+    own) and the sidebar scrolls instead."""
+    rule = CSS.split("\n.work {")[1].split("}")[0]
+    assert "flex-shrink: 0" in rule
+    assert "min-height: 0" not in rule

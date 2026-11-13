@@ -1218,7 +1218,9 @@ body:has(:is(#view-checks, #view-memory):not([hidden])) :is(.harness-pane, .pane
 }
 
 /* ── Your work: this profile's conversations, named by topic (S07) ───────────── */
-.work { display: flex; flex-direction: column; min-height: 0; margin: 4px 0 10px; }
+/* Chats keeps its size: its list scrolls on its own (max 32vh), and the sidebar scrolls when
+   all the groups are open. Letting it shrink spilled the list over the groups below. */
+.work { display: flex; flex-direction: column; flex-shrink: 0; margin: 4px 0 10px; }
 .work-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
 .work-head h2 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
 /* Sidebar groups fold: the heading is the button; the body animates its height (0fr ↔ 1fr). */
