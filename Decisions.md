@@ -1657,3 +1657,11 @@
 - **Chose:** `show = "pane"` for step 9: the pane stays open and plain. One part, one step.
 - **Why:** the answer step is about the result and its cost, not a part of the harness.
 - **Cost:** none. `test_s14_no_step_reopens_a_pane_part_already_explained` keeps it that way.
+
+## D-216 · The voice lights the Harness pane row it is explaining (2026-11-14)
+- **Your idea:** while the voice explains context, light up skills, summarising and pruning in the pane.
+- **Options:** a `{lit:row}` mark in the script (like pop and chip marks) · match keywords in the narration automatically.
+- **Chose:** the mark. It fires from the same voice clock (D-180), is never shown in subtitles, and needs no new audio. Rows: `files`, `skills`, `window`, `prune`, `summarize` (Context part only, for now). One row glows at a time; the next mark or the next step clears it.
+- **Honest by design:** the recorded runs never reach 50% of the window (largest prompt 2,140 of 20,000 tokens), so no prune or summary ever happened. The narration speaks of the rule ("when it fills up…"), and the glow lands on the rule's row, not on an event.
+- **Tour only:** the glow is styled under `.tour-mode`; the normal pane never gets it. A row the profile lacks is simply not found.
+- **Cost:** about 5 marks to place by hand; the other pane parts (Tools, Guardrails, Verification, Memory) wait until you like this one.

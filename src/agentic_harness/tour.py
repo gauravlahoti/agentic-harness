@@ -53,7 +53,10 @@ BEATS = {"think", "reach", "seal", "tell", "bounce"}  # the story of the model a
 CHIP = re.compile(r"\{chip:([1-9])\}")
 MAX_CHIPS = 6
 MAX_CHIP_CHARS = 40
-MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{(?:pop|scene|beat|chip):[a-z0-9_]+\})")
+# A lit mark: that Harness pane row glows while the voice explains it (D-216).
+LIT = re.compile(r"\{lit:([a-z_]+)\}")
+LIT_ROWS = {"files", "skills", "window", "prune", "summarize"}  # rows of the Context part
+MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{(?:pop|scene|beat|chip|lit):[a-z0-9_]+\})")
 
 Event = dict[str, Any]
 
@@ -83,6 +86,7 @@ class TourStep:
     beats: tuple[tuple[int, str], ...] = ()  # (word, beat): the model-alone story moves (D-191)
     chips: tuple[str, ...] = ()  # short labels shown under the diagram, e.g. an agenda (D-191)
     chip_marks: tuple[tuple[int, int], ...] = ()  # (word, chip number): it lights up there
+    lits: tuple[tuple[int, str], ...] = ()  # (word, row): the Harness pane row that glows (D-216)
 
 
 @dataclass(frozen=True)
@@ -193,6 +197,7 @@ def tour_payload(tour: Tour, *, audio_url: Callable[[str, int], str]) -> dict[st
                 "beats": [{"word": w, "beat": b} for w, b in s.beats],
                 "chips": list(s.chips),
                 "chip_marks": [{"word": w, "chip": c} for w, c in s.chip_marks],
+                "lits": [{"word": w, "row": r} for w, r in s.lits],
                 "upto": s.upto,
                 # The version changes with every new take, so the browser fetches the new one.
                 "audio": audio_url(s.id, clip.stat().st_mtime_ns) if clip else None,
@@ -251,7 +256,7 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
     if upto < start:
         raise TourError(f"Step {step_id} stops before the step ahead of it: steps only go forward.")
     chips = _chips(step_id, raw.get("chips", []))
-    text, cues, pops, scenes, beats, chip_marks = _marks(
+    text, cues, pops, scenes, beats, chip_marks, lits = _marks(
         step_id, say, sequence, start, upto, len(chips)
     )
     card = raw.get("card")
@@ -272,6 +277,7 @@ def _step(raw: Any, sequence: list[Event], before: TourStep | None) -> TourStep:
         beats=beats,
         chips=chips,
         chip_marks=chip_marks,
+        lits=lits,
     )
 
 
@@ -280,18 +286,21 @@ Marks = tuple[tuple[int, str], ...]
 
 def _marks(
     step_id: str, say: str, sequence: list[Event], start: int, upto: int, chips: int = 0
-) -> tuple[str, tuple[tuple[int, int], ...], Marks, Marks, Marks, tuple[tuple[int, int], ...]]:
+) -> tuple[
+    str, tuple[tuple[int, int], ...], Marks, Marks, Marks, tuple[tuple[int, int], ...], Marks
+]:
     """Take the marks out of a caption, each tied to the word it sits before. A cue mark
     says how far the run plays; cues only move forward and stay inside the step (D-180).
     A pop mark names the diagram part to pop (D-184); a scene mark, the scene to switch to
     (D-185); a beat mark, the model-alone story's next beat; a chip mark, the chip to light
-    (D-191)."""
+    (D-191); a lit mark, the pane row to glow (D-216)."""
     words: list[str] = []
     cues: list[tuple[int, int]] = []
     pops: list[tuple[int, str]] = []
     scenes: list[tuple[int, str]] = []
     beats: list[tuple[int, str]] = []
     lit: list[tuple[int, int]] = []
+    glows: list[tuple[int, str]] = []
     last = start
     for piece in MARK.split(say):
         if beat := BEAT.fullmatch(piece):
@@ -300,6 +309,12 @@ def _marks(
                     f"Step {step_id}: {piece} must name one of {', '.join(sorted(BEATS))}."
                 )
             beats.append((len(words), beat.group(1)))
+        elif glow := LIT.fullmatch(piece):
+            if glow.group(1) not in LIT_ROWS:
+                raise TourError(
+                    f"Step {step_id}: {piece} must light one of {', '.join(sorted(LIT_ROWS))}."
+                )
+            glows.append((len(words), glow.group(1)))
         elif chip := CHIP.fullmatch(piece):
             number = int(chip.group(1))
             if number > chips:
@@ -328,7 +343,15 @@ def _marks(
             last = at
         else:
             words.extend(piece.split())
-    return " ".join(words), tuple(cues), tuple(pops), tuple(scenes), tuple(beats), tuple(lit)
+    return (
+        " ".join(words),
+        tuple(cues),
+        tuple(pops),
+        tuple(scenes),
+        tuple(beats),
+        tuple(lit),
+        tuple(glows),
+    )
 
 
 def _position(step_id: str, until: str, sequence: list[Event]) -> int:

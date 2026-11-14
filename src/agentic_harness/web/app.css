@@ -2787,6 +2787,15 @@ body.sidebar-collapsed > .sidebar { display: none; }
 @media (max-width: 720px) { .sidebar-close, .sidebar-toggle { display: none; } body.sidebar-collapsed > .sidebar { display: flex; } }
 
 /* ── Tour: the pane's own spotlight ───────────────────────────────────────── */
+/* The row the voice is on glows (D-216). Tour only: nothing outside .tour-mode is touched. */
+.tour-mode [data-lit].is-lit {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-mode [data-lit] { transition: background 0.35s, box-shadow 0.35s; }
+}
 .tour-pane-focus .pane-part.is-dimmed { opacity: 0.35; filter: grayscale(1); }
 @media (prefers-reduced-motion: no-preference) {
   .pane-part { transition: opacity 0.35s, filter 0.35s; }

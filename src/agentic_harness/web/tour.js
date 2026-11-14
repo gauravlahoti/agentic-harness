@@ -23,6 +23,7 @@ const tour = {
   muted: false,
   gen: 0, // bumped on every jump, so an old step's timers stop
   show: null,
+  lit: null, // the pane row the voice has lit (D-216)
   scene: "jar",
   spot: [], // the elements in the spotlight
   answer: null, // a finished run's turn, framed once its answer is drawn
@@ -113,7 +114,10 @@ async function setUpTour() {
   $("tour-rec-box").hidden = !TOUR_RECORD;
   $("tour-dots").replaceChildren(...data.steps.map((s) => Object.assign(el("li", "tour-tick"), { title: s.title })));
   // The pane redraws itself (a new profile, a model change): keep the step's part open.
-  new MutationObserver(() => markPart(tour.show)).observe($("pane-body"), { childList: true });
+  new MutationObserver(() => {
+    markPart(tour.show);
+    lightRow(tour.lit); // the pane redrew: the row the voice is on glows again
+  }).observe($("pane-body"), { childList: true });
   showStep(0);
   $("tour-play").textContent = TOUR_RECORD ? "Play Step" : "Start Tour";
   requestAnimationFrame(frame);
@@ -212,6 +216,7 @@ function showStep(n) {
   const last = tour.turns.at(-1)?.activity.lastElementChild;
   tour.spot = step.card ? [$("tour-card")] : step.scene === "hud" && last ? [last] : [];
   markPart(step.show);
+  lightRow(null);
   noteClip(step);
 }
 
@@ -361,6 +366,8 @@ async function follow(step, seconds, gen, withClip) {
   let switched = 0; // scene marks the voice has passed (D-185)
   let beaten = 0; // beat marks the voice has passed (D-191)
   let chipped = 0; // chip marks the voice has passed (D-191)
+  let glowed = 0; // lit marks the voice has passed (D-216)
+  const lits = step.lits ?? [];
   let due = tour.pos; // play the run up to here
   for (;;) {
     const clipClock = withClip && !tour.voiceFailed;
@@ -386,6 +393,7 @@ async function follow(step, seconds, gen, withClip) {
     while (switched < step.scenes.length && step.scenes[switched].word <= word) setScene(step.scenes[switched++].scene);
     while (beaten < step.beats.length && step.beats[beaten].word <= word) beat(step.beats[beaten++].beat);
     while (chipped < step.chip_marks.length && step.chip_marks[chipped].word <= word) chip(step.chip_marks[chipped++].chip);
+    while (glowed < lits.length && lits[glowed].word <= word) lightRow(lits[glowed++].row);
     if (tour.pos < due) feed(tour.pos);
     const done = (clipClock && tour.audio.ended) || at >= seconds;
     if (done && tour.pos >= due) return true;
@@ -699,6 +707,17 @@ function markPart(part) {
   }
   dimOtherParts(part);
   sections[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// The row of the pane the voice is on glows; the next mark, or the next step, moves it. A
+// row this profile doesn't have is simply not found, so nothing glows and nothing breaks.
+function lightRow(row) {
+  tour.lit = row;
+  for (const node of document.querySelectorAll("#pane-body .is-lit")) node.classList.remove("is-lit");
+  if (!row) return;
+  const nodes = [...document.querySelectorAll(`#pane-body [data-lit="${row}"]`)];
+  for (const node of nodes) node.classList.add("is-lit");
+  nodes[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 // The pane's own spotlight: the part the voice is explaining stays bright, every other

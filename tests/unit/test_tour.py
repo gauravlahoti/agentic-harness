@@ -529,3 +529,44 @@ def test_s14_no_step_reopens_a_pane_part_already_explained(ws_copy: Path) -> Non
     steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
     parts = [s["show"] for s in steps if s["show"] not in (None, "pane")]
     assert len(parts) == len(set(parts)), parts
+
+
+def test_s14_lit_marks_name_the_pane_row_the_voice_is_explaining(ws_copy: Path) -> None:
+    """Voice highlight: `{lit:row}` lights that Harness pane row when the voice reaches the word."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    context = next(s for s in steps if s["id"] == "04-context")
+    assert "{" not in context["say"]  # the marks never show in the subtitles
+    assert [m["row"] for m in context["lits"]] == [
+        "files",
+        "skills",
+        "window",
+        "summarize",
+        "prune",
+    ]
+    words = context["say"].split()
+    sits_on = ["the", "Skills", "When", "summarises", "prunes"]
+    for mark, word in zip(context["lits"], sits_on, strict=True):
+        assert words[mark["word"]] == word  # each mark sits on the word that names its row
+    assert all(s["lits"] == [] for s in steps if s["id"] != "04-context")
+
+
+def test_s14_a_lit_mark_must_name_a_known_row(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{lit:skills} Skills", "{lit:nonsense} Skills")
+    with pytest.raises(TourError, match="nonsense"):
+        load_tour(ws_copy)
+
+
+def test_s14_the_pane_rows_carry_the_names_the_marks_use() -> None:
+    """The page tags each row with data-lit, lights it only in the tour, and clears it after."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    app_js = (web / "app.js").read_text()
+    for row in ("files", "skills", "window", "prune", "summarize"):
+        assert f'"{row}"' in app_js, row
+    assert "data-lit" in app_js or "dataset.lit" in app_js
+    tour_js = (web / "tour.js").read_text()
+    assert "function lightRow(" in tour_js
+    assert "step.lits" in tour_js
+    css = (web / "app.css").read_text()
+    assert ".tour-mode [data-lit].is-lit" in css  # never lit in the normal app

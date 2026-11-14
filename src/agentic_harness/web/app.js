@@ -2065,9 +2065,16 @@ function subhead(title, note) {
   return head;
 }
 
+// A row may carry a third value: its name for the tour's voice highlight (D-216).
 function facts(rows) {
   const dl = el("dl", "facts");
-  dl.append(...rows.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+  dl.append(
+    ...rows.flatMap(([k, v, lit]) => {
+      const pair = [el("dt", null, k), el("dd", null, v)];
+      if (lit) for (const cell of pair) cell.dataset.lit = lit;
+      return pair;
+    }),
+  );
   return dl;
 }
 
@@ -2090,6 +2097,7 @@ function renderPane() {
 
   // Context: what is in the prompt on every call, and the skills it can load.
   const files = el("ul", "pane-list");
+  files.dataset.lit = "files";
   files.append(
     ...info.context.files.map((f) => {
       const li = el("li", "pane-file");
@@ -2099,6 +2107,7 @@ function renderPane() {
   );
   const fileTokens = info.context.files.reduce((sum, f) => sum + f.tokens, 0);
   const skills = el("ul", "pane-list");
+  skills.dataset.lit = "skills";
   skills.append(
     ...info.skills.map((s) =>
       paneItem({
@@ -2119,9 +2128,9 @@ function renderPane() {
       ? [
           subhead("Context management", "keeps each call small"),
           facts([
-            ["Window", `${info.memory.trimming.window.toLocaleString()} tokens per call`],
-            ["Past " + Math.round(info.memory.trimming.prune_at * 100) + "%", `prune: old tool results become one-line stubs (the newest ${info.memory.trimming.keep_recent} stay whole)`],
-            ["Past " + Math.round(info.memory.trimming.summarize_at * 100) + "%", "summarize: older tasks are folded into a short summary"],
+            ["Window", `${info.memory.trimming.window.toLocaleString()} tokens per call`, "window"],
+            ["Past " + Math.round(info.memory.trimming.prune_at * 100) + "%", `prune: old tool results become one-line stubs (the newest ${info.memory.trimming.keep_recent} stay whole)`, "prune"],
+            ["Past " + Math.round(info.memory.trimming.summarize_at * 100) + "%", "summarize: older tasks are folded into a short summary", "summarize"],
           ]),
         ]
       : []),

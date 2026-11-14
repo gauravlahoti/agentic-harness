@@ -454,3 +454,4 @@ Icons: 🧪 test · 👀 you watch it · 📄 file · 🔑 needs key · Status: 
 | 2026-11-13 | D-213 (your review): owner runs offline evals on Claude with real cost estimates; Offline Evals draws at once; sidebar folds start fresh each visit. |
 | 2026-11-13 | D-214 (your review): the hosted tour fits a phone: slim top bar, compact guide, story graphic between them, no sideways scroll. |
 | 2026-11-14 | D-215 (your review): The Answer step no longer reopens the Agentic Loop. Also shipped: sidebar fold-away and the pane spotlight. |
+| 2026-11-14 | D-216 (your idea): `{lit:row}` marks make the Harness pane row glow as the voice explains it (Context step: files, skills, window, summarize, prune). 662 offline tests. Local review before deploy. |
