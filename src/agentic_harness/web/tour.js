@@ -676,6 +676,7 @@ function markPart(part) {
   document.body.classList.toggle("tour-prerun", beforeRun);
   if (beforeRun) {
     setPaneOpen(false, false);
+    dimOtherParts(null);
     return;
   }
   for (const section of document.querySelectorAll("#pane-body .pane-part")) {
@@ -685,9 +686,9 @@ function markPart(part) {
     }
   }
   // No outline round the pane, ever (your review, D-209): the parts speak for themselves.
-  if (!part) return;
+  if (!part) return void dimOtherParts(null);
   if (roomForPane()) setPaneOpen(true, false);
-  if (part === "pane") return;
+  if (part === "pane") return void dimOtherParts(null);
   // The part the voice is talking about opens; no tint or edge, so the pane keeps its look (your review).
   const sections = [...document.querySelectorAll(`#pane-body .pane-part.part-${part}`)];
   for (const section of sections) {
@@ -696,7 +697,19 @@ function markPart(part) {
       section.dataset.tourOpened = "1";
     }
   }
+  dimOtherParts(part);
   sections[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// The pane's own spotlight: the part the voice is explaining stays bright, every other
+// section greys out. No part (or the whole pane) greys nothing. Only a part this profile
+// really has counts, so a missing section never dims the whole pane.
+function dimOtherParts(part) {
+  const all = [...document.querySelectorAll("#pane-body .pane-part")];
+  const lit = part ? all.filter((s) => s.classList.contains(`part-${part}`)) : [];
+  const on = lit.length > 0;
+  document.body.classList.toggle("tour-pane-focus", on);
+  for (const section of all) section.classList.toggle("is-dimmed", on && !lit.includes(section));
 }
 
 // The step's card, from Markdown: tables by hand, everything else by app.js's renderProse,

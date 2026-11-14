@@ -489,3 +489,33 @@ def test_s13_ac6_the_pane_never_gets_a_cyan_outline() -> None:
     web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
     assert "tour-whole" not in (web / "tour.js").read_text()
     assert "tour-whole" not in (web / "app.css").read_text()
+
+
+def test_s13_ac7_the_pane_spotlights_the_part_being_explained() -> None:
+    """Your request: when the voice explains a part (context, memory, verification...), that
+    pane section stays bright and the other sections grey out. A whole-pane step greys nothing,
+    and leaving the tour clears it."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    script = (web / "tour.js").read_text()
+    css = (web / "app.css").read_text()
+    assert "is-dimmed" in script
+    assert "tour-pane-focus" in script
+    assert ".tour-pane-focus .pane-part.is-dimmed" in css
+    dim = css.split(".tour-pane-focus .pane-part.is-dimmed {")[1].split("}")[0]
+    assert "opacity" in dim
+    assert "grayscale" in dim
+    # The pane never gets a cyan outline (D-209): the dim is the only cue.
+    assert "tour-whole" not in script
+
+
+def test_s13_ac7_the_sidebar_can_be_collapsed_like_the_harness_pane() -> None:
+    """Your request: a toggle hides the sidebar and a button brings it back."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    html = (web / "index.html").read_text()
+    css = (web / "app.css").read_text()
+    js = (web / "app.js").read_text()
+    for piece in ('id="sidebar-close"', 'id="sidebar-toggle"', 'aria-controls="sidebar"'):
+        assert piece in html
+    assert "function setSidebarOpen(" in js
+    assert "SIDEBAR_OPEN" in js
+    assert "body.sidebar-collapsed" in css

@@ -1977,6 +1977,23 @@ function setPaneOpen(open, remember = true) {
   }
 }
 
+// The sidebar folds away the way the Harness pane does; the choice is kept per browser.
+const SIDEBAR_OPEN = "sidebar-open";
+
+function setSidebarOpen(open, remember = true) {
+  document.body.classList.toggle("sidebar-collapsed", !open);
+  $("lane-left").hidden = !open;
+  $("sidebar-toggle").hidden = open;
+  $("sidebar-toggle").setAttribute("aria-expanded", String(open));
+  if (remember) {
+    try {
+      localStorage.setItem(SIDEBAR_OPEN, open ? "1" : "0");
+    } catch {
+      // Storage blocked: the sidebar just won't remember.
+    }
+  }
+}
+
 function setUpPane() {
   if (!health?.workspace) return;
   let saved = null;
@@ -2359,6 +2376,14 @@ $("effort").addEventListener("change", () => {
 $("profile").addEventListener("change", switchProfile);
 $("model").addEventListener("change", () => paneInfo && renderPane());
 $("effort").addEventListener("change", () => paneInfo && renderPane());
+$("sidebar-close").addEventListener("click", () => setSidebarOpen(false));
+$("sidebar-toggle").addEventListener("click", () => setSidebarOpen(true));
+try {
+  // The tour always opens with the sidebar in place: it holds the guide's own way back.
+  if (localStorage.getItem(SIDEBAR_OPEN) === "0" && !new URLSearchParams(location.search).has("tour")) setSidebarOpen(false, false);
+} catch {
+  // Storage blocked: the sidebar stays open.
+}
 $("pane-toggle").addEventListener("click", () => setPaneOpen(true));
 $("pane-close").addEventListener("click", () => setPaneOpen(false));
 $("off-chip").addEventListener("click", () => setPaneOpen(true));

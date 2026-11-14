@@ -15,6 +15,10 @@
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
+    <button type="button" class="sidebar-close" id="sidebar-close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span class="visually-hidden">Hide the sidebar</span>
+    </button>
     <div class="org" id="org">
       <img class="org-logo" id="org-logo" alt="" hidden width="40" height="40">
       <p class="org-name" id="org-name">No workspace loaded</p>
@@ -425,6 +429,10 @@
   </main>
 
   <!-- ── Harness pane (S04): what each harness part gives this profile; switches only remove ── -->
+  <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-controls="sidebar" aria-expanded="true" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span class="visually-hidden">Show the sidebar</span>
+  </button>
   <button type="button" class="pane-toggle" id="pane-toggle" aria-controls="harness-pane" aria-expanded="false" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
     <span class="visually-hidden">Show the harness</span>
