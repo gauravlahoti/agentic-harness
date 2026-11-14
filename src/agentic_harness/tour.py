@@ -55,8 +55,26 @@ MAX_CHIPS = 6
 MAX_CHIP_CHARS = 40
 # A lit mark: that Harness pane row glows while the voice explains it (D-216).
 LIT = re.compile(r"\{lit:([a-z_]+)\}")
-# Rows the voice may light: five in the Context part, one in the Memory part.
-LIT_ROWS = {"files", "skills", "window", "prune", "summarize", "longterm"}
+# Rows of the Harness pane the voice may light, by part (D-216).
+LIT_ROWS = {
+    "files",
+    "skills",
+    "window",
+    "prune",
+    "summarize",  # Context
+    "longterm",  # Memory
+    "loophow",
+    "loopstops",  # Agentic Loop
+    "toollist",
+    "helpers",  # Tools
+    "allowed",
+    "limits",
+    "approvals",
+    "identity",  # Guardrails
+    "checks",
+    "actionchecks",
+    "retry",  # Verification
+}
 MARK = re.compile(r"(\{[a-z_]+#[1-9]\d*\}|\{(?:pop|scene|beat|chip|lit):[a-z0-9_]+\})")
 
 Event = dict[str, Any]

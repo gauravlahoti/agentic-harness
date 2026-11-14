@@ -12,7 +12,7 @@
 # Beat marks, like `{beat:seal}`, move the model-alone story on (think, reach, seal, tell,
 # bounce); chip marks, like `{chip:2}`, light that entry of the step's `chips` (D-191).
 # Lit marks, like `{lit:skills}`, make that Harness pane row glow while the voice explains it
-# (files, skills, window, prune, summarize, longterm; D-216).
+# (one per pane row; see LIT_ROWS in src/agentic_harness/tour.py; D-216).
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across
 # the runs below; a helper's events play along but aren't counted. No `until`: nothing plays.
 # Clips: audio/<step id>.webm|.m4a|.mp3|.ogg, recorded on the page at /?tour=record.
@@ -84,7 +84,7 @@ title = "The Agentic Loop"
 show = "loop"
 until = "tool_finished#4"
 say = """
-Now the agentic loop. The model plans, acts with a tool, reads the result, and repeats until the goal is met. Here it looks up ShopCo, {tool_finished#3} then writes itself a to-do list. {tool_finished#4} The harness runs this loop, not the model. And it decides when to stop: when there's an answer, or after 25 steps, one dollar or two minutes, whichever comes first.
+Now the agentic loop. {lit:loophow} The model plans, acts with a tool, reads the result, and repeats until the goal is met. Here it looks up ShopCo, {tool_finished#3} then writes itself a to-do list. {tool_finished#4} The harness runs this loop, not the model. {lit:loopstops} And it decides when to stop: when there's an answer, or after 25 steps, one dollar or two minutes, whichever comes first.
 """
 
 [[steps]]
@@ -93,7 +93,7 @@ title = "Tools"
 show = "tools"
 until = "tool_finished#6"
 say = """
-With tools, the model can do things in the world. The model only asks for a tool; the harness runs it and sends back the result. Here it hands the contract review to a helper agent, {tool_started#5} the clause reviewer, with its own slice of time and budget. {tool_finished#5} The helper reads the contract and the policy. And look: a line hidden in the contract tries to instruct the AI to approve it. The harness flags it and fences it as data. Anything it asks for would still need a person. {tool_finished#6}
+{lit:toollist} With tools, the model can do things in the world. The model only asks for a tool; the harness runs it and sends back the result. Here it hands the contract review to {lit:helpers} a helper agent, {tool_started#5} the clause reviewer, with its own slice of time and budget. {tool_finished#5} The helper reads the contract and the policy. And look: a line hidden in the contract tries to instruct the AI to approve it. The harness flags it and fences it as data. Anything it asks for would still need a person. {tool_finished#6}
 """
 
 [[steps]]
@@ -102,7 +102,7 @@ title = "Verification"
 show = "verify"
 until = "run_finished#1"
 say = """
-Before the answer reaches Priya, the harness checks it. {verify_started#1} Plain code reads the draft: is the plan complete, is every change covered, is the right approver named. {verify_finished#1} The first draft missed two changes, so the harness sent it back. The model fixed it, {verify_started#2} and the new answer passed. {run_finished#1} That's self-verification, built into the loop. Notice too: the agent raises its concerns first, and asks before it drafts anything.
+Before the answer reaches Priya, the harness checks it. {verify_started#1} {lit:checks} Plain code reads the draft: is the plan complete, is every change covered, is the right approver named. {verify_finished#1} {lit:retry} The first draft missed two changes, so the harness sent it back. The model fixed it, {verify_started#2} and the new answer passed. {run_finished#1} That's self-verification, built into the loop. Notice too: the agent raises its concerns first, and asks before it drafts anything.
 """
 
 [[steps]]
@@ -111,7 +111,7 @@ title = "Guardrails"
 show = "guard"
 until = "file_saved#2"
 say = """
-Priya agrees and asks it to send. {tool_finished#9} Now, guardrails. Different people get different access, and some actions need approval before they happen. Hard limits come first: {limits_checked#1} lines the company never crosses. Then the email itself is checked against the terms. {action_checked#1} Then the approvals: {approval_requested#1} Sales signs off, {approval_requested#2} Engineering approves the uptime, {approval_requested#3} Finance the payment terms, {approval_requested#4} and the CFO the discount and the liability cap. {approval_decided#4} Each must be the right person; the server checks who's answering. Only then does the email go out, {file_saved#2} to a local outbox, not real email.
+Priya agrees and asks it to send. {tool_finished#9} Now, guardrails. {lit:allowed} Different people get different access, and some actions need approval before they happen. {lit:limits} Hard limits come first: {limits_checked#1} lines the company never crosses. {lit:actionchecks} Then the email itself is checked against the terms. {action_checked#1} {lit:approvals} Then the approvals: {approval_requested#1} Sales signs off, {approval_requested#2} Engineering approves the uptime, {approval_requested#3} Finance the payment terms, {approval_requested#4} and the CFO the discount and the liability cap. {approval_decided#4} {lit:identity} Each must be the right person; the server checks who's answering. Only then does the email go out, {file_saved#2} to a local outbox, not real email.
 """
 
 [[steps]]

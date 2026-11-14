@@ -1665,3 +1665,9 @@
 - **Honest by design:** the recorded runs never reach 50% of the window (largest prompt 2,140 of 20,000 tokens), so no prune or summary ever happened. The narration speaks of the rule ("when it fills up…"), and the glow lands on the rule's row, not on an event.
 - **Tour only:** the glow is styled under `.tour-mode`; the normal pane never gets it. A row the profile lacks is simply not found.
 - **Cost:** about 5 marks to place by hand; the other pane parts (Tools, Guardrails, Verification, Memory) wait until you like this one.
+
+## D-217 · The voice highlight covers every pane part the tour explains (2026-11-14)
+- **Your review:** extend D-216 to the other pane sections, matched to the voice. The Memory part had also stayed grey while the voice named long-term facts.
+- **Chose:** 17 rows in all (list in `LIT_ROWS`, `src/agentic_harness/tour.py`): Context 5, Memory 1, Agentic Loop 2, Tools 2, Guardrails 4, Verification 3. Steps 4 to 8 carry the marks. A row in a part the step isn't about (long-term facts in Memory during step 4; the email's own checks in Verification during step 8) opens that part and wakes it from the grey while the voice is on it, then folds it back at the next mark.
+- **Why:** it matches what the voice says, the way the diagram's pop marks do, and it stays honest: a row only glows where the narration names it.
+- **Cost:** about 15 marks placed by hand in `tour.toml`. `test_s14_every_pane_step_lights_its_rows_where_the_voice_names_them` pins each mark to its word.

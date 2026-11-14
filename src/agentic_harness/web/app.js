@@ -2138,6 +2138,7 @@ function renderPane() {
 
   // Tools: what the agent can do, with each tool's risk; helpers are tools too.
   const tools = el("ul", "pane-list");
+  tools.dataset.lit = "toollist";
   tools.append(
     ...info.tools.map((t) => {
       const tags = [el("span", `act-risk risk-${t.risk}`, t.risk)];
@@ -2158,6 +2159,7 @@ function renderPane() {
     }),
   );
   const helpers = el("ul", "pane-list");
+  helpers.dataset.lit = "helpers";
   helpers.append(
     ...info.subagents.map((a) =>
       paneItem({
@@ -2268,11 +2270,14 @@ function renderPane() {
       ? list(g.approvals.map((a) => line(a.approver ? `${a.label} → ${a.approver}` : a.tool, a.because)))
       : el("p", "guard-text", `Not applicable for ${g.profile}`),
   ]);
+  allowedCard.dataset.lit = "allowed";
+  notAllowedCard.dataset.lit = "limits";
+  pauseCard.dataset.lit = "approvals";
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
   if (people().length) {
     // Who may answer an approval (D-137): said plainly, with what is and isn't enforced.
     const me = currentPerson();
-    guardBody.push(facts([["Identity", `Acting as ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`]]));
+    guardBody.push(facts([["Identity", `Acting as ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`, "identity"]]));
   }
   // Say so plainly if an action this profile may use would run without a person.
   const asks = new Set(g.approvals.map((a) => a.tool));
@@ -2289,11 +2294,11 @@ function renderPane() {
   // results feed back, and an end on a reply that asks for no tools (your review, D-205). Kept to the loop itself: how it works, tools, model, stops (D-207).
   const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} turns · $${l.max_usd} · ${time}`, [
     facts([
-      ["How it works", "Each turn, the model reads the task, its instructions and the conversation so far, then either answers or asks for tools. The harness runs the tools and feeds the results back for the next turn. It ends when a reply asks for no tools: that's the answer"],
+      ["How it works", "Each turn, the model reads the task, its instructions and the conversation so far, then either answers or asks for tools. The harness runs the tools and feeds the results back for the next turn. It ends when a reply asks for no tools: that's the answer", "loophow"],
       ["Tools", "A turn may ask for several tools; the harness runs them one after another, then the model sees every result together"],
       // Picked per run in the chat box, so it follows the menu (with the Thinking level).
       ["Model", `${modelLabel($("model").value || health.model)} · Thinking: ${$("effort")?.selectedOptions[0]?.textContent.replace(/^Thinking:\s*/, "") || "Auto"}. You pick both in the chat box; each run can use a different one`],
-      ["Stops", `When a reply asks for no tools, or when a limit is hit first: ${l.max_steps} turns, $${l.max_usd} or ${time}. A limit ends the run and says which one`],
+      ["Stops", `When a reply asks for no tools, or when a limit is hit first: ${l.max_steps} turns, $${l.max_usd} or ${time}. A limit ends the run and says which one`, "loopstops"],
     ]),
   ]);
 
@@ -2301,6 +2306,7 @@ function renderPane() {
   // has drafted its answer. Planning lives in the loop and its tool under Tools.
   const v = info.verify ?? { plan_on: false, checks: [], retries: 0 };
   const checkList = el("ul", "pane-list check-names");
+  checkList.dataset.lit = "checks";
   checkList.append(
     ...v.checks.map((c) =>
       paneItem({
@@ -2314,6 +2320,7 @@ function renderPane() {
     ),
   );
   const actionList = el("ul", "pane-list check-names");
+  actionList.dataset.lit = "actionchecks";
   actionList.append(
     ...(v.action_checks ?? []).map((c) =>
       paneItem({
@@ -2331,7 +2338,7 @@ function renderPane() {
     ...(actionList.children.length ? [subhead("Before an action", "after the hard limits, before anyone is asked"), actionList] : []),
     subhead("Checks", "after the draft, before you see it"),
     checkList,
-    facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`]]),
+    facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`, "retry"]]),
   ]);
 
   // Keep which sections you had open across re-renders.

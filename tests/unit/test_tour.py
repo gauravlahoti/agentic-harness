@@ -550,7 +550,35 @@ def test_s14_lit_marks_name_the_pane_row_the_voice_is_explaining(ws_copy: Path) 
     sits_on = ["the", "five", "Skills", "When", "summarises", "prunes"]
     for mark, word in zip(context["lits"], sits_on, strict=True):
         assert words[mark["word"]] == word  # each mark sits on the word that names its row
-    assert all(s["lits"] == [] for s in steps if s["id"] != "04-context")
+
+
+# Step → the pane rows the voice lights, and the word each mark sits on (D-216).
+LIT_PLAN = {
+    "04-context": (
+        ["files", "longterm", "skills", "window", "summarize", "prune"],
+        ["the", "five", "Skills", "When", "summarises", "prunes"],
+    ),
+    "05-loop": (["loophow", "loopstops"], ["The", "And"]),
+    "06-tools": (["toollist", "helpers"], ["With", "a"]),
+    "07-verify": (["checks", "retry"], ["Plain", "The"]),
+    "08-guardrails": (
+        ["allowed", "limits", "actionchecks", "approvals", "identity"],
+        ["Different", "Hard", "Then", "Then", "Each"],
+    ),
+}
+
+
+def test_s14_every_pane_step_lights_its_rows_where_the_voice_names_them(ws_copy: Path) -> None:
+    """Voice highlight for steps 4-8: each mark sits on the word that names its pane row."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    for step in steps:
+        rows, sits_on = LIT_PLAN.get(step["id"], ([], []))
+        assert [m["row"] for m in step["lits"]] == rows, step["id"]
+        words = step["say"].split()
+        assert [words[m["word"]] for m in step["lits"]] == sits_on, step["id"]
+        assert "{" not in step["say"]
 
 
 def test_s14_a_lit_mark_must_name_a_known_row(ws_copy: Path) -> None:
@@ -563,7 +591,8 @@ def test_s14_the_pane_rows_carry_the_names_the_marks_use() -> None:
     """The page tags each row with data-lit, lights it only in the tour, and clears it after."""
     web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
     app_js = (web / "app.js").read_text()
-    for row in ("files", "longterm", "skills", "window", "prune", "summarize"):
+    rows = [row for names, _ in LIT_PLAN.values() for row in names]
+    for row in rows:
         assert f'"{row}"' in app_js, row
     assert "data-lit" in app_js or "dataset.lit" in app_js
     tour_js = (web / "tour.js").read_text()
