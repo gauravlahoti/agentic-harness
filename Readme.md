@@ -39,18 +39,7 @@ The model picks the next step. The harness does everything else.
 
 ## How a run works
 
-```mermaid
-flowchart LR
-    T([Task]) --> C[Build context<br/>instructions · skills · memory]
-    C --> M{{Model}}
-    M -- "asks for a tool" --> G{Guardrails<br/>allowed? approved?}
-    G -- yes --> R[Run tool] --> M
-    G -- "needs a person" --> H([Human approves]) --> R
-    M -- "drafts an answer" --> V[Verify<br/>plain-code checks]
-    V -- "fails: one retry" --> M
-    V -- passes --> A([Answer + cost])
-    A -.-> E[Online evals<br/>score quality]
-```
+![The agent harness: a task passes an input check, the model reads context and memory, guardrails gate each tool call, and verification checks the draft before the answer and its cost.](docs/images/how-a-run-works.png)
 
 Every step is saved as a trace. The page draws the run live, and the same trace replays as the [guided tour](https://agentic-harness.gauravlahoti.dev/).
 
