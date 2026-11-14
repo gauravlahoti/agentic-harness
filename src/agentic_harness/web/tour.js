@@ -724,6 +724,7 @@ function lightRow(row) {
     delete lent.dataset.tourLent;
   }
   if (lent) dimOtherParts(tour.show);
+  showLitCard(null);
   if (!row) return;
   const nodes = [...document.querySelectorAll(`#pane-body [data-lit="${row}"]`)];
   for (const node of nodes) node.classList.add("is-lit");
@@ -737,6 +738,24 @@ function lightRow(row) {
     tour.lent = section;
   }
   nodes[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  showLitCard(nodes);
+}
+
+// Where the pane has no room (a phone), its row can't glow in view, so the row's own words
+// float above the guide with the part's name over them (D-218). Nothing is in the flow, so
+// the guide keeps its height. A row that isn't there simply shows no card.
+function showLitCard(nodes) {
+  const card = $("tour-lit");
+  if (!card) return;
+  if (roomForPane() || !nodes?.length) {
+    card.hidden = true;
+    return;
+  }
+  // A list shows its items' names; a label and its text (dt, dd) read as one line.
+  const words = nodes.map((node) => (node.tagName === "UL" ? [...node.children].map((li) => li.querySelector(".item-name")?.textContent ?? li.textContent).join(" · ") : node.textContent));
+  card.querySelector(".guide-lit-part").textContent = nodes[0].closest(".pane-part")?.querySelector(".part-title")?.textContent ?? "";
+  card.querySelector(".guide-lit-text").textContent = words.join(" · ").replace(/\s+/g, " ").trim();
+  card.hidden = false;
 }
 
 // The pane's own spotlight: the part the voice is explaining stays bright, every other

@@ -1671,3 +1671,10 @@
 - **Chose:** 17 rows in all (list in `LIT_ROWS`, `src/agentic_harness/tour.py`): Context 5, Memory 1, Agentic Loop 2, Tools 2, Guardrails 4, Verification 3. Steps 4 to 8 carry the marks. A row in a part the step isn't about (long-term facts in Memory during step 4; the email's own checks in Verification during step 8) opens that part and wakes it from the grey while the voice is on it, then folds it back at the next mark.
 - **Why:** it matches what the voice says, the way the diagram's pop marks do, and it stays honest: a row only glows where the narration names it.
 - **Cost:** about 15 marks placed by hand in `tour.toml`. `test_s14_every_pane_step_lights_its_rows_where_the_voice_names_them` pins each mark to its word.
+
+## D-218 · On a phone the lit row shows as a card above the guide (2026-11-14)
+- **Your review:** the Harness pane isn't visible on a phone, so the voice highlight showed nothing.
+- **Options:** (A) a bottom sheet with the real pane · (B) a card above the guide with the row's own words · (C) the pane takes the screen · (D) nothing on phones.
+- **Chose:** B. Where the pane has no room (`roomForPane()` false, under 1100 px), each lit row also shows as a small card floating above the guide: the part's name in small caps, then the row's words, clamped to two lines. It follows the same marks and clears at the next mark or step.
+- **Why:** it sits where the viewer already looks, covers none of the chat, and keeps the story graphic D-214 worked to fit. It is positioned, never in the flow, so the guide keeps its fixed height (D-208).
+- **Cost:** the card shows text, not the pane's own layout. Desktop is unchanged. Tour only.

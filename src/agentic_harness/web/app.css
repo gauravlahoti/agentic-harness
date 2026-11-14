@@ -2798,6 +2798,39 @@ body.sidebar-collapsed > .sidebar { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .tour-mode [data-lit] { transition: background 0.35s, box-shadow 0.35s; }
 }
+/* The row the voice is on, as a card above the guide where the pane has no room (D-218).
+   Positioned, never in the flow: the guide keeps its fixed height (D-208). */
+.tour-mode .guide-lit {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  pointer-events: none;
+}
+.tour-mode .guide-lit[hidden] { display: none; }
+.guide-lit-part {
+  display: block;
+  font: 500 10.5px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.guide-lit-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 /* In the tour the Guardrails cards lose their thick left bar: the same thin edge all round. */
 .tour-mode .guard-card { border-left-width: 1px; }
 .tour-pane-focus .pane-part.is-dimmed { opacity: 0.35; filter: grayscale(1); }
