@@ -519,3 +519,13 @@ def test_s13_ac7_the_sidebar_can_be_collapsed_like_the_harness_pane() -> None:
     assert "function setSidebarOpen(" in js
     assert "SIDEBAR_OPEN" in js
     assert "body.sidebar-collapsed" in css
+
+
+def test_s14_no_step_reopens_a_pane_part_already_explained(ws_copy: Path) -> None:
+    """Your review: "The Answer" reopened the Agentic Loop that step 5 had already covered.
+    Each pane part is the spotlight of one step; later steps ask for another part or none."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    parts = [s["show"] for s in steps if s["show"] not in (None, "pane")]
+    assert len(parts) == len(set(parts)), parts

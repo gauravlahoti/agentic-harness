@@ -1650,3 +1650,10 @@
 - **Your review:** "mobile users are our primary audience", with a phone screenshot.
 - **Found (390 px, every tour step):** the sidebar stacked above the page and took about 40% of the screen; the story graphic sat under it (steps 1–2) or off the right edge (step 10); steps 9–10 scrolled sideways, because the answer's long lines widened the page's column; the guide capsule was 186 px tall with the orb in its own column and Exit Tour on a row of its own; the Harness pane button covered the top bar; and the welcome said "explore the Harness pane on the right", which a phone doesn't show.
 - **Chose (visitors, ≤720 px):** one slim sticky top bar (logo, name, View the Code, theme); a compact guide (orb in the title line, the timeline above one row of 36 px controls, Exit as an × icon); the story graphic placed between the bar and the guide (`phoneStage`); the column shrinks and long words wrap, and nothing scrolls sideways; the pane button and the pane hint are hidden. Desktop and the owner view are unchanged. Checked with headless Chrome at 390 × 844 through all ten steps. Tests: `tests/unit/test_mobile_layout.py` (AC28–AC30).
+
+## D-215 · The Answer step no longer reopens the Agentic Loop (2026-11-14)
+- **Your review:** at "The Answer" the Harness pane opened the Agentic Loop again, though step 5 had explained it; it felt like a bug.
+- **Options:** keep `show = "loop"` · spotlight Verification (it is step 7's part) · no spotlight (`pane`).
+- **Chose:** `show = "pane"` for step 9: the pane stays open and plain. One part, one step.
+- **Why:** the answer step is about the result and its cost, not a part of the harness.
+- **Cost:** none. `test_s14_no_step_reopens_a_pane_part_already_explained` keeps it that way.

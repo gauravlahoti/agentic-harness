@@ -115,7 +115,7 @@ Priya agrees and asks it to send. {tool_finished#9} Now, guardrails. Different p
 [[steps]]
 id = "09-answer"
 title = "The Answer"
-show = "loop"
+show = "pane"
 until = "end"
 say = """
 {run_finished#2} Here's the answer, checked again, with what the run cost: model calls, tokens, dollars and seconds. About a cent, on a small model.
