@@ -24,6 +24,7 @@ const tour = {
   gen: 0, // bumped on every jump, so an old step's timers stop
   show: null,
   lit: null, // the pane row the voice has lit (D-216)
+  lent: null, // a pane part opened or woken only for that row
   scene: "jar",
   spot: [], // the elements in the spotlight
   answer: null, // a finished run's turn, framed once its answer is drawn
@@ -714,9 +715,27 @@ function markPart(part) {
 function lightRow(row) {
   tour.lit = row;
   for (const node of document.querySelectorAll("#pane-body .is-lit")) node.classList.remove("is-lit");
+  // A row in a part the step isn't about (long-term facts, in Memory, during Context) opens
+  // its part and wakes it from the grey while the voice is on it; it folds back after.
+  const lent = tour.lent;
+  tour.lent = null;
+  if (lent?.isConnected && lent.dataset.tourLent) {
+    lent.open = false;
+    delete lent.dataset.tourLent;
+  }
+  if (lent) dimOtherParts(tour.show);
   if (!row) return;
   const nodes = [...document.querySelectorAll(`#pane-body [data-lit="${row}"]`)];
   for (const node of nodes) node.classList.add("is-lit");
+  const section = nodes[0]?.closest(".pane-part");
+  if (section && (section.classList.contains("is-dimmed") || !section.open)) {
+    if (!section.open) {
+      section.open = true;
+      section.dataset.tourLent = "1";
+    }
+    section.classList.remove("is-dimmed");
+    tour.lent = section;
+  }
   nodes[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 

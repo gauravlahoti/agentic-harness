@@ -12,7 +12,7 @@
 # Beat marks, like `{beat:seal}`, move the model-alone story on (think, reach, seal, tell,
 # bounce); chip marks, like `{chip:2}`, light that entry of the step's `chips` (D-191).
 # Lit marks, like `{lit:skills}`, make that Harness pane row glow while the voice explains it
-# (files, skills, window, prune, summarize; D-216).
+# (files, skills, window, prune, summarize, longterm; D-216).
 # `until = "model_replied#3"`: play up to the main agent's 3rd model_replied, counted across
 # the runs below; a helper's events play along but aren't counted. No `until`: nothing plays.
 # Clips: audio/<step id>.webm|.m4a|.mp3|.ogg, recorded on the page at /?tour=record.
@@ -75,7 +75,7 @@ title = "Context and Memory"
 show = "context"
 until = "tool_finished#2"
 say = """
-Priya from Sales asks the agent to review ShopCo's changes and send a counter-offer. Before the model sees a word, the harness builds its context. {run_started#1} Context engineering decides what goes into the model's window for this task, and what stays out: {lit:files} the company's instructions, Priya's profile, and five facts from long-term memory. Memory is storage that lasts beyond the window. {scope_checked#1} {lit:skills} Skills load only when needed: {model_replied#1} here, contract review {tool_finished#1} and replying to a customer. {tool_finished#2} The window is finite. {lit:window} When it fills up, the harness either {lit:summarize} summarises older turns, which is shorter but loses detail, or {lit:prune} prunes stale tool output and keeps the important turns word for word.
+Priya from Sales asks the agent to review ShopCo's changes and send a counter-offer. Before the model sees a word, the harness builds its context. {run_started#1} Context engineering decides what goes into the model's window for this task, and what stays out: {lit:files} the company's instructions, Priya's profile, and {lit:longterm} five facts from long-term memory. Memory is storage that lasts beyond the window. {scope_checked#1} {lit:skills} Skills load only when needed: {model_replied#1} here, contract review {tool_finished#1} and replying to a customer. {tool_finished#2} The window is finite. {lit:window} When it fills up, the harness either {lit:summarize} summarises older turns, which is shorter but loses detail, or {lit:prune} prunes stale tool output and keeps the important turns word for word.
 """
 
 [[steps]]

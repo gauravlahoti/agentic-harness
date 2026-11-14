@@ -2206,6 +2206,7 @@ function renderPane() {
   const m = info.memory;
   const who = info.guardrails.profile;
   const factList = el("ul", "note-list");
+  factList.dataset.lit = "longterm";
   factList.append(...m.notes.slice(0, 3).map((n) => el("li", null, factText(n))));
   const seeAll = el("a", "pane-link", m.notes.length > 3 ? `See all ${m.notes.length} facts` : "Open Memory");
   seeAll.href = "#memory";
