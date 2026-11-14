@@ -601,3 +601,10 @@ def test_s14_the_pane_rows_carry_the_names_the_marks_use() -> None:
     assert 'closest(".pane-part")' in tour_js  # a row in a folded or greyed part opens it
     css = (web / "app.css").read_text()
     assert ".tour-mode [data-lit].is-lit" in css  # never lit in the normal app
+
+
+def test_s14_the_tour_drops_the_guardrails_cards_thick_left_edge() -> None:
+    """Your review: the dark left edge on the Guardrails cards goes, in the tour only."""
+    css = (Path(__file__).parents[2] / "src" / "agentic_harness" / "web" / "app.css").read_text()
+    assert ".tour-mode .guard-card { border-left-width: 1px; }" in css
+    assert "border-left: 3px solid var(--tone);" in css  # the normal app keeps its look

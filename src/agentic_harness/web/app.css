@@ -2798,6 +2798,8 @@ body.sidebar-collapsed > .sidebar { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .tour-mode [data-lit] { transition: background 0.35s, box-shadow 0.35s; }
 }
+/* In the tour the Guardrails cards lose their thick left bar: the same thin edge all round. */
+.tour-mode .guard-card { border-left-width: 1px; }
 .tour-pane-focus .pane-part.is-dimmed { opacity: 0.35; filter: grayscale(1); }
 @media (prefers-reduced-motion: no-preference) {
   .pane-part { transition: opacity 0.35s, filter 0.35s; }
