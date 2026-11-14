@@ -14,7 +14,6 @@ No agent framework. Every line is readable, tested and explained.
 [![CI](https://github.com/gauravlahoti/agentic-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/gauravlahoti/agentic-harness/actions/workflows/ci.yml)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776ab)
 ![Gemini](https://img.shields.io/badge/model-Gemini-1a73e8)
-![Claude optional](https://img.shields.io/badge/Claude-optional-d97757)
 
 ### [▶ Watch the guided tour](https://agentic-harness.gauravlahoti.dev/)
 
