@@ -2334,7 +2334,7 @@ function renderPane() {
     ),
   );
   const nAll = v.checks.length + (v.action_checks ?? []).length;
-  const verifySection = paneSection("verify", "Verification", `${plural(nAll, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+  const verifySection = paneSection("verify", "Verification", `${plural(nAll, "check")}${v.retries ? " · retry on failure" : ""}`, [
     ...(actionList.children.length ? [subhead("Before an action", "after the hard limits, before anyone is asked"), actionList] : []),
     subhead("Checks", "after the draft, before you see it"),
     checkList,

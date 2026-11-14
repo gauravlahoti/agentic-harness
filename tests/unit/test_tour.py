@@ -608,3 +608,11 @@ def test_s14_the_tour_drops_the_guardrails_cards_thick_left_edge() -> None:
     css = (Path(__file__).parents[2] / "src" / "agentic_harness" / "web" / "app.css").read_text()
     assert ".tour-mode .guard-card { border-left-width: 1px; }" in css
     assert "border-left: 3px solid var(--tone);" in css  # the normal app keeps its look
+
+
+def test_s14_the_verification_summary_says_retry_on_failure_with_no_number() -> None:
+    """Your review: "6 checks · 1 retry" read oddly. No number: "retry on failure"."""
+    app_js = (Path(__file__).parents[2] / "src/agentic_harness/web/app.js").read_text()
+    assert '" · retry on failure"' in app_js
+    assert 'plural(v.retries, "retry"' not in app_js
+    assert "retryWords" not in app_js
