@@ -1977,6 +1977,23 @@ function setPaneOpen(open, remember = true) {
   }
 }
 
+// The sidebar folds away the way the Harness pane does; the choice is kept per browser.
+const SIDEBAR_OPEN = "sidebar-open";
+
+function setSidebarOpen(open, remember = true) {
+  document.body.classList.toggle("sidebar-collapsed", !open);
+  $("lane-left").hidden = !open;
+  $("sidebar-toggle").hidden = open;
+  $("sidebar-toggle").setAttribute("aria-expanded", String(open));
+  if (remember) {
+    try {
+      localStorage.setItem(SIDEBAR_OPEN, open ? "1" : "0");
+    } catch {
+      // Storage blocked: the sidebar just won't remember.
+    }
+  }
+}
+
 function setUpPane() {
   if (!health?.workspace) return;
   let saved = null;
@@ -2048,9 +2065,16 @@ function subhead(title, note) {
   return head;
 }
 
+// A row may carry a third value: its name for the tour's voice highlight (D-216).
 function facts(rows) {
   const dl = el("dl", "facts");
-  dl.append(...rows.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+  dl.append(
+    ...rows.flatMap(([k, v, lit]) => {
+      const pair = [el("dt", null, k), el("dd", null, v)];
+      if (lit) for (const cell of pair) cell.dataset.lit = lit;
+      return pair;
+    }),
+  );
   return dl;
 }
 
@@ -2073,6 +2097,7 @@ function renderPane() {
 
   // Context: what is in the prompt on every call, and the skills it can load.
   const files = el("ul", "pane-list");
+  files.dataset.lit = "files";
   files.append(
     ...info.context.files.map((f) => {
       const li = el("li", "pane-file");
@@ -2082,6 +2107,7 @@ function renderPane() {
   );
   const fileTokens = info.context.files.reduce((sum, f) => sum + f.tokens, 0);
   const skills = el("ul", "pane-list");
+  skills.dataset.lit = "skills";
   skills.append(
     ...info.skills.map((s) =>
       paneItem({
@@ -2102,9 +2128,9 @@ function renderPane() {
       ? [
           subhead("Context management", "keeps each call small"),
           facts([
-            ["Window", `${info.memory.trimming.window.toLocaleString()} tokens per call`],
-            ["Past " + Math.round(info.memory.trimming.prune_at * 100) + "%", `prune: old tool results become one-line stubs (the newest ${info.memory.trimming.keep_recent} stay whole)`],
-            ["Past " + Math.round(info.memory.trimming.summarize_at * 100) + "%", "summarize: older tasks are folded into a short summary"],
+            ["Window", `${info.memory.trimming.window.toLocaleString()} tokens per call`, "window"],
+            ["Past " + Math.round(info.memory.trimming.prune_at * 100) + "%", `prune: old tool results become one-line stubs (the newest ${info.memory.trimming.keep_recent} stay whole)`, "prune"],
+            ["Past " + Math.round(info.memory.trimming.summarize_at * 100) + "%", "summarize: older tasks are folded into a short summary", "summarize"],
           ]),
         ]
       : []),
@@ -2112,6 +2138,7 @@ function renderPane() {
 
   // Tools: what the agent can do, with each tool's risk; helpers are tools too.
   const tools = el("ul", "pane-list");
+  tools.dataset.lit = "toollist";
   tools.append(
     ...info.tools.map((t) => {
       const tags = [el("span", `act-risk risk-${t.risk}`, t.risk)];
@@ -2132,6 +2159,7 @@ function renderPane() {
     }),
   );
   const helpers = el("ul", "pane-list");
+  helpers.dataset.lit = "helpers";
   helpers.append(
     ...info.subagents.map((a) =>
       paneItem({
@@ -2180,6 +2208,7 @@ function renderPane() {
   const m = info.memory;
   const who = info.guardrails.profile;
   const factList = el("ul", "note-list");
+  factList.dataset.lit = "longterm";
   factList.append(...m.notes.slice(0, 3).map((n) => el("li", null, factText(n))));
   const seeAll = el("a", "pane-link", m.notes.length > 3 ? `See all ${m.notes.length} facts` : "Open Memory");
   seeAll.href = "#memory";
@@ -2241,11 +2270,14 @@ function renderPane() {
       ? list(g.approvals.map((a) => line(a.approver ? `${a.label} → ${a.approver}` : a.tool, a.because)))
       : el("p", "guard-text", `Not applicable for ${g.profile}`),
   ]);
+  allowedCard.dataset.lit = "allowed";
+  notAllowedCard.dataset.lit = "limits";
+  pauseCard.dataset.lit = "approvals";
   const guardBody = [allowedCard, notAllowedCard, pauseCard];
   if (people().length) {
     // Who may answer an approval (D-137): said plainly, with what is and isn't enforced.
     const me = currentPerson();
-    guardBody.push(facts([["Identity", `Acting as ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`]]));
+    guardBody.push(facts([["Identity", `Acting as ${roleOf(me)}. An approval is accepted only from a person with the card's role: the server checks it. People are role-played; there are no logins, so this shows who must decide, not who someone really is`, "identity"]]));
   }
   // Say so plainly if an action this profile may use would run without a person.
   const asks = new Set(g.approvals.map((a) => a.tool));
@@ -2262,11 +2294,11 @@ function renderPane() {
   // results feed back, and an end on a reply that asks for no tools (your review, D-205). Kept to the loop itself: how it works, tools, model, stops (D-207).
   const loopSection = paneSection("loop", "Agentic Loop", `${l.max_steps} turns · $${l.max_usd} · ${time}`, [
     facts([
-      ["How it works", "Each turn, the model reads the task, its instructions and the conversation so far, then either answers or asks for tools. The harness runs the tools and feeds the results back for the next turn. It ends when a reply asks for no tools: that's the answer"],
+      ["How it works", "Each turn, the model reads the task, its instructions and the conversation so far, then either answers or asks for tools. The harness runs the tools and feeds the results back for the next turn. It ends when a reply asks for no tools: that's the answer", "loophow"],
       ["Tools", "A turn may ask for several tools; the harness runs them one after another, then the model sees every result together"],
       // Picked per run in the chat box, so it follows the menu (with the Thinking level).
       ["Model", `${modelLabel($("model").value || health.model)} · Thinking: ${$("effort")?.selectedOptions[0]?.textContent.replace(/^Thinking:\s*/, "") || "Auto"}. You pick both in the chat box; each run can use a different one`],
-      ["Stops", `When a reply asks for no tools, or when a limit is hit first: ${l.max_steps} turns, $${l.max_usd} or ${time}. A limit ends the run and says which one`],
+      ["Stops", `When a reply asks for no tools, or when a limit is hit first: ${l.max_steps} turns, $${l.max_usd} or ${time}. A limit ends the run and says which one`, "loopstops"],
     ]),
   ]);
 
@@ -2274,6 +2306,7 @@ function renderPane() {
   // has drafted its answer. Planning lives in the loop and its tool under Tools.
   const v = info.verify ?? { plan_on: false, checks: [], retries: 0 };
   const checkList = el("ul", "pane-list check-names");
+  checkList.dataset.lit = "checks";
   checkList.append(
     ...v.checks.map((c) =>
       paneItem({
@@ -2287,6 +2320,7 @@ function renderPane() {
     ),
   );
   const actionList = el("ul", "pane-list check-names");
+  actionList.dataset.lit = "actionchecks";
   actionList.append(
     ...(v.action_checks ?? []).map((c) =>
       paneItem({
@@ -2300,11 +2334,11 @@ function renderPane() {
     ),
   );
   const nAll = v.checks.length + (v.action_checks ?? []).length;
-  const verifySection = paneSection("verify", "Verification", `${plural(nAll, "check")} · ${plural(v.retries, "retry", "retries")}`, [
+  const verifySection = paneSection("verify", "Verification", `${plural(nAll, "check")}${v.retries ? " · retry on failure" : ""}`, [
     ...(actionList.children.length ? [subhead("Before an action", "after the hard limits, before anyone is asked"), actionList] : []),
     subhead("Checks", "after the draft, before you see it"),
     checkList,
-    facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`]]),
+    facts([["On a failure", `The failures go back to the agent ${v.retries === 1 ? "once" : `up to ${v.retries} times`}; if it still fails, the answer is marked Not Verified`, "retry"]]),
   ]);
 
   // Keep which sections you had open across re-renders.
@@ -2359,6 +2393,14 @@ $("effort").addEventListener("change", () => {
 $("profile").addEventListener("change", switchProfile);
 $("model").addEventListener("change", () => paneInfo && renderPane());
 $("effort").addEventListener("change", () => paneInfo && renderPane());
+$("sidebar-close").addEventListener("click", () => setSidebarOpen(false));
+$("sidebar-toggle").addEventListener("click", () => setSidebarOpen(true));
+try {
+  // The tour always opens with the sidebar in place: it holds the guide's own way back.
+  if (localStorage.getItem(SIDEBAR_OPEN) === "0" && !new URLSearchParams(location.search).has("tour")) setSidebarOpen(false, false);
+} catch {
+  // Storage blocked: the sidebar stays open.
+}
 $("pane-toggle").addEventListener("click", () => setPaneOpen(true));
 $("pane-close").addEventListener("click", () => setPaneOpen(false));
 $("off-chip").addEventListener("click", () => setPaneOpen(true));

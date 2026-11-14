@@ -489,3 +489,130 @@ def test_s13_ac6_the_pane_never_gets_a_cyan_outline() -> None:
     web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
     assert "tour-whole" not in (web / "tour.js").read_text()
     assert "tour-whole" not in (web / "app.css").read_text()
+
+
+def test_s13_ac7_the_pane_spotlights_the_part_being_explained() -> None:
+    """Your request: when the voice explains a part (context, memory, verification...), that
+    pane section stays bright and the other sections grey out. A whole-pane step greys nothing,
+    and leaving the tour clears it."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    script = (web / "tour.js").read_text()
+    css = (web / "app.css").read_text()
+    assert "is-dimmed" in script
+    assert "tour-pane-focus" in script
+    assert ".tour-pane-focus .pane-part.is-dimmed" in css
+    dim = css.split(".tour-pane-focus .pane-part.is-dimmed {")[1].split("}")[0]
+    assert "opacity" in dim
+    assert "grayscale" in dim
+    # The pane never gets a cyan outline (D-209): the dim is the only cue.
+    assert "tour-whole" not in script
+
+
+def test_s13_ac7_the_sidebar_can_be_collapsed_like_the_harness_pane() -> None:
+    """Your request: a toggle hides the sidebar and a button brings it back."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    html = (web / "index.html").read_text()
+    css = (web / "app.css").read_text()
+    js = (web / "app.js").read_text()
+    for piece in ('id="sidebar-close"', 'id="sidebar-toggle"', 'aria-controls="sidebar"'):
+        assert piece in html
+    assert "function setSidebarOpen(" in js
+    assert "SIDEBAR_OPEN" in js
+    assert "body.sidebar-collapsed" in css
+
+
+def test_s14_no_step_reopens_a_pane_part_already_explained(ws_copy: Path) -> None:
+    """Your review: "The Answer" reopened the Agentic Loop that step 5 had already covered.
+    Each pane part is the spotlight of one step; later steps ask for another part or none."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    parts = [s["show"] for s in steps if s["show"] not in (None, "pane")]
+    assert len(parts) == len(set(parts)), parts
+
+
+def test_s14_lit_marks_name_the_pane_row_the_voice_is_explaining(ws_copy: Path) -> None:
+    """Voice highlight: `{lit:row}` lights that Harness pane row when the voice reaches the word."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    context = next(s for s in steps if s["id"] == "04-context")
+    assert "{" not in context["say"]  # the marks never show in the subtitles
+    assert [m["row"] for m in context["lits"]] == [
+        "files",
+        "longterm",
+        "skills",
+        "window",
+        "summarize",
+        "prune",
+    ]
+    words = context["say"].split()
+    sits_on = ["the", "five", "Skills", "When", "summarises", "prunes"]
+    for mark, word in zip(context["lits"], sits_on, strict=True):
+        assert words[mark["word"]] == word  # each mark sits on the word that names its row
+
+
+# Step → the pane rows the voice lights, and the word each mark sits on (D-216).
+LIT_PLAN = {
+    "04-context": (
+        ["files", "longterm", "skills", "window", "summarize", "prune"],
+        ["the", "five", "Skills", "When", "summarises", "prunes"],
+    ),
+    "05-loop": (["loophow", "loopstops"], ["The", "And"]),
+    "06-tools": (["toollist", "helpers"], ["With", "a"]),
+    "07-verify": (["checks", "retry"], ["Plain", "The"]),
+    "08-guardrails": (
+        ["allowed", "limits", "actionchecks", "approvals", "identity"],
+        ["Different", "Hard", "Then", "Then", "Each"],
+    ),
+}
+
+
+def test_s14_every_pane_step_lights_its_rows_where_the_voice_names_them(ws_copy: Path) -> None:
+    """Voice highlight for steps 4-8: each mark sits on the word that names its pane row."""
+    tour = load_tour(ws_copy)
+    assert tour is not None
+    steps = tour_payload(tour, audio_url=lambda s, v: "")["steps"]
+    for step in steps:
+        rows, sits_on = LIT_PLAN.get(step["id"], ([], []))
+        assert [m["row"] for m in step["lits"]] == rows, step["id"]
+        words = step["say"].split()
+        assert [words[m["word"]] for m in step["lits"]] == sits_on, step["id"]
+        assert "{" not in step["say"]
+
+
+def test_s14_a_lit_mark_must_name_a_known_row(ws_copy: Path) -> None:
+    edit_tour(ws_copy, "{lit:skills} Skills", "{lit:nonsense} Skills")
+    with pytest.raises(TourError, match="nonsense"):
+        load_tour(ws_copy)
+
+
+def test_s14_the_pane_rows_carry_the_names_the_marks_use() -> None:
+    """The page tags each row with data-lit, lights it only in the tour, and clears it after."""
+    web = Path(__file__).parents[2] / "src" / "agentic_harness" / "web"
+    app_js = (web / "app.js").read_text()
+    rows = [row for names, _ in LIT_PLAN.values() for row in names]
+    for row in rows:
+        assert f'"{row}"' in app_js, row
+    assert "data-lit" in app_js or "dataset.lit" in app_js
+    tour_js = (web / "tour.js").read_text()
+    assert "function lightRow(" in tour_js
+    assert "step.lits" in tour_js
+    assert 'closest(".pane-part")' in tour_js  # a row in a folded or greyed part opens it
+    css = (web / "app.css").read_text()
+    assert ".tour-mode [data-lit].is-lit" in css  # never lit in the normal app
+
+
+def test_s14_the_tour_drops_the_guardrails_cards_thick_left_edge() -> None:
+    """Your review: the dark left edge on the Guardrails cards goes, in the tour only."""
+    css = (Path(__file__).parents[2] / "src" / "agentic_harness" / "web" / "app.css").read_text()
+    assert ".tour-mode .guard-card { border-left-width: 1px; }" in css
+    assert "border-left: 3px solid var(--tone);" in css  # the normal app keeps its look
+
+
+def test_s14_the_verification_summary_says_retry_on_failure_with_no_number() -> None:
+    """Your review: "6 checks · 1 retry" read oddly. No number: "retry on failure"."""
+    app_js = (Path(__file__).parents[2] / "src/agentic_harness/web/app.js").read_text()
+    assert '" · retry on failure"' in app_js
+    assert 'plural(v.retries, "retry"' not in app_js
+    assert "retryWords" not in app_js

@@ -1650,3 +1650,31 @@
 - **Your review:** "mobile users are our primary audience", with a phone screenshot.
 - **Found (390 px, every tour step):** the sidebar stacked above the page and took about 40% of the screen; the story graphic sat under it (steps 1–2) or off the right edge (step 10); steps 9–10 scrolled sideways, because the answer's long lines widened the page's column; the guide capsule was 186 px tall with the orb in its own column and Exit Tour on a row of its own; the Harness pane button covered the top bar; and the welcome said "explore the Harness pane on the right", which a phone doesn't show.
 - **Chose (visitors, ≤720 px):** one slim sticky top bar (logo, name, View the Code, theme); a compact guide (orb in the title line, the timeline above one row of 36 px controls, Exit as an × icon); the story graphic placed between the bar and the guide (`phoneStage`); the column shrinks and long words wrap, and nothing scrolls sideways; the pane button and the pane hint are hidden. Desktop and the owner view are unchanged. Checked with headless Chrome at 390 × 844 through all ten steps. Tests: `tests/unit/test_mobile_layout.py` (AC28–AC30).
+
+## D-215 · The Answer step no longer reopens the Agentic Loop (2026-11-14)
+- **Your review:** at "The Answer" the Harness pane opened the Agentic Loop again, though step 5 had explained it; it felt like a bug.
+- **Options:** keep `show = "loop"` · spotlight Verification (it is step 7's part) · no spotlight (`pane`).
+- **Chose:** `show = "pane"` for step 9: the pane stays open and plain. One part, one step.
+- **Why:** the answer step is about the result and its cost, not a part of the harness.
+- **Cost:** none. `test_s14_no_step_reopens_a_pane_part_already_explained` keeps it that way.
+
+## D-216 · The voice lights the Harness pane row it is explaining (2026-11-14)
+- **Your idea:** while the voice explains context, light up skills, summarising and pruning in the pane.
+- **Options:** a `{lit:row}` mark in the script (like pop and chip marks) · match keywords in the narration automatically.
+- **Chose:** the mark. It fires from the same voice clock (D-180), is never shown in subtitles, and needs no new audio. Rows: `files`, `skills`, `window`, `prune`, `summarize` (Context part only, for now). One row glows at a time; the next mark or the next step clears it.
+- **Honest by design:** the recorded runs never reach 50% of the window (largest prompt 2,140 of 20,000 tokens), so no prune or summary ever happened. The narration speaks of the rule ("when it fills up…"), and the glow lands on the rule's row, not on an event.
+- **Tour only:** the glow is styled under `.tour-mode`; the normal pane never gets it. A row the profile lacks is simply not found.
+- **Cost:** about 5 marks to place by hand; the other pane parts (Tools, Guardrails, Verification, Memory) wait until you like this one.
+
+## D-217 · The voice highlight covers every pane part the tour explains (2026-11-14)
+- **Your review:** extend D-216 to the other pane sections, matched to the voice. The Memory part had also stayed grey while the voice named long-term facts.
+- **Chose:** 17 rows in all (list in `LIT_ROWS`, `src/agentic_harness/tour.py`): Context 5, Memory 1, Agentic Loop 2, Tools 2, Guardrails 4, Verification 3. Steps 4 to 8 carry the marks. A row in a part the step isn't about (long-term facts in Memory during step 4; the email's own checks in Verification during step 8) opens that part and wakes it from the grey while the voice is on it, then folds it back at the next mark.
+- **Why:** it matches what the voice says, the way the diagram's pop marks do, and it stays honest: a row only glows where the narration names it.
+- **Cost:** about 15 marks placed by hand in `tour.toml`. `test_s14_every_pane_step_lights_its_rows_where_the_voice_names_them` pins each mark to its word.
+
+## D-218 · On a phone the lit row shows as a card above the guide (2026-11-14)
+- **Your review:** the Harness pane isn't visible on a phone, so the voice highlight showed nothing.
+- **Options:** (A) a bottom sheet with the real pane · (B) a card above the guide with the row's own words · (C) the pane takes the screen · (D) nothing on phones.
+- **Chose:** B. Where the pane has no room (`roomForPane()` false, under 1100 px), each lit row also shows as a small card floating above the guide: the part's name in small caps, then the row's words, clamped to two lines. It follows the same marks and clears at the next mark or step.
+- **Why:** it sits where the viewer already looks, covers none of the chat, and keeps the story graphic D-214 worked to fit. It is positioned, never in the flow, so the guide keeps its fixed height (D-208).
+- **Cost:** the card shows text, not the pane's own layout. Desktop is unchanged. Tour only.

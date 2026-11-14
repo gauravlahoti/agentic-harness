@@ -23,6 +23,8 @@ const tour = {
   muted: false,
   gen: 0, // bumped on every jump, so an old step's timers stop
   show: null,
+  lit: null, // the pane row the voice has lit (D-216)
+  lent: null, // a pane part opened or woken only for that row
   scene: "jar",
   spot: [], // the elements in the spotlight
   answer: null, // a finished run's turn, framed once its answer is drawn
@@ -113,7 +115,10 @@ async function setUpTour() {
   $("tour-rec-box").hidden = !TOUR_RECORD;
   $("tour-dots").replaceChildren(...data.steps.map((s) => Object.assign(el("li", "tour-tick"), { title: s.title })));
   // The pane redraws itself (a new profile, a model change): keep the step's part open.
-  new MutationObserver(() => markPart(tour.show)).observe($("pane-body"), { childList: true });
+  new MutationObserver(() => {
+    markPart(tour.show);
+    lightRow(tour.lit); // the pane redrew: the row the voice is on glows again
+  }).observe($("pane-body"), { childList: true });
   showStep(0);
   $("tour-play").textContent = TOUR_RECORD ? "Play Step" : "Start Tour";
   requestAnimationFrame(frame);
@@ -212,6 +217,7 @@ function showStep(n) {
   const last = tour.turns.at(-1)?.activity.lastElementChild;
   tour.spot = step.card ? [$("tour-card")] : step.scene === "hud" && last ? [last] : [];
   markPart(step.show);
+  lightRow(null);
   noteClip(step);
 }
 
@@ -361,6 +367,8 @@ async function follow(step, seconds, gen, withClip) {
   let switched = 0; // scene marks the voice has passed (D-185)
   let beaten = 0; // beat marks the voice has passed (D-191)
   let chipped = 0; // chip marks the voice has passed (D-191)
+  let glowed = 0; // lit marks the voice has passed (D-216)
+  const lits = step.lits ?? [];
   let due = tour.pos; // play the run up to here
   for (;;) {
     const clipClock = withClip && !tour.voiceFailed;
@@ -386,6 +394,7 @@ async function follow(step, seconds, gen, withClip) {
     while (switched < step.scenes.length && step.scenes[switched].word <= word) setScene(step.scenes[switched++].scene);
     while (beaten < step.beats.length && step.beats[beaten].word <= word) beat(step.beats[beaten++].beat);
     while (chipped < step.chip_marks.length && step.chip_marks[chipped].word <= word) chip(step.chip_marks[chipped++].chip);
+    while (glowed < lits.length && lits[glowed].word <= word) lightRow(lits[glowed++].row);
     if (tour.pos < due) feed(tour.pos);
     const done = (clipClock && tour.audio.ended) || at >= seconds;
     if (done && tour.pos >= due) return true;
@@ -676,6 +685,7 @@ function markPart(part) {
   document.body.classList.toggle("tour-prerun", beforeRun);
   if (beforeRun) {
     setPaneOpen(false, false);
+    dimOtherParts(null);
     return;
   }
   for (const section of document.querySelectorAll("#pane-body .pane-part")) {
@@ -685,9 +695,9 @@ function markPart(part) {
     }
   }
   // No outline round the pane, ever (your review, D-209): the parts speak for themselves.
-  if (!part) return;
+  if (!part) return void dimOtherParts(null);
   if (roomForPane()) setPaneOpen(true, false);
-  if (part === "pane") return;
+  if (part === "pane") return void dimOtherParts(null);
   // The part the voice is talking about opens; no tint or edge, so the pane keeps its look (your review).
   const sections = [...document.querySelectorAll(`#pane-body .pane-part.part-${part}`)];
   for (const section of sections) {
@@ -696,7 +706,67 @@ function markPart(part) {
       section.dataset.tourOpened = "1";
     }
   }
+  dimOtherParts(part);
   sections[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// The row of the pane the voice is on glows; the next mark, or the next step, moves it. A
+// row this profile doesn't have is simply not found, so nothing glows and nothing breaks.
+function lightRow(row) {
+  tour.lit = row;
+  for (const node of document.querySelectorAll("#pane-body .is-lit")) node.classList.remove("is-lit");
+  // A row in a part the step isn't about (long-term facts, in Memory, during Context) opens
+  // its part and wakes it from the grey while the voice is on it; it folds back after.
+  const lent = tour.lent;
+  tour.lent = null;
+  if (lent?.isConnected && lent.dataset.tourLent) {
+    lent.open = false;
+    delete lent.dataset.tourLent;
+  }
+  if (lent) dimOtherParts(tour.show);
+  showLitCard(null);
+  if (!row) return;
+  const nodes = [...document.querySelectorAll(`#pane-body [data-lit="${row}"]`)];
+  for (const node of nodes) node.classList.add("is-lit");
+  const section = nodes[0]?.closest(".pane-part");
+  if (section && (section.classList.contains("is-dimmed") || !section.open)) {
+    if (!section.open) {
+      section.open = true;
+      section.dataset.tourLent = "1";
+    }
+    section.classList.remove("is-dimmed");
+    tour.lent = section;
+  }
+  nodes[0]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  showLitCard(nodes);
+}
+
+// Where the pane has no room (a phone), its row can't glow in view, so the row's own words
+// float above the guide with the part's name over them (D-218). Nothing is in the flow, so
+// the guide keeps its height. A row that isn't there simply shows no card.
+function showLitCard(nodes) {
+  const card = $("tour-lit");
+  if (!card) return;
+  if (roomForPane() || !nodes?.length) {
+    card.hidden = true;
+    return;
+  }
+  // A list shows its items' names; a label and its text (dt, dd) read as one line.
+  const words = nodes.map((node) => (node.tagName === "UL" ? [...node.children].map((li) => li.querySelector(".item-name")?.textContent ?? li.textContent).join(" · ") : node.textContent));
+  card.querySelector(".guide-lit-part").textContent = nodes[0].closest(".pane-part")?.querySelector(".part-title")?.textContent ?? "";
+  card.querySelector(".guide-lit-text").textContent = words.join(" · ").replace(/\s+/g, " ").trim();
+  card.hidden = false;
+}
+
+// The pane's own spotlight: the part the voice is explaining stays bright, every other
+// section greys out. No part (or the whole pane) greys nothing. Only a part this profile
+// really has counts, so a missing section never dims the whole pane.
+function dimOtherParts(part) {
+  const all = [...document.querySelectorAll("#pane-body .pane-part")];
+  const lit = part ? all.filter((s) => s.classList.contains(`part-${part}`)) : [];
+  const on = lit.length > 0;
+  document.body.classList.toggle("tour-pane-focus", on);
+  for (const section of all) section.classList.toggle("is-dimmed", on && !lit.includes(section));
 }
 
 // The step's card, from Markdown: tables by hand, everything else by app.js's renderProse,
