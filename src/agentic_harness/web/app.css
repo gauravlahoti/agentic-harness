@@ -2856,3 +2856,25 @@ body.sidebar-collapsed > .sidebar { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .pane-part { transition: opacity 0.35s, filter 0.35s; }
 }
+
+/* ── Wordmark: whose work this is (your request). One link; CSS places it. ──── */
+.brand-mark {
+  order: 1;
+  margin-top: auto;
+  align-self: flex-start;
+  color: var(--muted);
+  font: 12px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+.brand-mark .brand-dev { color: var(--accent); }
+.brand-mark:is(:hover, :focus-visible) { color: var(--text); }
+.brand-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sidebar-foot { order: 2; margin-top: 8px; }
+/* On a phone it is a slim strip on its own row above the org row. */
+@media (max-width: 720px) {
+  .brand-mark { order: 0; margin: 0 0 4px; }
+  .sidebar-foot { order: 0; margin-top: auto; }
+  .public-mode:not(.owner-mode) .sidebar { flex-wrap: wrap; row-gap: 6px; }
+  .public-mode:not(.owner-mode) .sidebar > .brand-mark { display: block; flex: 0 0 100%; margin: 0; }
+}

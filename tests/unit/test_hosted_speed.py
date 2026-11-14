@@ -178,3 +178,16 @@ def test_s14_ac19_nothing_but_a_loader_shows_until_the_tour_is_ready() -> None:
         assert part in css.split(f"{boot} > :is(")[1].split(")")[0]
     assert f"{boot}::after" in css
     assert "Loading the tour" in css
+
+
+def test_s14_ac20_the_page_carries_the_gauravlahoti_dev_wordmark() -> None:
+    """Your request: a text wordmark that links to gauravlahoti.dev, as a slim strip above the
+    org row on a phone and in the sidebar on a desktop. One element; CSS places it."""
+    html = (WEB / "index.html").read_text()
+    css = (WEB / "app.css").read_text()
+    assert 'class="brand-mark"' in html
+    assert 'href="https://gauravlahoti.dev"' in html
+    assert html.count('class="brand-mark"') == 1
+    assert 'rel="noopener"' in html.split('class="brand-mark"')[1].split(">")[0]
+    assert ".brand-mark {" in css
+    assert ".public-mode:not(.owner-mode) .sidebar > .brand-mark" in css
