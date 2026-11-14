@@ -2789,9 +2789,11 @@ body.sidebar-collapsed > .sidebar { display: none; }
 /* ── Tour: the pane's own spotlight ───────────────────────────────────────── */
 /* The row the voice is on glows (D-216). Tour only: nothing outside .tour-mode is touched. */
 .tour-mode [data-lit].is-lit {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent);
-  border-radius: 6px;
+  /* A soft tint only, no edge. The shadow spreads the tint past the text without moving it. */
+  --glow: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--glow);
+  box-shadow: 0 0 0 4px var(--glow);
+  border-radius: 4px;
 }
 @media (prefers-reduced-motion: no-preference) {
   .tour-mode [data-lit] { transition: background 0.35s, box-shadow 0.35s; }
