@@ -166,3 +166,15 @@ def test_s14_ac19_the_agentic_loop_reads_like_the_reference() -> None:
     loop = app_js.split('paneSection("loop"')[1].split("paneSection(")[0]
     for gone in ('"Small jobs"', '"Before you see it"', '"Helpers"', '"Plans"', '"Prompt caching"'):
         assert gone not in loop, gone
+
+
+def test_s14_ac19_nothing_but_a_loader_shows_until_the_tour_is_ready() -> None:
+    """Your report: Chats, Workspace and the composer showed for a few seconds before the
+    tour. Until tour or owner mode is set, the sidebar, the chat, the pane and their buttons
+    are all hidden, and a small loader stands in."""
+    css = (WEB / "app.css").read_text()
+    boot = ".hosted-boot:not(.tour-mode):not(.owner-mode)"
+    for part in (".sidebar", "main", ".harness-pane", ".sidebar-toggle", ".pane-toggle"):
+        assert part in css.split(f"{boot} > :is(")[1].split(")")[0]
+    assert f"{boot}::after" in css
+    assert "Loading the tour" in css

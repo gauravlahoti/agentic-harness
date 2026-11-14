@@ -2235,6 +2235,25 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
   animation: hosted-reveal 0s linear 4s forwards;
 }
 @keyframes hosted-reveal { to { visibility: visible; } }
+/* The whole page waits, not only the chat (your report): the sidebar, the pane and their
+   buttons stay hidden until tour or owner mode is set. A small loader stands in. */
+.hosted-boot:not(.tour-mode):not(.owner-mode) > :is(.sidebar, main, .harness-pane, .sidebar-toggle, .pane-toggle, .lane-handle) {
+  visibility: hidden;
+  animation: hosted-reveal 0s linear 4s forwards;
+}
+.hosted-boot:not(.tour-mode):not(.owner-mode)::after {
+  content: "Loading the tour";
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font: 13px/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: hosted-loader-out 0s linear 4s forwards;
+}
+@keyframes hosted-loader-out { to { opacity: 0; } }
 /* Owner on a hosted copy: Memory and Observability (D-196), forgetting a fact (D-211), and
    running offline evals on Claude (D-213) are all the owner's. */
 /* The hosted welcome after Exit (D-206): a question, one line, and a clear way in. */
