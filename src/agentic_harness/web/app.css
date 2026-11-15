@@ -2755,17 +2755,23 @@ html:has(body.tour-mode) { scroll-padding-bottom: 200px; }
 }
 @media (max-width: 600px) {
   /* The guide: the orb moves into the title line, so the subtitles get the full width;
-     the timeline runs above one row of 36 px controls, and Exit is an icon. */
-  .tour-mode .tour-guide { padding: 10px 12px 12px; border-radius: 22px; }
-  .tour-mode .tour-guide:not(.is-tucked) .guide-orb { position: absolute; top: 4px; left: 6px; width: 32px; height: 32px; margin: 0; }
-  .tour-mode .tour-guide:not(.is-tucked) .guide-step { min-height: 22px; align-items: center; padding-left: 34px; }
-  .guide-controls { gap: 6px; margin-top: 10px; }
+     the timeline runs above one row of 30 px controls, and Exit is an icon. Kept slim on
+     purpose (your review): the page keeps most of the screen, open or tucked. */
+  .tour-mode .tour-guide { padding: 6px 10px 12px; border-radius: 16px; }
+  .tour-mode .tour-guide:not(.is-tucked) .guide-orb { position: absolute; top: 4px; left: 8px; width: 24px; height: 24px; margin: 0; }
+  .tour-mode .tour-guide:not(.is-tucked) .guide-step { min-height: 20px; align-items: center; padding-left: 30px; }
+  /* Still two lines tall (D-208, the capsule never resizes), just set tighter. */
+  .guide-caption { font-size: 13px; line-height: 1.35; height: 2.7em; min-height: 0; }
+  .guide-step { margin-bottom: 1px; }
+  .tour-mode .tour-guide.is-tucked { padding: 3px 8px 3px 3px; }
+  .tour-mode .tour-guide.is-tucked .guide-orb { width: 28px; height: 28px; }
+  .guide-controls { gap: 5px; margin-top: 10px; }
   .tour-timeline { order: -1; flex: 0 0 100%; min-width: 0; margin-bottom: 4px; }
-  .tour-icon { width: 36px; height: 36px; }
-  .tour-icon svg { width: 15px; height: 15px; }
-  .tour-main { flex: 1; min-width: 0; height: 36px; font-size: 13px; }
-  .tour-exit { width: 36px; height: 36px; justify-content: center; gap: 0; margin-left: 0; padding: 0; font-size: 0; }
-  .tour-exit svg { width: 14px; height: 14px; }
+  .tour-icon { width: 30px; height: 30px; }
+  .tour-icon svg { width: 13px; height: 13px; }
+  .tour-main { flex: 1; min-width: 0; height: 30px; font-size: 12px; }
+  .tour-exit { width: 30px; height: 30px; justify-content: center; gap: 0; margin-left: 0; padding: 0; font-size: 0; }
+  .tour-exit svg { width: 13px; height: 13px; }
   .tour-countdown:empty { display: none; }
 }
 
@@ -2868,6 +2874,12 @@ body.sidebar-collapsed > .sidebar { display: none; }
   text-decoration: none;
 }
 .brand-mark .brand-dev { color: var(--accent); }
+/* The GL mark: an L drawn as a small graph. Lines follow the text colour so it reads in
+   both themes; only the corner node is the accent. */
+.brand-mark { display: inline-flex; align-items: center; }
+.brand-logo { width: 18px; height: 18px; flex: none; margin-right: 6px; }
+.brand-logo-node { fill: var(--accent); }
+.brand-logo-glow { fill: var(--accent); opacity: 0.22; }
 .brand-mark:is(:hover, :focus-visible) { color: var(--text); }
 .brand-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sidebar-foot { order: 2; margin-top: 8px; }
@@ -2876,5 +2888,6 @@ body.sidebar-collapsed > .sidebar { display: none; }
   .brand-mark { order: 0; margin: 0 0 4px; }
   .sidebar-foot { order: 0; margin-top: auto; }
   .public-mode:not(.owner-mode) .sidebar { flex-wrap: wrap; row-gap: 6px; }
-  .public-mode:not(.owner-mode) .sidebar > .brand-mark { display: block; flex: 0 0 100%; margin: 0; }
+  .public-mode:not(.owner-mode) .sidebar > .brand-mark { display: flex; flex: 0 0 100%; margin: 0; }
+  .brand-logo { width: 16px; height: 16px; } /* the text line's height, so the strip does not grow */
 }
